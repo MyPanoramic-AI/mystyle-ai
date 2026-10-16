@@ -1,6 +1,7 @@
 import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
 
+const ONBOARDING = new Set(['pending', 'deferred', 'completed']);
 const BUDGETS = new Set(['under-300', '300-600', '600-1000', '1000-2000', '2000-plus', 'flexible']);
 const FITS = new Set(['relaxed', 'regular', 'fitted', 'no-preference']);
 const EXPERIMENTS = new Set(['classic', 'balanced', 'adventurous', 'no-preference']);
@@ -11,9 +12,9 @@ function text(value: unknown, max: number, field: string): string | null {
   return value.trim();
 }
 
-function list(value: unknown, field: string): string[] | undefined {
+function list(value: unknown, field: string, itemMax = 40): string[] | undefined {
   if (value === undefined) return undefined;
-  if (!Array.isArray(value) || value.length > 20 || value.some((item) => typeof item !== 'string' || item.length > 40)) {
+  if (!Array.isArray(value) || value.length > 20 || value.some((item) => typeof item !== 'string' || item.length > itemMax)) {
     throw new ApiError('invalid_profile', `${field} must be a short list of text values.`, 400);
   }
   return value.map((item) => item.trim()).filter(Boolean);
@@ -58,6 +59,10 @@ export function getProfile(db: Sql, userId: string): Record<string, unknown> {
     experimentation: profile.experimentation,
     country: profile.country,
     currency: profile.currency,
+    ageRange: profile.age_range,
+    shoppingPriorities: JSON.parse(String(profile.shopping_priorities_json ?? '[]')),
+    favouriteRetailers: JSON.parse(String(profile.favourite_retailers_json ?? '[]')),
+    onboardingStatus: profile.onboarding_status ?? 'pending',
     completionStatus: profile.completion_status,
     measurements: measurements ?? null,
   };
@@ -69,25 +74,29 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
   const displayName = body.displayName === undefined ? current.display_name : text(body.displayName, 80, 'displayName');
   const styles = list(body.styles, 'styles') ?? JSON.parse(String(current.style_preferences_json));
   const sizes = (body.sizes ?? {}) as Record<string, unknown>;
-  const tops = body.sizes === undefined ? current.tops_size : text(sizes.tops, 16, 'tops size');
-  const bottoms = body.sizes === undefined ? current.bottoms_size : text(sizes.bottoms, 16, 'bottoms size');
-  const dress = body.sizes === undefined ? current.dress_size : text(sizes.dress, 16, 'dress size');
-  const shoe = body.sizes === undefined ? current.shoe_size : text(sizes.shoe, 16, 'shoe size');
+  const tops = body.sizes === undefined ? current.tops_size : text(sizes.tops, 32, 'tops size');
+  const bottoms = body.sizes === undefined ? current.bottoms_size : text(sizes.bottoms, 32, 'bottoms size');
+  const dress = body.sizes === undefined ? current.dress_size : text(sizes.dress, 32, 'dress size');
+  const shoe = body.sizes === undefined ? current.shoe_size : text(sizes.shoe, 32, 'shoe size');
   const budget = body.budgetTier === undefined ? current.budget_tier : enumValue(body.budgetTier, BUDGETS, 'budgetTier');
   const favourite = list(body.favouriteColours, 'favouriteColours') ?? JSON.parse(String(current.favourite_colours_json));
   const avoid = list(body.avoidColours, 'avoidColours') ?? JSON.parse(String(current.avoid_colours_json));
   const interests = list(body.interests, 'interests') ?? JSON.parse(String(current.fashion_interests_json));
+  const priorities = list(body.shoppingPriorities, 'shoppingPriorities') ?? JSON.parse(String(current.shopping_priorities_json ?? '[]'));
+  const retailers = list(body.favouriteRetailers, 'favouriteRetailers', 80) ?? JSON.parse(String(current.favourite_retailers_json ?? '[]'));
+  const ageRange = body.ageRange === undefined ? current.age_range : text(body.ageRange, 40, 'ageRange');
+  const onboarding = body.onboardingStatus === undefined ? current.onboarding_status : enumValue(body.onboardingStatus, ONBOARDING, 'onboardingStatus');
   const fit = body.fitPreference === undefined ? current.fit_preference : enumValue(body.fitPreference, FITS, 'fitPreference');
   const experiment = body.experimentation === undefined ? current.experimentation : enumValue(body.experimentation, EXPERIMENTS, 'experimentation');
   const country = body.country === undefined ? current.country : text(body.country, 80, 'country');
-  const currency = body.currency === undefined ? current.currency : text(body.currency, 8, 'currency');
+  const currency = body.currency === undefined ? current.currency : text(body.currency, 16, 'currency');
   const complete = Boolean(displayName) && styles.length > 0 && Boolean(tops) && Boolean(budget);
   const stamp = new Date(now).toISOString();
   db.prepare(
     `UPDATE customer_profiles SET display_name=?, style_preferences_json=?, tops_size=?, bottoms_size=?, dress_size=?, shoe_size=?,
       budget_tier=?, favourite_colours_json=?, avoid_colours_json=?, fashion_interests_json=?, fit_preference=?, experimentation=?,
-      country=?, currency=?, completion_status=?, updated_at=? WHERE user_id=?`,
-  ).run(displayName, JSON.stringify(styles), tops, bottoms, dress, shoe, budget, JSON.stringify(favourite), JSON.stringify(avoid), JSON.stringify(interests), fit, experiment, country, currency, complete ? 'complete' : 'incomplete', stamp, userId);
+      country=?, currency=?, age_range=?, shopping_priorities_json=?, favourite_retailers_json=?, onboarding_status=?, completion_status=?, updated_at=? WHERE user_id=?`,
+  ).run(displayName, JSON.stringify(styles), tops, bottoms, dress, shoe, budget, JSON.stringify(favourite), JSON.stringify(avoid), JSON.stringify(interests), fit, experiment, country, currency, ageRange, JSON.stringify(priorities), JSON.stringify(retailers), onboarding ?? 'pending', complete ? 'complete' : 'incomplete', stamp, userId);
   if (body.measurements !== undefined) {
     const raw = body.measurements;
     if (raw === null) {

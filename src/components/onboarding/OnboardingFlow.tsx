@@ -18,8 +18,9 @@ import { ArrowLeft, X } from 'lucide-react';
 interface OnboardingFlowProps {
   initialProfile: UserProfile;
   initialPhotos?: TemporaryPhotos;
-  onComplete: (profile: UserProfile, photos: TemporaryPhotos) => void;
-  onExit: () => void;
+  onComplete: (profile: UserProfile, photos: TemporaryPhotos) => void | Promise<void>;
+  onExit: () => void | Promise<void>;
+  saveError?: string | null;
 }
 
 export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
@@ -27,10 +28,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   initialPhotos = {},
   onComplete,
   onExit,
+  saveError,
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
   const [photos, setPhotos] = useState<TemporaryPhotos>(initialPhotos);
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
 
   const totalSteps = 8;
 
@@ -69,13 +73,23 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    if (finishing) return;
     const finished: UserProfile = {
       ...profile,
       isOnboardingCompleted: true,
+      onboardingStatus: 'completed',
       lastUpdated: new Date().toISOString(),
     };
-    onComplete(finished, photos);
+    setFinishing(true);
+    setFinishError(null);
+    try {
+      await onComplete(finished, photos);
+    } catch (error) {
+      setFinishError(error instanceof Error ? error.message : 'The profile could not be saved.');
+    } finally {
+      setFinishing(false);
+    }
   };
 
   const handleBack = () => {
@@ -207,9 +221,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           <Step8Completion
             profile={profile}
             photos={photos}
-            onExplore={handleFinish}
+            onExplore={() => { void handleFinish(); }}
           />
         )}
+        {finishing ? <p className="mt-4 text-sm text-[#5C585E]">Saving your style profile…</p> : null}
+        {finishError || saveError ? <p className="mt-4 text-sm text-[#9C6A61]" role="alert">{finishError || saveError}</p> : null}
       </main>
     </div>
   );

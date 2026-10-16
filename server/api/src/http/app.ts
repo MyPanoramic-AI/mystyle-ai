@@ -1,4 +1,6 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { ApiError, publicError } from '../errors.js';
 import type { ApiConfig } from '../config.js';
 import { pingDatabase } from '../config.js';
@@ -19,12 +21,17 @@ export interface AppDeps {
   rateLimiter: RateLimiter;
 }
 
-function securityHeaders(res: Response): void {
+function securityHeaders(res: Response, page: boolean): void {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader(
+    'Content-Security-Policy',
+    page
+      ? "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+      : "default-src 'none'; frame-ancestors 'none'",
+  );
+  if (!page) res.setHeader('Cache-Control', 'no-store');
 }
 
 export function createApp(deps: AppDeps): express.Express {
@@ -32,7 +39,7 @@ export function createApp(deps: AppDeps): express.Express {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '12mb' }));
   app.use((req, res, next) => {
-    securityHeaders(res);
+    securityHeaders(res, !req.path.startsWith('/api'));
     const origin = req.header('origin');
     if (origin && deps.config.allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
@@ -68,7 +75,7 @@ export function createApp(deps: AppDeps): express.Express {
   }
 
   function issue(res: Response, token: string): void {
-    res.setHeader('Set-Cookie', sessionCookie(token, Math.floor(deps.config.sessionMs / 1000)));
+    res.setHeader('Set-Cookie', sessionCookie(token, Math.floor(deps.config.sessionMs / 1000), deps.config.secureCookie));
   }
 
   const route = (handler: (req: Request, res: Response) => void) => (req: Request, res: Response, next: NextFunction) => {
@@ -105,14 +112,14 @@ export function createApp(deps: AppDeps): express.Express {
   app.post('/api/auth/logout', route((req, res) => {
     const session = requireUser(req);
     destroySession(deps.db, session.id);
-    res.setHeader('Set-Cookie', clearSessionCookie());
+    res.setHeader('Set-Cookie', clearSessionCookie(deps.config.secureCookie));
     res.json({ ok: true });
   }));
 
   app.get('/api/auth/session', route((req, res) => {
     const session = current(req);
     if (!session) throw new ApiError('unauthorised', 'Sign in is required.', 401);
-    res.json({ userId: session.userId, csrfToken: session.csrfToken, expiresAt: session.expiresAt });
+    res.json({ userId: session.userId, email: session.email, csrfToken: session.csrfToken, expiresAt: session.expiresAt });
   }));
 
   app.get('/api/profile', route((req, res) => {
@@ -214,6 +221,22 @@ export function createApp(deps: AppDeps): express.Express {
     ).all();
     res.json({ events });
   }));
+
+  if (deps.config.staticDir && existsSync(path.join(deps.config.staticDir, 'index.html'))) {
+    const directory = deps.config.staticDir;
+    app.use(express.static(directory));
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        next();
+        return;
+      }
+      if (req.path.startsWith('/api')) {
+        next();
+        return;
+      }
+      res.sendFile(path.join(directory, 'index.html'));
+    });
+  }
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const body = publicError(error);

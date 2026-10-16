@@ -1,24 +1,20 @@
 # Frontend and backend integration plan
 
-Date: 16 October 2026. No consumer screen was switched to the API in this phase.
+Date: 16 October 2026. Account registration, login, onboarding, and style-profile edits now use `server/api` through the Vite `/api` proxy. Shop, try-on, beauty, wardrobe, family, and membership screens still use their existing browser data.
 
 ## Current state
 
-The React app still reads and writes `localStorage`. The Try On button still ends in the existing alert. The Shop screen still shows the 32 demonstration products. Family still seeds demonstration profiles in the browser. The API, the FASHN lab, and the shopping lab are three separate localhost processes.
+Signed-in style profiles are stored in SQLite. The labelled demonstration still reads `mystyle_ai_user_profile_v1`. The Try On button still ends in the existing alert. The Shop screen still shows the 32 demonstration products. Family still seeds demonstration profiles in the browser. The API, the FASHN lab, and the shopping lab remain separate localhost processes.
 
-`API_ALLOWED_ORIGINS` is empty, so a browser page on the Vite origin cannot call the API yet.
+An empty `API_ALLOWED_ORIGINS` allows only `localhost` and `127.0.0.1` on ports 3000, 3001, and 4173.
 
-## Later connection, one module at a time
+## Connected in this phase
 
-1. Add the Vite origin to `API_ALLOWED_ORIGINS` only when a signed-in flow is ready to test.
-2. Add a small client in `src/services` that sends the cookie and the CSRF header. Do not put the session token in `localStorage`.
-3. Keep the current screens. Replace a service function only after the API route for that screen has passed its tests.
-4. Show an empty profile for a new account. Do not copy the demonstration profile named Nandi into the server.
-5. Do not upload the browser wardrobe, family list, or photographs automatically.
+`src/services/accountApi.ts` sends the session cookie and CSRF header. A new account starts from an empty profile. The name Nandi is not written unless the customer chooses to import that browser profile. Wardrobe, family, and photographs are not uploaded automatically.
 
-## Consent-based migration, not done
+## Consent-based style import
 
-A future migration can offer an adult an explicit export-and-upload step for their own profile, wardrobe, and adult photographs. It must skip `mystyle_family_members_v1` and any record classified as a child. It must not run on first page load. That step is not implemented.
+If `mystyle_ai_user_profile_v1` exists, the customer can continue without importing it or choose style details, sizes, colours, and shopping preferences. Measurements stay off until that box is ticked. The keys in `NEVER_IMPORT_KEYS` are never sent. Wardrobe and adult photographs are not part of this import. The choice is remembered in `sessionStorage` for that user id only, and that value is not treated as authentication.
 
 ## Boundaries that stay separate
 

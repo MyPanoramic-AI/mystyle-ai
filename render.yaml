@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: mystyle-ai
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 24.4.0

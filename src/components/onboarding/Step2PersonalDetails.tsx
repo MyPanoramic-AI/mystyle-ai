@@ -27,14 +27,14 @@ export const Step2PersonalDetails: React.FC<Step2PersonalDetailsProps> = ({
 }) => {
   const [firstName, setFirstName] = useState(initialData.firstName || '');
   const [ageRange, setAgeRange] = useState(initialData.ageRange || '25–34');
-  const [heightCm, setHeightCm] = useState(initialData.heightCm?.toString() || '168');
+  const [heightCm, setHeightCm] = useState(initialData.heightCm?.toString() ?? '');
   const [country, setCountry] = useState(initialData.country || 'South Africa');
   const [currency, setCurrency] = useState(initialData.currency || 'ZAR (R)');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onContinue({
-      firstName: firstName.trim() || 'Nandi',
+      firstName: firstName.trim(),
       ageRange,
       heightCm: heightCm ? parseInt(heightCm, 10) : undefined,
       country,

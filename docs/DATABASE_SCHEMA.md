@@ -10,7 +10,7 @@ The file database uses foreign keys and WAL. Tests use an in-memory database, wh
 | --- | --- |
 | `users` | Email, scrypt password hash, status, created and updated times, last login |
 | `sessions` | Session id, user id, SHA-256 token hash, CSRF token, expiry |
-| `customer_profiles` | Display name, style list, sizes, budget, colours, interests, fit, experimentation, country, currency, completion status |
+| `customer_profiles` | Display name, style list, sizes, budget, colours, interests, fit, experimentation, country, currency, age range, shopping priorities, favourite retailers, onboarding status, completion status |
 | `profile_measurements` | Optional height, bust, waist, and hip in centimetres. Private. Not inferred from photographs |
 | `user_preferences` | Privacy and notification JSON, AI personalisation consent, marketing opt-in. Defaults are off |
 | `media_assets` | Owner, storage key, content type, byte size, purpose, created, deleted, retain-until |

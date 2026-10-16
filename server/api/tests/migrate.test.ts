@@ -11,7 +11,7 @@ test('migrations create the account tables and do not reapply', () => {
   const dir = loadConfig().migrationsDir;
   const first = migrate(db, dir);
   const second = migrate(db, dir);
-  assert.deepEqual(first, ['001_initial.sql']);
+  assert.deepEqual(first, ['001_initial.sql', '002_profile_details.sql']);
   assert.deepEqual(second, []);
   const names = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((row) => row.name);
   for (const table of ['users', 'sessions', 'customer_profiles', 'user_preferences', 'media_assets', 'family_relationships', 'wardrobe_items', 'saved_looks', 'saved_products', 'subscription_entitlements', 'credit_ledger', 'audit_events', 'schema_migrations']) {

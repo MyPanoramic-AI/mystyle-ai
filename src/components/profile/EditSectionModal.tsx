@@ -34,7 +34,7 @@ interface EditSectionModalProps {
   photos: TemporaryPhotos;
   isOpen: boolean;
   onClose: () => void;
-  onSaveProfile: (updated: UserProfile) => void;
+  onSaveProfile: (updated: UserProfile) => void | Promise<void>;
   onUpdatePhotos: (photos: TemporaryPhotos) => void;
 }
 
@@ -53,19 +53,28 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
   const [styles, setStyles] = useState<string[]>(profile.styles);
   const [colours, setColours] = useState<ColourPreferences>(profile.colours);
   const [shopping, setShopping] = useState<ShoppingPreferences>(profile.shopping);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!section) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     let updated: UserProfile = { ...profile };
     if (section === 'personal') updated.personal = personal;
     if (section === 'sizes') updated.sizes = sizes;
     if (section === 'styles') updated.styles = styles;
     if (section === 'colours') updated.colours = colours;
     if (section === 'shopping') updated.shopping = shopping;
-
-    onSaveProfile(updated);
-    onClose();
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSaveProfile(updated);
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'The profile could not be saved.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getTitle = () => {
@@ -471,9 +480,10 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
           <Button variant="secondary" size="sm" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" size="sm" onClick={handleSave}>
-            Save Changes
+          <Button variant="primary" size="sm" onClick={() => { void handleSave(); }} disabled={saving}>
+            {saving ? 'Saving…' : 'Save Changes'}
           </Button>
+          {saveError ? <p className="text-xs text-[#9C6A61]" role="alert">{saveError}</p> : null}
         </div>
       </div>
     </Modal>

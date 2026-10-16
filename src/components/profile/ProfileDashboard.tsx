@@ -37,7 +37,10 @@ import { Crown, Coins, Shield, Bell, Settings } from 'lucide-react';
 interface ProfileDashboardProps {
   profile: UserProfile;
   photos: TemporaryPhotos;
-  onUpdateProfile: (updated: UserProfile) => void;
+  onUpdateProfile: (updated: UserProfile) => void | Promise<void>;
+  accountEmail?: string | null;
+  saveMessage?: string | null;
+  onLogout?: () => void;
   onUpdatePhotos: (photos: TemporaryPhotos) => void;
   onRestartOnboarding: () => void;
   onOpenSavedLooks?: () => void;
@@ -52,6 +55,9 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   photos,
   onUpdateProfile,
   onUpdatePhotos,
+  accountEmail,
+  saveMessage,
+  onLogout,
   onRestartOnboarding,
   onOpenSavedLooks,
   onOpenFamily,
@@ -112,12 +118,27 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                     <span>{profile.personal.ageRange}</span>
                   </>
                 )}
+                {accountEmail && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span>{accountEmail}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
           {/* Restart Onboarding Trigger */}
           <div className="shrink-0 flex items-center gap-2">
+            {onLogout ? (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-[#5C585E] hover:text-[#242326] bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 border border-[#242326]/8 rounded-xl transition-all cursor-pointer"
+              >
+                Sign out
+              </button>
+            ) : null}
             <button
               onClick={onRestartOnboarding}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-[#5C585E] hover:text-[#242326] bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 border border-[#242326]/8 rounded-xl transition-all cursor-pointer"
@@ -129,6 +150,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
           </div>
         </div>
 
+        {saveMessage ? <p className="mt-4 text-sm text-[#9C6A61]" role="status">{saveMessage}</p> : null}
         {/* Profile Completeness Strip */}
         <div className="mt-6 pt-5 border-t border-[#242326]/8">
           <div className="flex items-center justify-between text-xs font-semibold text-[#242326] mb-2">

@@ -93,6 +93,7 @@ export interface UserProfile {
   colours: ColourPreferences;
   shopping: ShoppingPreferences;
   isOnboardingCompleted: boolean;
+  onboardingStatus?: 'pending' | 'deferred' | 'completed';
   lastUpdated?: string;
 }
 

@@ -36,6 +36,7 @@ interface FamilyStylingScreenProps {
   onSendToShop: (shoppingItems: FamilyShoppingItem[]) => void;
   onAskStylist: (prompt: string) => void;
   onBack: () => void;
+  browserNotice?: string;
 }
 
 export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
@@ -46,6 +47,7 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
   onSendToShop,
   onAskStylist,
   onBack,
+  browserNotice,
 }) => {
   const [activeTab, setActiveTab] = useState<'planner' | 'members' | 'shopping' | 'saved'>(initialTab);
   const [familyMembers, setFamilyMembers] = useState<FamilyProfile[]>(() =>
@@ -119,6 +121,7 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn pb-12">
+      {browserNotice ? <p className="rounded-2xl border border-[#B49361]/40 bg-[#E5CDBE]/30 px-4 py-3 text-sm text-[#242326]">{browserNotice}</p> : null}
       {/* Top Bar with Back Button */}
       <div className="flex items-center justify-between">
         <button

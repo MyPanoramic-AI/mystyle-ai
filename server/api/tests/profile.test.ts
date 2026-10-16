@@ -25,6 +25,24 @@ test('a customer can save profile, measurements, and preferences', async () => {
     assert.equal(profile.displayName, 'Ada');
     assert.equal(profile.completionStatus, 'complete');
     assert.equal(profile.measurements.heightCm, 168);
+    const detailed = await fetch(`${api.base}/api/profile`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        ageRange: '25–34',
+        shoppingPriorities: ['Quality and durability'],
+        favouriteRetailers: ['Woolworths'],
+        onboardingStatus: 'completed',
+        sizes: { dress: 'SA 34 / UK 10' },
+      }),
+    });
+    const detailedBody = await detailed.json() as { ageRange: string; shoppingPriorities: string[]; favouriteRetailers: string[]; onboardingStatus: string; sizes: { dress: string } };
+    assert.equal(detailed.status, 200);
+    assert.equal(detailedBody.ageRange, '25–34');
+    assert.deepEqual(detailedBody.shoppingPriorities, ['Quality and durability']);
+    assert.deepEqual(detailedBody.favouriteRetailers, ['Woolworths']);
+    assert.equal(detailedBody.onboardingStatus, 'completed');
+    assert.equal(detailedBody.sizes.dress, 'SA 34 / UK 10');
     const preferences = await fetch(`${api.base}/api/preferences`, {
       method: 'PUT',
       headers,

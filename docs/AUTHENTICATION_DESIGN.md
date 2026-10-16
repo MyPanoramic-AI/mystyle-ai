@@ -34,6 +34,16 @@ Every profile, family, wardrobe, look, saved product, and media query includes t
 
 `GET /api/admin/audit` is 503 when `API_ADMIN_TOKEN` is empty. When the token is set, a wrong bearer token is 401. The route returns event type, actor, resource, and time. It does not return passwords, session tokens, or photograph bytes.
 
+## Consumer connection, 16 October 2026
+
+The React app calls this API through the Vite proxy at `/api`. The browser stores the session cookie for the Vite origin. The session token is not written to `localStorage`. The CSRF token stays in JavaScript memory and is refreshed from `GET /api/auth/session`, including after a browser refresh.
+
+`GET /api/auth/session` now also returns the account email. Register and login responses still return only the user id and CSRF token.
+
+An empty `API_ALLOWED_ORIGINS` allows the local Vite origins on ports 3000, 3001, and 4173 for `127.0.0.1` and `localhost` only. Port 3001 is included because Vite uses it when 3000 is already taken. Any other browser origin, including a LAN address, is still rejected. The API host remains `127.0.0.1` or `localhost`.
+
+Email verification and password recovery remain unavailable. There is no terms checkbox because this repository does not contain account terms or a privacy-policy document.
+
 ## Not connected
 
 The React membership screen still simulates plans and credits. Those values are not written to `subscription_entitlements` or `credit_ledger`.

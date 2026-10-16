@@ -22,7 +22,8 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 
 ## What it does not do
 
-- It does not replace `src/services` or read `localStorage`.
+- The React account, onboarding, and style profile screens can use it through the Vite `/api` proxy. See `CUSTOMER_ACCOUNT_INTEGRATION.md`.
+- It does not read `localStorage` itself. The browser imports a style profile only after an explicit choice.
 - It does not send photographs to FASHN or any other provider.
 - It does not import the demonstration family or child records.
 - It does not verify email or reset passwords. Those flows are unavailable.

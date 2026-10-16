@@ -131,7 +131,7 @@ The current family UI may remain as a local demonstration until product and lega
 
 Login uses one message for an unknown email and a wrong password. Duplicate registration returns `duplicate_email`, which does reveal that the address exists. Disabled accounts return `account_disabled`. Email verification and password recovery are not implemented. There is no route that grants credits or a paid plan. Photographs are magic-byte checked, size limited, stored under `server/api/private/media` with UUID names, and readable only by the owner. Purposes containing child, minor, or dependent are refused. Logs are event names and the listen port. The health failure response does not include a filesystem path or a stack.
 
-The React `localStorage` data, including demonstration child profiles, is not copied to this database.
+The React app now signs in through the Vite proxy. The session cookie stays HttpOnly. The CSRF token is kept in memory and sent as `x-csrf-token`. A saved browser style profile is shown for review and is not uploaded until the customer selects it. Family, wardrobe, beauty, membership, and credit keys are never included. Measurements are omitted unless that box is ticked. Opening the app at an address other than the local Vite origins is rejected by the origin check.
 
 ## Audit constraints observed
 

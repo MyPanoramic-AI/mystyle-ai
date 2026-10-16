@@ -182,7 +182,7 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 ## Phase 5 — Authentication, profiles, and private photographs
 
-**Status:** PARTIAL. Registration, login, logout, sessions, profiles, measurements, and private owner-only photographs exist on `server/api` and are covered by cross-account tests. The React profile service is intentionally still on `localStorage`. Email verification, password recovery, and a data export of server records are not available. Child photographs are refused. Demonstration family records in the browser are not imported.
+**Status:** PARTIAL, CONNECTED FOR ACCOUNTS. Registration, login, logout, refresh, onboarding, and profile edits in the React app use `server/api` when the local API is running. Demonstration mode stays on `localStorage` and is labelled. Email verification, password recovery, and private photo upload from onboarding are not available. Child photographs are refused. Demonstration family records are not imported.
 
 **Objectives**
 

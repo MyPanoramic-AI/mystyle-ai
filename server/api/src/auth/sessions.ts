@@ -37,12 +37,14 @@ export function readCookie(header: string | undefined, name: string): string | n
   return null;
 }
 
-export function sessionCookie(token: string, maxAgeSeconds: number): string {
-  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}`;
+export function sessionCookie(token: string, maxAgeSeconds: number, secure = false): string {
+  const secureFlag = secure ? '; Secure' : '';
+  return `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAgeSeconds}${secureFlag}`;
 }
 
-export function clearSessionCookie(): string {
-  return `${SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
+export function clearSessionCookie(secure = false): string {
+  const secureFlag = secure ? '; Secure' : '';
+  return `${SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureFlag}`;
 }
 
 export function createSession(db: Sql, userId: string, now: number, sessionMs: number): { token: string; csrfToken: string; expiresAt: string } {

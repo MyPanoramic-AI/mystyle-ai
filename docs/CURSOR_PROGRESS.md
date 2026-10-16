@@ -265,4 +265,24 @@ Recorded in `docs/BACKEND_TEST_REPORT.md`. `test:api` 14 passed. `test:tryon` 16
 - The live FASHN generation is still waiting for photographs and a separate spend approval.
 - Retailer feeds still need written permission.
 
+## 2026-10-16 — Customer accounts connected
+
+**Status:** The React registration, login, onboarding, and profile editor use `server/api` through the Vite proxy. Demonstration mode remains labelled and on `localStorage`. Photographs, family, shop, try-on, beauty, and membership were not connected.
+
+### Changes made
+
+- Added profile columns for age range, shopping priorities, favourite retailers, and onboarding status.
+- Added `src/services/accountApi.ts`, the profile contract, and the account gate around the existing app.
+- Left the visual screens in place. A new account no longer receives the demonstration name automatically.
+
+### Tests executed
+
+Recorded in `docs/FRONTEND_INTEGRATION_TEST_REPORT.md`. `test:account` 5 passed. `test:api` 14 passed. `test:tryon` 16 passed. `test:shopping` 15 passed. Frontend lint, strict TypeScript, API lint, and the Vite build exited 0. A proxied registration on port 3001 set an HttpOnly cookie, saved a profile, rejected a missing CSRF token and a LAN origin, and logout invalidated the session. The screens were not click-tested.
+
+### Remaining work
+
+- Private onboarding photographs are still session-only.
+- Email verification, password recovery, and payments are still unavailable.
+- The postponed FASHN generation and retailer feeds are unchanged.
+
 

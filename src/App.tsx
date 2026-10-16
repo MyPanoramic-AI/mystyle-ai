@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import type { ReadyAccount } from './account/AccountRoot';
 import {
   NavigationTab,
   OccasionShortcut,
@@ -16,7 +17,6 @@ import {
   FamilyOutfitConcept,
   FamilyShoppingItem,
 } from './types';
-import { profileService } from './services/profileService';
 import { AppShell } from './components/layout/AppShell';
 import { HomeScreen } from './components/pages/HomeScreen';
 import { StylistChatScreen } from './components/stylist/StylistChatScreen';
@@ -38,7 +38,7 @@ import {
   MembershipSubpageTab,
 } from './types';
 
-export default function App() {
+export default function App({ account }: { account: ReadyAccount }) {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('home');
   const [activeSubpage, setActiveSubpage] = useState<'discover' | 'family' | 'beauty' | 'wardrobe' | 'membership' | null>(null);
   const [discoverInitialCollectionId, setDiscoverInitialCollectionId] = useState<string | undefined>(undefined);
@@ -56,14 +56,17 @@ export default function App() {
   const [stylistState, setStylistState] = useState<StylistNavigationState>({});
 
   // Profile and temporary memory photos
-  const [profile, setProfile] = useState<UserProfile>(() => profileService.getProfile());
+  const [profile, setProfile] = useState<UserProfile>(account.profile);
   const [photos, setPhotos] = useState<TemporaryPhotos>({});
-  const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(false);
+  const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(account.mode === 'account' && account.profile.onboardingStatus === 'pending');
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [accountError, setAccountError] = useState<string | null>(null);
 
-  // Sync profile changes to isolated localStorage service
-  const handleUpdateProfile = (newProfile: UserProfile) => {
-    setProfile(newProfile);
-    profileService.saveProfile(newProfile);
+  const handleUpdateProfile = async (newProfile: UserProfile) => {
+    const saved = await account.saveProfile(newProfile);
+    setProfile(saved);
+    setSaveMessage('Your style profile is saved.');
+    setAccountError(null);
   };
 
   const handleUpdatePhotos = (newPhotos: TemporaryPhotos) => {
@@ -305,16 +308,27 @@ export default function App() {
     setStylistState({});
   };
 
-  const handleOnboardingComplete = (completedProfile: UserProfile, completedPhotos: TemporaryPhotos) => {
-    handleUpdateProfile(completedProfile);
+  const handleOnboardingComplete = async (completedProfile: UserProfile, completedPhotos: TemporaryPhotos) => {
+    const saved = await account.saveProfile({ ...completedProfile, isOnboardingCompleted: true, onboardingStatus: 'completed' });
+    setProfile(saved);
     setPhotos(completedPhotos);
+    setSaveMessage('Your style profile is saved.');
     setIsOnboardingActive(false);
     setActiveSubpage(null);
     setCurrentTab('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleExitOnboarding = () => {
+  const handleExitOnboarding = async () => {
+    if (account.mode === 'account' && profile.onboardingStatus === 'pending') {
+      try {
+        const saved = await account.deferOnboarding();
+        setProfile(saved);
+      } catch (error) {
+        setAccountError(error instanceof Error ? error.message : 'Onboarding could not be saved.');
+        return;
+      }
+    }
     setIsOnboardingActive(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -327,6 +341,7 @@ export default function App() {
         initialPhotos={photos}
         onComplete={handleOnboardingComplete}
         onExit={handleExitOnboarding}
+        saveError={accountError}
       />
     );
   }
@@ -335,10 +350,16 @@ export default function App() {
     <AppShell
       currentTab={currentTab}
       onNavigate={handleNavigate}
-      userAvatarName={profile.personal.firstName}
+      userAvatarName={profile.personal.firstName || 'Guest'}
       userAvatarPhoto={photos.profilePhotoUrl}
       onOpenMembership={handleOpenMembership}
     >
+      {account.mode === 'demo' ? (
+        <div className="max-w-4xl mx-auto mb-4 rounded-2xl border border-[#B49361]/40 bg-[#E5CDBE]/30 px-4 py-3 text-sm text-[#242326] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span>Demonstration profile. This is not a saved customer account.</span>
+          <button type="button" className="text-xs font-semibold uppercase tracking-wider text-[#9C6A61]" onClick={account.leaveDemo}>Leave demonstration</button>
+        </div>
+      ) : null}
       {/* 1. Internal Discover Page */}
       {activeSubpage === 'discover' && (
         <DiscoverScreen
@@ -365,6 +386,7 @@ export default function App() {
           onSendToTryOn={handleSendFamilyToTryOn}
           onSendToShop={handleSendFamilyToShop}
           onAskStylist={handleAskStylistFamily}
+          browserNotice={account.mode === 'account' ? 'These family records stay in this browser. They are not part of your saved account and are not uploaded.' : undefined}
           onBack={() => {
             setActiveSubpage(null);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -470,6 +492,9 @@ export default function App() {
           photos={photos}
           onUpdateProfile={handleUpdateProfile}
           onUpdatePhotos={handleUpdatePhotos}
+          accountEmail={account.email}
+          saveMessage={saveMessage}
+          onLogout={account.mode === 'account' ? () => { void account.logout(); } : undefined}
           onRestartOnboarding={() => setIsOnboardingActive(true)}
           onOpenSavedLooks={() => handleOpenDiscover()}
           onOpenFamily={() => handleOpenFamily('members')}
