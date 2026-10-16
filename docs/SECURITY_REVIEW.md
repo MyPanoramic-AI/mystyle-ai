@@ -125,6 +125,14 @@ The current family UI may remain as a local demonstration until product and lega
 - Security headers and a restrictive image content-security policy.
 - Dependency review on each production release, not only the zero-vulnerability result from this install.
 
+## Account API controls, 16 October 2026
+
+`server/api` binds to `127.0.0.1` or `localhost` only. Passwords are hashed with scrypt. The session token is stored as a SHA-256 hash and returned only in an HttpOnly, SameSite=Lax cookie. The cookie is not marked Secure because the local server is HTTP; a public deployment would need TLS and the Secure flag, and this session did not deploy anything. Mutating cookie requests require an `x-csrf-token` that matches the session. A browser `Origin` that is not on `API_ALLOWED_ORIGINS` is rejected. The allow-list is empty by default, so the Vite app cannot call the API until that is an explicit later change.
+
+Login uses one message for an unknown email and a wrong password. Duplicate registration returns `duplicate_email`, which does reveal that the address exists. Disabled accounts return `account_disabled`. Email verification and password recovery are not implemented. There is no route that grants credits or a paid plan. Photographs are magic-byte checked, size limited, stored under `server/api/private/media` with UUID names, and readable only by the owner. Purposes containing child, minor, or dependent are refused. Logs are event names and the listen port. The health failure response does not include a filesystem path or a stack.
+
+The React `localStorage` data, including demonstration child profiles, is not copied to this database.
+
 ## Audit constraints observed
 
 No customer photograph was uploaded. No external AI credential was used. `npm run clean` was not run.

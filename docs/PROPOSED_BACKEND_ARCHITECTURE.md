@@ -1,6 +1,6 @@
 # Proposed Backend Architecture
 
-Status: the account, media, and try-on services in this document are still a proposal. The shopping lab described at the end is a separate localhost process and is not a live retailer integration.
+Status: `server/api` now implements the local account, profile, media, wardrobe, and ledger foundation on `127.0.0.1:4331`. It is not connected to the React app. Try-on remains the separate lab on port 4317. Shopping remains the separate lab on port 4321 and is not a live retailer integration. See `BACKEND_IMPLEMENTATION.md`.
 
 The React and Vite frontend stays. The backend is a modular Node.js service that the current `src/services/` modules can call later. SQLite is the database for the controlled proof of concept. PostgreSQL, PocketBase, and a mobile client are not part of this stage. The schema and HTTP contracts should still be ordinary enough to move to another SQL database and a future mobile client without rewriting the product rules.
 
@@ -123,6 +123,10 @@ Demo modules stay available behind an explicit development flag until the real s
 Mobile clients, when they exist, should use the same `/api` contracts. Authentication can move from a cookie to a bearer token behind the same auth module. The database can move from SQLite to PostgreSQL behind the repository interfaces. Provider adapters can be replaced without changing the try-on job contract.
 
 Those moves are not scheduled in the proof of concept.
+
+## Account API, 16 October 2026
+
+`server/api` is a third localhost process. It owns users, sessions, profiles, preferences, private media, family relationship records, wardrobe items, saved looks, saved product references, empty entitlements, and a credit ledger that no route can increase. It does not call FASHN, a retailer, a model, or a payment provider. The consumer screens still use `localStorage`.
 
 ## Shopping lab, 16 October 2026
 

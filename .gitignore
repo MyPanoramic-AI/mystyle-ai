@@ -14,3 +14,5 @@ server/tryon-lab/private-benchmark/*
 !server/tryon-lab/private-benchmark/.gitkeep
 server/shopping/private/*
 !server/shopping/private/.gitkeep
+server/api/private/*
+!server/api/private/.gitkeep

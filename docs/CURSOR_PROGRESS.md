@@ -238,4 +238,31 @@ Do not send the generation yet. Wait for explicit approval, the two photographs,
 
 Ask Cotton On for written permission to use the South Africa product CSV, and check one affiliate directory for Superbalist and Bash. Do not scrape and do not connect the consumer Shop screen until a feed has been verified.
 
+## 2026-10-16 — Local account API
+
+**Status of the backend foundation:** PRESENT, NOT CONNECTED. `server/api` provides accounts, sessions, profiles, private media, family records, wardrobe, saves, and empty entitlement and credit reads. The React app, FASHN lab, and shopping lab were not merged into it. Phase 2 remains AWAITING LIVE VALIDATION. Phase 3 remains a mock shopping engine with zero verified live retailers.
+
+### Git
+
+Repository-local identity is `My Panoramic AI` and `mypanoramic.com@gmail.com`. Global Git identity was not changed. The baseline commit `d583ae7`, message `Record the current MyStyle AI workspace before the production API.`, records the workspace before this API. It is not the original untouched Google AI Studio export.
+
+### Changes made
+
+- Added `server/api` with one SQL migration, scrypt passwords, HttpOnly sessions, CSRF checks, rate limits, and owner-scoped records.
+- Ignored `server/api/private/` except `.gitkeep`.
+- Added `lint:api`, `test:api`, and `api` scripts.
+- Added empty API placeholders to `.env.example`.
+- Wrote the backend, authentication, schema, test, and integration documents.
+
+### Tests executed
+
+Recorded in `docs/BACKEND_TEST_REPORT.md`. `test:api` 14 passed. `test:tryon` 16 passed. `test:shopping` 15 passed. Frontend lint, strict TypeScript, and the Vite build exited 0.
+
+### Remaining work
+
+- Do not connect the consumer screens until a later prompt.
+- Email verification, password recovery, and payment are unavailable.
+- The live FASHN generation is still waiting for photographs and a separate spend approval.
+- Retailer feeds still need written permission.
+
 

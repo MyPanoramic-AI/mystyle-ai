@@ -1,6 +1,6 @@
 # Data Model Plan
 
-Status: proposed schema for the SQLite proof of concept. These tables do not exist yet. The running application stores the demonstration equivalents in `localStorage`, described in `CURRENT_ARCHITECTURE.md`.
+Status: the names below were the planning proposal. The tables that now exist are in `docs/DATABASE_SCHEMA.md` and `server/api/migrations/001_initial.sql`. The React app still stores demonstration data in `localStorage` and does not write these tables.
 
 Principles:
 

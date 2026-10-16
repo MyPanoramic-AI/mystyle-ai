@@ -144,7 +144,7 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 ## Phase 4 — Secure Node.js backend foundation
 
-**Status:** NOT STARTED
+**Status:** FOUNDATION PRESENT. `server/api` boots on `127.0.0.1:4331`, migrates SQLite, and passes its automated tests. It is not connected to the React app. Try-on jobs stay in the separate try-on lab. Phase 4 is not a commercial launch.
 
 **Objectives**
 
@@ -182,7 +182,7 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 ## Phase 5 — Authentication, profiles, and private photographs
 
-**Status:** NOT STARTED
+**Status:** PARTIAL. Registration, login, logout, sessions, profiles, measurements, and private owner-only photographs exist on `server/api` and are covered by cross-account tests. The React profile service is intentionally still on `localStorage`. Email verification, password recovery, and a data export of server records are not available. Child photographs are refused. Demonstration family records in the browser are not imported.
 
 **Objectives**
 

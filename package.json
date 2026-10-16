@@ -14,7 +14,10 @@
     "tryon-lab": "tsx server/tryon-lab/src/index.ts",
     "lint:shopping": "tsc -p server/shopping/tsconfig.json --noEmit",
     "test:shopping": "tsx --test server/shopping/tests/size.test.ts server/shopping/tests/normalize.test.ts server/shopping/tests/search.test.ts server/shopping/tests/import.test.ts server/shopping/tests/match.test.ts server/shopping/tests/http.test.ts",
-    "shopping-lab": "tsx server/shopping/src/index.ts"
+    "shopping-lab": "tsx server/shopping/src/index.ts",
+    "lint:api": "tsc -p server/api/tsconfig.json --noEmit",
+    "test:api": "tsx --test server/api/tests/migrate.test.ts server/api/tests/auth.test.ts server/api/tests/profile.test.ts server/api/tests/isolation.test.ts server/api/tests/media.test.ts",
+    "api": "tsx server/api/src/index.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
