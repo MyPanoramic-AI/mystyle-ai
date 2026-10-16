@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shopping lab</title>
+    <style>
+      body { font-family: sans-serif; margin: 24px; max-width: 1100px; color: #222; }
+      section { border: 1px solid #ccc; padding: 16px; margin: 16px 0; }
+      label { display: block; margin: 8px 0 4px; }
+      input, select, button { font: inherit; }
+      input, select { width: 100%; box-sizing: border-box; padding: 8px; }
+      button { margin-top: 12px; padding: 8px 12px; }
+      .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+      .demo { display: inline-block; background: #7a4b00; color: white; padding: 2px 6px; font-size: 0.8rem; }
+      .blocked { color: #8b1e1e; }
+      article { border-top: 1px solid #ddd; padding: 12px 0; }
+      pre { white-space: pre-wrap; background: #f6f6f6; padding: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Shopping lab</h1>
+    <p>Local engineering tool. Mock rows are demonstration fixtures, not live retailer prices or stock.</p>
+    <section>
+      <label for="token">Lab token</label>
+      <input id="token" type="password" autocomplete="off" />
+      <button type="button" id="save-token">Use token</button>
+      <p id="status"></p>
+    </section>
+    <section>
+      <h2>Connectors</h2>
+      <div id="connectors"></div>
+    </section>
+    <section>
+      <h2>Search</h2>
+      <label for="q">Query</label>
+      <input id="q" value="Black evening dresses under R1,500" />
+      <div class="grid">
+        <div><label for="category">Category</label><input id="category" /></div>
+        <div><label for="colour">Colour</label><input id="colour" /></div>
+        <div><label for="size">Size</label><input id="size" /></div>
+        <div><label for="retailer">Retailer</label><input id="retailer" /></div>
+      </div>
+      <button type="button" id="search">Search</button>
+      <p id="notes"></p>
+      <div id="results"></div>
+    </section>
+    <section>
+      <h2>Record</h2>
+      <pre id="detail">Choose a result.</pre>
+    </section>
+    <section>
+      <h2>Imports</h2>
+      <pre id="imports"></pre>
+    </section>
+    <script>
+      let token = sessionStorage.getItem('shoppingLabToken') || '';
+      document.querySelector('#token').value = token;
+      document.querySelector('#save-token').onclick = () => {
+        token = document.querySelector('#token').value.trim();
+        sessionStorage.setItem('shoppingLabToken', token);
+        loadConnectors();
+        loadImports();
+      };
+      document.querySelector('#search').onclick = search;
+      if (token) {
+        loadConnectors();
+        loadImports();
+      }
+      async function api(path) {
+        const response = await fetch(path, { headers: { Authorization: 'Bearer ' + token } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || response.statusText);
+        return payload;
+      }
+      async function loadConnectors() {
+        const data = await api('/api/connectors');
+        const root = document.querySelector('#connectors');
+        root.innerHTML = '';
+        for (const connector of data.connectors) {
+          const row = document.createElement('p');
+          row.textContent = connector.label + ' — ' + connector.mode.toUpperCase() + ' — ' + connector.limitations[0];
+          if (connector.mode === 'blocked') row.className = 'blocked';
+          root.append(row);
+        }
+      }
+      async function loadImports() {
+        const data = await api('/api/imports');
+        document.querySelector('#imports').textContent = JSON.stringify(data.imports, null, 2);
+      }
+      async function search() {
+        const params = new URLSearchParams();
+        for (const name of ['q', 'category', 'colour', 'size', 'retailer']) {
+          const value = document.querySelector('#' + name).value.trim();
+          if (value) params.set(name, value);
+        }
+        const data = await api('/api/products?' + params.toString());
+        document.querySelector('#notes').textContent = (data.notes || []).join(' ');
+        const root = document.querySelector('#results');
+        root.innerHTML = '';
+        for (const product of data.products) {
+          const article = document.createElement('article');
+          if (product.demo) {
+            const badge = document.createElement('span');
+            badge.className = 'demo';
+            badge.textContent = 'DEMO';
+            article.append(badge);
+          }
+          const title = document.createElement('h3');
+          title.textContent = product.title;
+          article.append(title);
+          const meta = document.createElement('p');
+          const price = product.price.status === 'present' ? product.price.value.currency + ' ' + (product.price.value.cents / 100).toFixed(2) : 'Price unavailable';
+          const stock = product.availability.status === 'present' ? product.availability.value : 'Availability unavailable';
+          const licence = product.demo ? '' : ' · DECLARED LICENCE — NOT VERIFIED LIVE';
+          meta.textContent = product.retailerName + ' · ' + price + ' · ' + stock + ' · freshness ' + product.freshness + licence;
+          article.append(meta);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = 'Inspect';
+          button.onclick = () => inspect(product.id);
+          article.append(button);
+          root.append(article);
+        }
+      }
+      async function inspect(id) {
+        const data = await api('/api/products/' + id);
+        document.querySelector('#detail').textContent = JSON.stringify(data, null, 2);
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MyStyle try-on lab</title>
+    <style>
+      body { font-family: sans-serif; margin: 24px; max-width: 960px; color: #222; }
+      h1 { font-size: 1.4rem; }
+      section { border: 1px solid #ccc; padding: 16px; margin: 16px 0; }
+      label { display: block; margin: 8px 0 4px; font-size: 0.9rem; }
+      input, select, textarea, button { font: inherit; }
+      input[type="text"], input[type="password"], select, textarea { width: 100%; box-sizing: border-box; padding: 8px; }
+      button { margin-top: 12px; padding: 8px 12px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+      img { max-width: 100%; background: #f3f3f3; }
+      .warn { color: #7a4b00; }
+      .error { color: #8b1e1e; }
+      pre { white-space: pre-wrap; background: #f6f6f6; padding: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Internal virtual try-on lab</h1>
+    <p>This page is for local technical tests. It is not the MyStyle AI shop or try-on screen. A provider success flag does not mean the image is accurate, and a photograph cannot determine physical garment fit.</p>
+    <section>
+      <label for="token">Lab token</label>
+      <input id="token" type="password" autocomplete="off" />
+      <button type="button" id="save-token">Use token</button>
+      <p id="status"></p>
+    </section>
+    <section>
+      <div class="row">
+        <div>
+          <label for="provider">Provider</label>
+          <select id="provider"></select>
+        </div>
+        <div>
+          <label for="category">Garment category</label>
+          <select id="category">
+            <option value="tops">Tops</option>
+            <option value="bottoms">Bottoms</option>
+            <option value="one-pieces">One-pieces</option>
+            <option value="outerwear">Outerwear</option>
+          </select>
+        </div>
+        <div>
+          <label for="quality">Quality</label>
+          <select id="quality">
+            <option value="draft">Draft</option>
+            <option value="standard" selected>Standard</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+      <label for="person">Person photograph</label>
+      <input id="person" type="file" accept="image/jpeg,image/png,image/webp" />
+      <label for="garment">Garment photograph</label>
+      <input id="garment" type="file" accept="image/jpeg,image/png,image/webp" />
+      <label><input id="adult" type="checkbox" /> I confirm this is a consenting adult and we are authorised to process the photograph.</label>
+      <label><input id="paid" type="checkbox" /> I explicitly approve one paid provider call for this request.</label>
+      <button type="button" id="review">Review request</button>
+      <button type="button" id="start" disabled>Start one generation</button>
+      <pre id="quote"></pre>
+    </section>
+    <section>
+      <h2>Comparison</h2>
+      <div class="row">
+        <div><h3>Person</h3><img id="img-person" alt="" /></div>
+        <div><h3>Garment</h3><img id="img-garment" alt="" /></div>
+        <div><h3>Output</h3><img id="img-output" alt="" /></div>
+      </div>
+      <p id="job-state"></p>
+    </section>
+    <section>
+      <h2>Human review</h2>
+      <p>Scores are 1 to 5. Leave a score empty if you are not judging that point. Do not treat a completed job as an automatic pass.</p>
+      <div class="row" id="scores"></div>
+      <label for="defects">Observed defects</label>
+      <textarea id="defects" rows="3"></textarea>
+      <label for="accepted">Overall outcome</label>
+      <select id="accepted">
+        <option value="">Not reviewed</option>
+        <option value="true">Accepted</option>
+        <option value="false">Rejected</option>
+      </select>
+      <button type="button" id="save-review">Save review</button>
+    </section>
+    <section>
+      <h2>Benchmark slots</h2>
+      <p id="summary"></p>
+      <ul id="cases"></ul>
+    </section>
+    <script>
+      const scoreNames = [
+        ['personalLikeness', 'Personal likeness'],
+        ['bodyProportions', 'Body proportions'],
+        ['garmentAccuracy', 'Garment accuracy'],
+        ['colourAccuracy', 'Colour accuracy'],
+        ['garmentDetails', 'Garment details'],
+        ['imageRealism', 'Image realism'],
+        ['backgroundPreservation', 'Background preservation'],
+      ];
+      const scores = document.querySelector('#scores');
+      for (const [name, label] of scoreNames) {
+        const wrap = document.createElement('label');
+        wrap.textContent = label;
+        const input = document.createElement('input');
+        input.id = name;
+        input.type = 'number';
+        input.min = '1';
+        input.max = '5';
+        wrap.append(input);
+        scores.append(wrap);
+      }
+      let token = sessionStorage.getItem('tryonLabToken') || '';
+      document.querySelector('#token').value = token;
+      let job = null;
+      document.querySelector('#save-token').onclick = () => {
+        token = document.querySelector('#token').value.trim();
+        sessionStorage.setItem('tryonLabToken', token);
+        loadProviders();
+        loadBenchmark();
+      };
+      document.querySelector('#review').onclick = review;
+      document.querySelector('#start').onclick = start;
+      document.querySelector('#save-review').onclick = saveReview;
+      if (token) {
+        loadProviders();
+        loadBenchmark();
+      }
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: {
+            ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+            Authorization: 'Bearer ' + token,
+            ...(options.headers || {}),
+          },
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || response.statusText);
+        return payload;
+      }
+      async function loadProviders() {
+        const data = await api('/api/providers');
+        const select = document.querySelector('#provider');
+        select.innerHTML = '';
+        for (const provider of data.providers) {
+          const option = document.createElement('option');
+          option.value = provider.id;
+          option.textContent = provider.availability === 'ready' ? provider.label : provider.label + ' (unavailable)';
+          option.disabled = provider.availability !== 'ready';
+          select.append(option);
+        }
+      }
+      async function fileToData(input) {
+        const file = input.files && input.files[0];
+        if (!file) throw new Error('Choose both photographs.');
+        const data = await file.arrayBuffer();
+        const bytes = new Uint8Array(data);
+        let binary = '';
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        return btoa(binary);
+      }
+      async function review() {
+        document.querySelector('#quote').textContent = 'Checking images...';
+        document.querySelector('#start').disabled = true;
+        try {
+          const person = await api('/api/files', { method: 'POST', body: JSON.stringify({ data: await fileToData(document.querySelector('#person')) }) });
+          const garment = await api('/api/files', { method: 'POST', body: JSON.stringify({ data: await fileToData(document.querySelector('#garment')) }) });
+          const created = await api('/api/jobs', {
+            method: 'POST',
+            body: JSON.stringify({
+              idempotencyKey: crypto.randomUUID().replaceAll('-', ''),
+              providerId: document.querySelector('#provider').value,
+              category: document.querySelector('#category').value,
+              quality: document.querySelector('#quality').value,
+              personFileId: person.id,
+              garmentFileId: garment.id,
+            }),
+          });
+          job = created.job;
+          document.querySelector('#quote').textContent = JSON.stringify({
+            provider: job.providerId,
+            model: job.model,
+            estimatedCostUsd: job.estimatedCostUsd,
+            generations: 1,
+            imagesLeaveEnvironment: job.imagesLeaveEnvironment,
+            retention: job.retentionSummary,
+            warnings: job.warnings,
+            duplicate: created.duplicate,
+          }, null, 2);
+          document.querySelector('#start').disabled = false;
+        } catch (error) {
+          document.querySelector('#quote').textContent = error.message;
+        }
+      }
+      async function start() {
+        if (!job) return;
+        document.querySelector('#start').disabled = true;
+        try {
+          const started = await api('/api/jobs/' + job.id + '/start', {
+            method: 'POST',
+            body: JSON.stringify({
+              adultConsentConfirmed: document.querySelector('#adult').checked,
+              approveLiveCall: document.querySelector('#paid').checked,
+            }),
+          });
+          job = started.job;
+          showJob();
+          if (job.status === 'running') poll();
+        } catch (error) {
+          document.querySelector('#job-state').textContent = error.message;
+          document.querySelector('#start').disabled = false;
+        }
+      }
+      async function poll() {
+        const latest = await api('/api/jobs/' + job.id);
+        job = latest.job;
+        showJob();
+        if (job.status === 'running') setTimeout(poll, 1000);
+      }
+      function showJob() {
+        const auth = 'Bearer ' + token;
+        document.querySelector('#job-state').textContent = job.status + (job.errorMessage ? ': ' + job.errorMessage : '') + (job.durationMs != null ? ' (' + job.durationMs + ' ms)' : '');
+        for (const role of ['person', 'garment', 'output']) {
+          const img = document.querySelector('#img-' + role);
+          if (role === 'output' && !job.outputFileId) {
+            img.removeAttribute('src');
+            continue;
+          }
+          fetch('/api/jobs/' + job.id + '/files/' + role, { headers: { Authorization: auth } })
+            .then((response) => response.ok ? response.blob() : null)
+            .then((blob) => { if (blob) img.src = URL.createObjectURL(blob); });
+        }
+      }
+      async function saveReview() {
+        if (!job) return;
+        const body = { defects: document.querySelector('#defects').value, accepted: document.querySelector('#accepted').value === '' ? null : document.querySelector('#accepted').value === 'true' };
+        for (const [name] of scoreNames) {
+          const value = document.querySelector('#' + name).value;
+          body[name] = value === '' ? null : Number(value);
+        }
+        const saved = await api('/api/jobs/' + job.id + '/review', { method: 'POST', body: JSON.stringify(body) });
+        job = saved.job;
+        document.querySelector('#job-state').textContent = 'Review saved. Accepted: ' + String(job.review.accepted);
+      }
+      async function loadBenchmark() {
+        const data = await api('/api/benchmark');
+        document.querySelector('#summary').textContent = data.summary.note;
+        const list = document.querySelector('#cases');
+        list.innerHTML = '';
+        for (const item of data.cases) {
+          const li = document.createElement('li');
+          li.textContent = item.testId + ' ' + item.garmentCategory + ' / ' + item.colour + ' / ' + item.pose + ' / ' + item.lighting + (item.personPresent && item.garmentPresent ? ' (images present locally)' : ' (images not in the private folder)');
+          list.append(li);
+        }
+      }
+    </script>
+  </body>
+</html>

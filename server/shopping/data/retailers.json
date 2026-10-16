@@ -1,0 +1,80 @@
+[
+  {
+    "id": "superbalist",
+    "name": "Superbalist",
+    "operating": "operating",
+    "blocker": "Public shop is operating. No approved product API or feed is configured."
+  },
+  {
+    "id": "zando",
+    "name": "Zando",
+    "operating": "redirected",
+    "blocker": "zando.co.za currently presents Bash. No independent product feed is configured."
+  },
+  {
+    "id": "bash",
+    "name": "Bash",
+    "operating": "operating",
+    "blocker": "Public shop is operating. No approved product API or feed is configured."
+  },
+  {
+    "id": "woolworths",
+    "name": "Woolworths South Africa",
+    "operating": "operating",
+    "blocker": "No official public product API was verified. Unofficial scrapers are not used."
+  },
+  {
+    "id": "truworths",
+    "name": "Truworths",
+    "operating": "operating",
+    "blocker": "Public shop is operating. The public Truworths API found is an eLearning service, not a catalogue."
+  },
+  {
+    "id": "mr-price",
+    "name": "Mr Price",
+    "operating": "operating",
+    "blocker": "No approved product API or feed is configured."
+  },
+  {
+    "id": "the-fix",
+    "name": "The FIX",
+    "operating": "operating",
+    "blocker": "TFG brand. No approved product API or feed is configured."
+  },
+  {
+    "id": "foschini",
+    "name": "Foschini",
+    "operating": "operating",
+    "blocker": "TFG brand. No approved product API or feed is configured."
+  },
+  {
+    "id": "hm",
+    "name": "H&M South Africa",
+    "operating": "operating",
+    "blocker": "H&M Group partner portal requires an account. No South African feed is approved here."
+  },
+  {
+    "id": "cotton-on",
+    "name": "Cotton On South Africa",
+    "operating": "operating",
+    "blocker": "A public CSV directory exists. Commercial permission to cache or display it was not verified, so it is not ingested."
+  },
+  {
+    "id": "exact",
+    "name": "Exact",
+    "operating": "operating",
+    "blocker": "TFG brand. No approved product API or feed is configured."
+  },
+  {
+    "id": "legit",
+    "name": "Legit",
+    "operating": "operating",
+    "blocker": "No approved product API or feed is configured."
+  },
+  {
+    "id": "pnp-clothing",
+    "name": "Pick n Pay Clothing",
+    "operating": "operating",
+    "blocker": "No approved product API or feed is configured."
+  }
+]

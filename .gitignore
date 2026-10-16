@@ -1,0 +1,16 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.vite/
+*.tsbuildinfo
+server/tryon-lab/private/*
+!server/tryon-lab/private/.gitkeep
+server/tryon-lab/private-benchmark/*
+!server/tryon-lab/private-benchmark/.gitkeep
+server/shopping/private/*
+!server/shopping/private/.gitkeep

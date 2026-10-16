@@ -1,0 +1,110 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export type NavigationTab = 'home' | 'stylist' | 'try-on' | 'shop' | 'profile';
+export * from './stylist';
+export * from './discover';
+export * from './shop';
+export * from './family';
+export * from './beauty';
+export * from './wardrobe';
+export * from './membership';
+
+export interface OccasionShortcut {
+  id: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  recommendedTone: string;
+  promptSuggestion: string;
+}
+
+export interface FeatureCardItem {
+  id: string;
+  title: string;
+  description: string;
+  badge?: string;
+  targetTab?: NavigationTab;
+  isUpcoming?: boolean;
+  upcomingPhase?: string;
+  accent: 'rose' | 'gold' | 'charcoal';
+}
+
+export interface StyleInspiration {
+  id: string;
+  title: string;
+  aesthetic: string;
+  occasion: string;
+  imageUrl: string;
+  palette: string[];
+  keyPieces: string[];
+  stylistNote: string;
+}
+
+export interface StylistNavigationState {
+  occasionTitle?: string;
+  suggestedPrompt?: string;
+  origin?: 'hero' | 'occasion' | 'invitation' | 'tab' | 'inspiration';
+  timestamp?: number;
+}
+
+export interface PersonalDetails {
+  firstName: string;
+  ageRange?: string;
+  heightCm?: number | string;
+  country: string;
+  currency: string;
+}
+
+export interface ClothingSizes {
+  topsSize: string;
+  bottomsSize: string;
+  dressSize: string;
+  shoeSize: string;
+  bustCm?: string;
+  waistCm?: string;
+  hipCm?: string;
+}
+
+export type FitPreference = 'relaxed' | 'regular' | 'fitted' | 'no-preference';
+export type ExperimentationLevel = 'classic' | 'balanced' | 'adventurous' | 'no-preference';
+
+export interface ColourPreferences {
+  favoriteColors: string[];
+  avoidColors: string[];
+  fitPreference: FitPreference;
+  experimentation: ExperimentationLevel;
+}
+
+export type BudgetTier = 'under-300' | '300-600' | '600-1000' | '1000-2000' | '2000-plus' | 'flexible';
+
+export interface ShoppingPreferences {
+  itemBudget: BudgetTier;
+  priorities: string[];
+  favoriteRetailers: string[];
+}
+
+export interface UserProfile {
+  personal: PersonalDetails;
+  sizes: ClothingSizes;
+  styles: string[];
+  colours: ColourPreferences;
+  shopping: ShoppingPreferences;
+  isOnboardingCompleted: boolean;
+  lastUpdated?: string;
+}
+
+export interface TemporaryPhotos {
+  profilePhotoUrl?: string;
+  fullBodyFrontUrl?: string;
+  fullBodyAdditionalUrl?: string;
+}
+
+export interface StyleCategoryItem {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+}

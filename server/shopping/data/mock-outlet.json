@@ -1,0 +1,83 @@
+[
+  {
+    "externalId": "dress-black-outlet",
+    "retailerName": "Demo Outlet",
+    "title": "Black evening dress",
+    "description": "Same GTIN as the atelier dress. Demo fixture.",
+    "brand": "Demo Atelier",
+    "category": "dresses",
+    "subcategory": "evening",
+    "audience": "women",
+    "colour": "black",
+    "currency": "ZAR",
+    "priceCents": 119900,
+    "originalPriceCents": null,
+    "saleStatus": "not_on_sale",
+    "availability": "in_stock",
+    "deliveryNote": null,
+    "verifiedAt": "2026-10-16T08:00:00.000Z",
+    "purchaseUrl": null,
+    "imageUrls": [],
+    "affiliateStatus": "none",
+    "permissionNote": "Demonstration fixture only.",
+    "attributionNote": "Label as DEMO.",
+    "dataClass": "demo",
+    "variants": [
+      {"externalVariantId": "outlet-36", "colour": "black", "sizeLabel": "36", "sizeSystem": "sa", "priceCents": 119900, "currency": "ZAR", "availability": "in_stock", "gtin": "6000000000011"}
+    ]
+  },
+  {
+    "externalId": "gown-lookalike",
+    "retailerName": "Demo Outlet",
+    "title": "Black evening gown",
+    "description": "Similar words, different GTIN.",
+    "brand": "Demo Atelier",
+    "category": "dresses",
+    "subcategory": "evening",
+    "audience": "women",
+    "colour": "black",
+    "currency": "ZAR",
+    "priceCents": 99000,
+    "originalPriceCents": null,
+    "saleStatus": "not_on_sale",
+    "availability": "in_stock",
+    "deliveryNote": null,
+    "verifiedAt": "2026-10-16T08:00:00.000Z",
+    "purchaseUrl": null,
+    "imageUrls": [],
+    "affiliateStatus": "none",
+    "permissionNote": "Demonstration fixture only.",
+    "attributionNote": "Label as DEMO.",
+    "dataClass": "demo",
+    "variants": [
+      {"externalVariantId": "gown-36", "colour": "black", "sizeLabel": "36", "sizeSystem": "sa", "priceCents": 99000, "currency": "ZAR", "availability": "in_stock", "gtin": "6000000000097"}
+    ]
+  },
+  {
+    "externalId": "dress-red",
+    "retailerName": "Demo Outlet",
+    "title": "Red evening dress",
+    "description": "Same brand and category, different colour.",
+    "brand": "Demo Atelier",
+    "category": "dresses",
+    "subcategory": "evening",
+    "audience": "women",
+    "colour": "red",
+    "currency": "ZAR",
+    "priceCents": 139900,
+    "originalPriceCents": null,
+    "saleStatus": "not_on_sale",
+    "availability": "in_stock",
+    "deliveryNote": null,
+    "verifiedAt": "2026-10-16T08:00:00.000Z",
+    "purchaseUrl": null,
+    "imageUrls": [],
+    "affiliateStatus": "none",
+    "permissionNote": "Demonstration fixture only.",
+    "attributionNote": "Label as DEMO.",
+    "dataClass": "demo",
+    "variants": [
+      {"externalVariantId": "red-36", "colour": "red", "sizeLabel": "36", "sizeSystem": "sa", "priceCents": 139900, "currency": "ZAR", "availability": "in_stock", "gtin": "6000000000103"}
+    ]
+  }
+]
