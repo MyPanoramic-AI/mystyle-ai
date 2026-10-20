@@ -16,6 +16,7 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 - Stores a style profile, optional measurements, and preference flags for the signed-in user.
 - Stores wardrobe items, saved looks, outfit plans, and saved product references (retailer source and external id only). Signed-in wardrobe routes are documented in `WARDROBE_INTEGRATION.md`. Live model calls stay off.
 - Stores a family profile and family event plan for the signed-in adult. A dependent record cannot sign in or be an editor. Photographs and dates of birth are refused. See `FAMILY_STYLING_INTEGRATION.md`.
+- Stores optional beauty preferences and saved beauty inspiration for the signed-in adult. Photographs and health details are refused. External beauty generation stays disconnected. See `BEAUTY_STUDIO_INTEGRATION.md`.
 - Accepts JPEG, PNG, and WebP uploads, returns them only to the owner, and deletes the file.
 - Returns empty entitlements and a zero credit balance. Nothing in this process can purchase or grant paid credits.
 - Reports integration boundaries as `not_connected` for stylist, try-on, shopping, beauty, billing, and credits.
@@ -42,6 +43,9 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 | `GET` and `PUT /api/preferences` | Session; PUT also CSRF | Privacy, notifications, and consent flags |
 | `GET` and `POST /api/family`, `GET`, `PATCH`, and `DELETE /api/family/:id` | Session; writes also CSRF | Owner-only family profiles |
 | `GET` and `POST /api/family-events`, `GET`, `PATCH`, and `DELETE /api/family-events/:id` | Session; writes also CSRF | Owner-only planned family events |
+| `GET` and `PUT /api/beauty-preferences` | Session; PUT also CSRF | Optional beauty preferences. No health data |
+| `GET` and `POST /api/beauty-looks`, `GET`, `PATCH`, and `DELETE /api/beauty-looks/:id` | Session; writes also CSRF | Owner-only saved inspiration looks. `GET` accepts `category` and `q` |
+| `POST /api/beauty-looks/:id/links`, `DELETE /api/beauty-looks/:id/links/:linkId` | Session and CSRF | Link a look to an outfit or plan owned by the same account |
 | `GET` and `POST /api/wardrobe`, `GET /api/wardrobe/:id` | Session; POST also CSRF | Owner-only wardrobe items |
 | `GET` and `POST /api/looks`, `GET /api/looks/:id` | Session; POST also CSRF | Looks made from the owner's wardrobe |
 | `GET` and `POST /api/saved-products`, `DELETE /api/saved-products/:id` | Session; writes also CSRF | Product references without prices |

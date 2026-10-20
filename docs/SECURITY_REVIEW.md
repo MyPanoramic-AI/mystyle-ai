@@ -133,6 +133,8 @@ Login uses one message for an unknown email and a wrong password. Duplicate regi
 
 The React app now signs in through the Vite proxy. The session cookie stays HttpOnly. The CSRF token is kept in memory and sent as `x-csrf-token`. A saved browser style profile is shown for review and is not uploaded until the customer selects it. Family, wardrobe, beauty, membership, and credit keys are never included. Measurements are omitted unless that box is ticked. Opening the app at an address other than the local Vite origins is rejected by the origin check.
 
+Signed-in beauty preferences and saved inspiration looks are owner-scoped. The beauty routes refuse photographs, face data, and health details. A beauty look can link only to an outfit or plan owned by the same account. The coordinator still reports beauty image generation as not connected, and beauty preferences are not added to the stylist prompt. Demonstration beauty keys remain blocked from account import.
+
 ## Stylist controls, 20 October 2026
 
 Stylist routes require the same session and CSRF checks. A conversation query always includes the signed-in user id, and another account receives 404. Personalisation is sent to a provider only when `ai_personalisation_consent` is true, and then only as styles, colour lists, size labels, budget band, shopping priorities, and retailer names. Display name, age, measurements, photographs, and family records are not included. Consent defaults to off.

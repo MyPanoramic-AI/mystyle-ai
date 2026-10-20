@@ -58,6 +58,14 @@ export interface AccountApi {
   createFamilyEvent(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   updateFamilyEvent(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
   deleteFamilyEvent(id: string): Promise<void>;
+  beautyPreferences(): Promise<Record<string, unknown>>;
+  saveBeautyPreferences(body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  beautyLooks(query?: string): Promise<{ looks: Record<string, unknown>[] }>;
+  createBeautyLook(body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  updateBeautyLook(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  deleteBeautyLook(id: string): Promise<void>;
+  linkBeautyLook(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  unlinkBeautyLook(id: string, linkId: string): Promise<Record<string, unknown>>;
 }
 
 export interface WardrobeRecord {
@@ -234,6 +242,14 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     createFamilyEvent: (body) => request('/api/family-events', { method: 'POST', body, csrf: true }),
     updateFamilyEvent: (id, body) => request(`/api/family-events/${id}`, { method: 'PATCH', body, csrf: true }),
     deleteFamilyEvent: (id) => request(`/api/family-events/${id}`, { method: 'DELETE', csrf: true }),
+    beautyPreferences: () => request('/api/beauty-preferences'),
+    saveBeautyPreferences: (body) => request('/api/beauty-preferences', { method: 'PUT', body, csrf: true }),
+    beautyLooks: (query = '') => request(`/api/beauty-looks${query}`),
+    createBeautyLook: (body) => request('/api/beauty-looks', { method: 'POST', body, csrf: true }),
+    updateBeautyLook: (id, body) => request(`/api/beauty-looks/${id}`, { method: 'PATCH', body, csrf: true }),
+    deleteBeautyLook: (id) => request(`/api/beauty-looks/${id}`, { method: 'DELETE', csrf: true }),
+    linkBeautyLook: (id, body) => request(`/api/beauty-looks/${id}/links`, { method: 'POST', body, csrf: true }),
+    unlinkBeautyLook: (id, linkId) => request(`/api/beauty-looks/${id}/links/${linkId}`, { method: 'DELETE', csrf: true }),
   };
 }
 

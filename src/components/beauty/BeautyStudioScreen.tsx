@@ -30,6 +30,8 @@ import {
   addProductToBeautyBag,
   removeProductFromBeautyBag,
 } from '../../services/beautyService';
+import { beautyStatus, rankByPreference, type AccountBeauty, type AccountBeautyLook, type BeautyPreferenceRecord } from '../../services/beautyAccount';
+import type { AccountWardrobe } from '../../services/wardrobeAccount';
 import { BeautyLookCard } from './BeautyLookCard';
 import { BeautyItemCard } from './BeautyItemCard';
 import { BeautyDetailModal } from './BeautyDetailModal';
@@ -48,6 +50,8 @@ interface BeautyStudioScreenProps {
   onSendToShop: (products: BeautyProductItem[], outfitTitle?: string) => void;
   onAskStylist: (prompt: string) => void;
   initialTab?: BeautyCategory | 'saved' | 'bag';
+  accountBeauty?: AccountBeauty | null;
+  accountWardrobe?: AccountWardrobe | null;
 }
 
 export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
@@ -55,19 +59,57 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
   onSendToShop,
   onAskStylist,
   initialTab = 'complete-looks',
+  accountBeauty = null,
+  accountWardrobe = null,
 }) => {
   const [activeTab, setActiveTab] = useState<BeautyCategory | 'saved' | 'bag'>(initialTab);
   const [savedLooks, setSavedLooks] = useState<SavedBeautyLook[]>([]);
+  const [accountLooks, setAccountLooks] = useState<AccountBeautyLook[]>([]);
+  const [preferences, setPreferences] = useState<BeautyPreferenceRecord | null>(null);
+  const [outfitChoices, setOutfitChoices] = useState<{ id: string; title: string }[]>([]);
+  const [planChoices, setPlanChoices] = useState<{ id: string; title: string }[]>([]);
   const [beautyBag, setBeautyBag] = useState<BeautyProductItem[]>([]);
   const [selectedItemForModal, setSelectedItemForModal] = useState<
     CompleteBeautyLook | HairstyleItem | HairColorItem | MakeupItem | NailItem | null
   >(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loadingAccount, setLoadingAccount] = useState(Boolean(accountBeauty));
+  const [lookName, setLookName] = useState('Wedding Guest Look');
+  const [lookOccasion, setLookOccasion] = useState('Wedding');
+  const [lookHair, setLookHair] = useState(DEMO_HAIRSTYLES[0]?.id ?? '');
+  const [lookColour, setLookColour] = useState(DEMO_HAIR_COLOURS[0]?.id ?? '');
+  const [lookMakeup, setLookMakeup] = useState(DEMO_MAKEUP_LOOKS[0]?.id ?? '');
+  const [lookNails, setLookNails] = useState(DEMO_NAILS[0]?.id ?? '');
+  const [lookNotes, setLookNotes] = useState('');
 
   useEffect(() => {
-    setSavedLooks(getSavedBeautyLooks());
-    setBeautyBag(getBeautyShoppingBag());
-  }, []);
+    if (!accountBeauty) {
+      setSavedLooks(getSavedBeautyLooks());
+      setBeautyBag(getBeautyShoppingBag());
+      return;
+    }
+    let cancelled = false;
+    setLoadingAccount(true);
+    void Promise.all([
+      accountBeauty.loadLooks(),
+      accountBeauty.loadPreferences(),
+      accountWardrobe ? accountWardrobe.load() : Promise.resolve(null),
+    ]).then(([looks, prefs, wardrobe]) => {
+      if (cancelled) return;
+      setAccountLooks(looks);
+      setPreferences(prefs);
+      setOutfitChoices(wardrobe ? wardrobe.outfits.map((outfit) => ({ id: outfit.id, title: outfit.title })) : []);
+      setPlanChoices(wardrobe ? wardrobe.events.map((event) => ({ id: event.id, title: event.title })) : []);
+      setLoadingAccount(false);
+    }).catch((error) => {
+      if (cancelled) return;
+      setToastMessage(beautyStatus(error));
+      setLoadingAccount(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountBeauty, accountWardrobe]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -75,6 +117,18 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
   };
 
   const handleSaveLook = (look: CompleteBeautyLook) => {
+    if (accountBeauty) {
+      const already = accountLooks.some((item) => item.sourceKey === look.id);
+      if (already) {
+        showToast('That inspiration is already saved.');
+        return;
+      }
+      void accountBeauty.saveLook(accountBeauty.completeBody(look)).then((saved) => {
+        setAccountLooks((current) => [saved, ...current]);
+        showToast('Look saved successfully.');
+      }).catch((error) => showToast(beautyStatus(error)));
+      return;
+    }
     const isAlreadySaved = savedLooks.some((s) => s.look?.id === look.id);
     if (isAlreadySaved) {
       const match = savedLooks.find((s) => s.look?.id === look.id);
@@ -90,13 +144,106 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
     }
   };
 
+  const rememberPreference = (next: BeautyPreferenceRecord) => {
+    if (!accountBeauty) return;
+    void accountBeauty.savePreferences(next).then(setPreferences).catch((error) => showToast(beautyStatus(error)));
+  };
+
+  const handleSaveItem = (item: HairstyleItem | HairColorItem | MakeupItem | NailItem) => {
+    if (!accountBeauty) return;
+    const sourceKey = `${item.category}:${item.id}`;
+    if (accountLooks.some((saved) => saved.sourceKey === sourceKey)) {
+      showToast('That inspiration is already saved.');
+      return;
+    }
+    void accountBeauty.saveLook(accountBeauty.inspirationBody(item)).then((saved) => {
+      setAccountLooks((current) => [saved, ...current]);
+      if (preferences) {
+        const next = { ...preferences };
+        if (item.category === 'hairstyles') next.hairstyles = [...new Set([...next.hairstyles, item.texture])];
+        if (item.category === 'hair-colours') next.hairColours = [...new Set([...next.hairColours, item.shadeFamily])];
+        if (item.category === 'makeup') next.makeupStyles = [...new Set([...next.makeupStyles, item.style])];
+        if (item.category === 'nails') {
+          next.nailStyles = [...new Set([...next.nailStyles, item.style])];
+          next.nailColours = [...new Set([...next.nailColours, item.title])];
+        }
+        rememberPreference(next);
+      }
+      showToast('Look saved successfully.');
+    }).catch((error) => showToast(beautyStatus(error)));
+  };
+
+  const handleSaveComposedLook = () => {
+    if (!accountBeauty) return;
+    const hair = DEMO_HAIRSTYLES.find((item) => item.id === lookHair);
+    const colour = DEMO_HAIR_COLOURS.find((item) => item.id === lookColour);
+    const makeup = DEMO_MAKEUP_LOOKS.find((item) => item.id === lookMakeup);
+    const nails = DEMO_NAILS.find((item) => item.id === lookNails);
+    if (!lookName.trim() || !hair || !colour || !makeup || !nails) {
+      showToast('Unable to save look.');
+      return;
+    }
+    void accountBeauty.saveLook({
+      category: 'complete-looks',
+      title: lookName.trim(),
+      occasion: lookOccasion,
+      notes: lookNotes || null,
+      sourceKey: `custom:${lookName.trim().toLowerCase()}`,
+      sourceLabel: 'Customer selection',
+      parts: [
+        { kind: 'hairstyle', title: hair.title, styleLabel: hair.texture },
+        { kind: 'hair-colour', title: colour.title, colourLabel: colour.shadeFamily },
+        { kind: 'makeup', title: makeup.title, styleLabel: makeup.style },
+        { kind: 'nails', title: nails.title, styleLabel: nails.shape },
+      ],
+    }).then((saved) => {
+      setAccountLooks((current) => [saved, ...current]);
+      showToast('Look saved successfully.');
+      setActiveTab('saved');
+    }).catch((error) => showToast(beautyStatus(error)));
+  };
+
+  const removeAccountLook = (id: string) => {
+    if (!accountBeauty || !window.confirm('Remove this saved beauty look?')) return;
+    void accountBeauty.deleteLook(id).then(() => {
+      setAccountLooks((current) => current.filter((item) => item.id !== id));
+    }).catch((error) => showToast(beautyStatus(error)));
+  };
+
+  const saveAccountNotes = (look: AccountBeautyLook, notes: string) => {
+    if (!accountBeauty) return;
+    void accountBeauty.updateLook(look.id, { notes }).then((saved) => {
+      setAccountLooks((current) => current.map((item) => item.id === saved.id ? saved : item));
+      showToast('Changes saved.');
+    }).catch((error) => showToast(beautyStatus(error)));
+  };
+
+  const attachOutfit = (look: AccountBeautyLook, value: string) => {
+    if (!accountBeauty || !value) return;
+    const [kind, id] = value.split(':');
+    const action = kind === 'plan' ? accountBeauty.linkPlan(look.id, id) : accountBeauty.linkOutfit(look.id, id);
+    void action.then((saved) => {
+      setAccountLooks((current) => current.map((item) => item.id === saved.id ? saved : item));
+      showToast('Changes saved.');
+    }).catch((error) => showToast(beautyStatus(error)));
+  };
+
   const handleAddToBag = (product: BeautyProductItem) => {
+    if (accountBeauty) {
+      setBeautyBag((current) => current.some((item) => item.id === product.id) ? current : [...current, product]);
+      showToast('Added to the demonstration list. These prices are not verified shop prices.');
+      return;
+    }
     addProductToBeautyBag(product);
     setBeautyBag(getBeautyShoppingBag());
     showToast(`Added ${product.name} to Beauty Shopping Bag`);
   };
 
   const handleRemoveFromBag = (productId: string) => {
+    if (accountBeauty) {
+      setBeautyBag((current) => current.filter((item) => item.id !== productId));
+      return;
+    }
     removeProductFromBeautyBag(productId);
     setBeautyBag(getBeautyShoppingBag());
     showToast('Removed item from bag');
@@ -112,6 +259,11 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
   };
 
   const bagTotalZar = beautyBag.reduce((sum, p) => sum + p.priceZar, 0);
+  const savedCount = accountBeauty ? accountLooks.length : savedLooks.length;
+  const hairstyles = rankByPreference(DEMO_HAIRSTYLES, preferences?.hairstyles ?? [], (item) => `${item.title} ${item.texture}`);
+  const hairColours = rankByPreference(DEMO_HAIR_COLOURS, preferences?.hairColours ?? [], (item) => `${item.title} ${item.shadeFamily}`);
+  const makeupLooks = rankByPreference(DEMO_MAKEUP_LOOKS, preferences?.makeupStyles ?? [], (item) => `${item.title} ${item.style}`);
+  const nailLooks = rankByPreference(DEMO_NAILS, preferences?.nailStyles ?? [], (item) => `${item.title} ${item.style}`);
 
   return (
     <div className="min-h-screen bg-[#FBF8F5] pb-24">
@@ -160,9 +312,9 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
               title="Saved Beauty Looks"
             >
               <Bookmark className="w-4 h-4" />
-              {savedLooks.length > 0 && (
+              {savedCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#B49361] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {savedLooks.length}
+                  {savedCount}
                 </span>
               )}
             </button>
@@ -194,7 +346,7 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
             { id: 'hair-colours', label: 'Hair Colours' },
             { id: 'makeup', label: 'Makeup & Glow' },
             { id: 'nails', label: 'Nail Art' },
-            { id: 'saved', label: `Saved (${savedLooks.length})` },
+            { id: 'saved', label: `Saved (${savedCount})` },
             { id: 'bag', label: `Shopping Bag (${beautyBag.length})` },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -217,6 +369,11 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
 
       {/* Main Studio Viewport */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+        <p className="mb-4 rounded-2xl border border-[#B49361]/30 bg-[#E5CDBE]/30 px-4 py-3 text-xs text-[#242326]">
+          {accountBeauty
+            ? 'These cards are editorial inspiration, not a makeover of you. Preview generation is not yet available. Saved selections stay on this account.'
+            : 'Demonstration saves stay in this browser. They are not part of a saved account, and these photographs are not a makeover.'}
+        </p>
         {/* TAB 1: Complete Looks */}
         {activeTab === 'complete-looks' && (
           <div className="space-y-6">
@@ -242,12 +399,43 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
               </button>
             </div>
 
+            {accountBeauty && (
+              <form
+                className="bg-white rounded-2xl border border-[#242326]/8 p-4 sm:p-5 space-y-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleSaveComposedLook();
+                }}
+              >
+                <h3 className="font-serif text-base font-semibold text-[#242326]">Save a coordinated look</h3>
+                <p className="text-xs text-[#5C585E]">Choose inspiration styles. This stores your selection. It does not generate a photograph.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input value={lookName} onChange={(event) => setLookName(event.target.value)} className="rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm" aria-label="Look name" />
+                  <input value={lookOccasion} onChange={(event) => setLookOccasion(event.target.value)} className="rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm" aria-label="Occasion" />
+                  <select value={lookHair} onChange={(event) => setLookHair(event.target.value)} className="rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm" aria-label="Hairstyle">
+                    {DEMO_HAIRSTYLES.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+                  </select>
+                  <select value={lookColour} onChange={(event) => setLookColour(event.target.value)} className="rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm" aria-label="Hair colour">
+                    {DEMO_HAIR_COLOURS.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+                  </select>
+                  <select value={lookMakeup} onChange={(event) => setLookMakeup(event.target.value)} className="rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm" aria-label="Makeup">
+                    {DEMO_MAKEUP_LOOKS.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+                  </select>
+                  <select value={lookNails} onChange={(event) => setLookNails(event.target.value)} className="rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm" aria-label="Nails">
+                    {DEMO_NAILS.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+                  </select>
+                </div>
+                <textarea value={lookNotes} onChange={(event) => setLookNotes(event.target.value)} placeholder="Optional notes" className="w-full rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm" />
+                <button type="submit" className="px-4 py-2 bg-[#9C6A61] text-white text-xs font-medium rounded-xl cursor-pointer">Save look</button>
+              </form>
+            )}
+
             <div className="space-y-6">
               {DEMO_COMPLETE_LOOKS.map((look) => (
                 <BeautyLookCard
                   key={look.id}
                   look={look}
-                  isSaved={savedLooks.some((s) => s.look?.id === look.id)}
+                  isSaved={accountBeauty ? accountLooks.some((item) => item.sourceKey === look.id) : savedLooks.some((s) => s.look?.id === look.id)}
                   onSelect={(l) => setSelectedItemForModal(l)}
                   onSave={handleSaveLook}
                   onSendToShop={handleSendLookToShop}
@@ -274,10 +462,12 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {DEMO_HAIRSTYLES.map((hair) => (
+              {hairstyles.map((hair) => (
                 <BeautyItemCard
                   key={hair.id}
                   item={hair}
+                  isSaved={accountLooks.some((saved) => saved.sourceKey === `hairstyles:${hair.id}`)}
+                  onSave={accountBeauty ? handleSaveItem : undefined}
                   onInspect={(it) => setSelectedItemForModal(it)}
                   onAskStylist={(it) =>
                     onAskStylist(
@@ -307,10 +497,12 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-              {DEMO_HAIR_COLOURS.map((color) => (
+              {hairColours.map((color) => (
                 <BeautyItemCard
                   key={color.id}
                   item={color}
+                  isSaved={accountLooks.some((saved) => saved.sourceKey === `hair-colours:${color.id}`)}
+                  onSave={accountBeauty ? handleSaveItem : undefined}
                   onInspect={(it) => setSelectedItemForModal(it)}
                   onAskStylist={(it) =>
                     onAskStylist(
@@ -335,10 +527,12 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-              {DEMO_MAKEUP_LOOKS.map((makeup) => (
+              {makeupLooks.map((makeup) => (
                 <BeautyItemCard
                   key={makeup.id}
                   item={makeup}
+                  isSaved={accountLooks.some((saved) => saved.sourceKey === `makeup:${makeup.id}`)}
+                  onSave={accountBeauty ? handleSaveItem : undefined}
                   onInspect={(it) => setSelectedItemForModal(it)}
                   onAskStylist={(it) =>
                     onAskStylist(
@@ -368,10 +562,12 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-              {DEMO_NAILS.map((nail) => (
+              {nailLooks.map((nail) => (
                 <BeautyItemCard
                   key={nail.id}
                   item={nail}
+                  isSaved={accountLooks.some((saved) => saved.sourceKey === `nails:${nail.id}`)}
+                  onSave={accountBeauty ? handleSaveItem : undefined}
                   onInspect={(it) => setSelectedItemForModal(it)}
                   onAskStylist={(it) =>
                     onAskStylist(
@@ -394,21 +590,23 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
           <div className="space-y-6">
             <div>
               <h2 className="font-serif text-lg font-bold text-[#242326]">
-                Your Saved Beauty Looks ({savedLooks.length})
+                Your Saved Beauty Looks ({savedCount})
               </h2>
               <p className="text-xs text-[#5C585E]">
-                Curated beauty ensembles saved for your upcoming galas, weddings, and presentations.
+                {accountBeauty ? 'Selections saved on this account. Preview generation is not yet available.' : 'Curated beauty ensembles saved for your upcoming galas, weddings, and presentations.'}
               </p>
             </div>
 
-            {savedLooks.length === 0 ? (
+            {loadingAccount ? <p className="text-sm text-[#5C585E]">Loading saved looks.</p> : null}
+
+            {savedCount === 0 && !loadingAccount ? (
               <div className="text-center py-16 bg-white rounded-2xl border border-[#242326]/8 p-8">
                 <Bookmark className="w-8 h-8 text-[#5C585E]/40 mx-auto mb-2" />
                 <h3 className="font-serif text-base font-semibold text-[#242326]">
-                  No saved beauty looks yet
+                  No beauty looks saved
                 </h3>
                 <p className="text-xs text-[#5C585E] mt-1 max-w-sm mx-auto">
-                  Explore complete looks or individual styles and bookmark your favorites.
+                  Save your first look from the inspiration cards.
                 </p>
                 <button
                   onClick={() => setActiveTab('complete-looks')}
@@ -417,7 +615,53 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
                   Explore Complete Looks
                 </button>
               </div>
-            ) : (
+            ) : null}
+
+            {accountBeauty && accountLooks.length > 0 ? (
+              <div className="space-y-4">
+                {accountLooks.map((item) => (
+                  <article key={item.id} className="bg-white rounded-2xl border border-[#242326]/8 p-4 sm:p-5 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[#9C6A61]">{item.category}{item.occasion ? ` · ${item.occasion}` : ''}</p>
+                        <h3 className="font-serif text-lg text-[#242326]">{item.title}</h3>
+                        {item.parts.length > 0 ? <p className="text-xs text-[#5C585E] mt-1">{item.parts.map((part) => part.title).join(' · ')}</p> : null}
+                        <p className="text-[11px] text-[#5C585E] mt-1">{item.sourceLabel || 'Editorial inspiration'}</p>
+                      </div>
+                      <button type="button" onClick={() => removeAccountLook(item.id)} className="text-xs text-[#9C6A61] cursor-pointer">Remove</button>
+                    </div>
+                    <label className="block text-xs text-[#5C585E]">
+                      Notes
+                      <input
+                        defaultValue={item.notes || ''}
+                        onBlur={(event) => {
+                          if (event.target.value !== (item.notes || '')) saveAccountNotes(item, event.target.value);
+                        }}
+                        className="mt-1 block w-full rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm text-[#242326]"
+                      />
+                    </label>
+                    <label className="block text-xs text-[#5C585E]">
+                      Link one of your outfits or plans
+                      <select
+                        defaultValue=""
+                        onChange={(event) => {
+                          attachOutfit(item, event.target.value);
+                          event.target.value = '';
+                        }}
+                        className="mt-1 block w-full rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm text-[#242326]"
+                      >
+                        <option value="">Choose</option>
+                        {outfitChoices.map((outfit) => <option key={outfit.id} value={`outfit:${outfit.id}`}>{outfit.title}</option>)}
+                        {planChoices.map((plan) => <option key={plan.id} value={`plan:${plan.id}`}>{plan.title}</option>)}
+                      </select>
+                    </label>
+                    {item.links.length > 0 ? <p className="text-xs text-[#5C585E]">{item.links.length} outfit link{item.links.length === 1 ? '' : 's'} saved</p> : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
+
+            {!accountBeauty && savedLooks.length > 0 ? (
               <div className="space-y-4">
                 {savedLooks.map((item) => {
                   if (item.look) {
@@ -441,7 +685,7 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
                   return null;
                 })}
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -454,7 +698,9 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
                   Beauty Shopping Bag ({beautyBag.length})
                 </h2>
                 <p className="text-xs text-[#5C585E]">
-                  Cosmetics, hair treatments, and luxury nail lacquers curated from South African retailers.
+                  {accountBeauty
+                    ? 'Demonstration list only. These names and prices are not verified shop listings.'
+                    : 'Cosmetics, hair treatments, and luxury nail lacquers curated from South African retailers.'}
                 </p>
               </div>
               {beautyBag.length > 0 && (

@@ -21,6 +21,9 @@ The file database uses foreign keys and WAL. Tests use an in-memory database, wh
 | `outfit_plans` | Owner, date, title, occasion, notes, and optional outfit id. Added in `005_wardrobe_planner.sql`. These are personal plans, separate from family events |
 | `family_events` | Owner, title, date, occasion, formality, style direction, colour theme, planned budget in cents, notes, and status. Added in `006_family_plans.sql` |
 | `family_event_participants` | Event id, family profile id or `self`, planned allocation in cents, and an outfit note |
+| `beauty_preferences` | One row per account. Optional hairstyle, colour, makeup, nail, interest, and occasion lists, plus an optional planned budget range in cents. Added in `007_beauty_studio.sql` |
+| `beauty_looks` | Owner, category, title, description, style, colour, occasion, planned budget in cents, source label, source key, inspiration image address, notes, and parts. Added in `007_beauty_studio.sql` |
+| `beauty_outfit_links` | Beauty look id plus an outfit id or outfit-plan id owned by the same account |
 | `saved_products` | Owner, retailer source, external product id, saved time. No price is stored |
 | `subscription_entitlements` | Present and empty. No route inserts a paid plan |
 | `credit_ledger` | Present. No route inserts a credit |

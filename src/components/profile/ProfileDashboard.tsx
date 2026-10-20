@@ -77,7 +77,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   const wardrobeOutfits = usesAccount ? [] : getWardrobeOutfits();
   const wardrobePieceCount = wardrobeCounts ? wardrobeCounts.pieces : wardrobeItems.length;
   const wardrobeOutfitCount = wardrobeCounts ? wardrobeCounts.outfits : wardrobeOutfits.length;
-  const savedBeauty = getSavedBeautyLooks();
+  const savedBeauty = usesAccount ? [] : getSavedBeautyLooks();
   const membership = getMembership();
   const credits = getCreditBalance();
   const totalCredits = credits.remainingCredits + credits.bonusCredits;
@@ -654,7 +654,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 </h3>
               </div>
               <span className="text-xs font-semibold text-[#B49361] bg-[#FAF7F2] px-2.5 py-0.5 rounded-full border border-[#B49361]/20">
-                {savedBeauty.length} Looks Saved
+                {usesAccount ? 'Saved with your account' : `${savedBeauty.length} Looks Saved`}
               </span>
             </div>
 

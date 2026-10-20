@@ -18,6 +18,7 @@ import { loginError, registrationError } from '../services/registrationRules';
 import { savedLooksService } from '../services/savedLooksService';
 import { createAccountWardrobe, type AccountWardrobe } from '../services/wardrobeAccount';
 import { createAccountFamily, type AccountFamily } from '../services/familyAccount';
+import { createAccountBeauty, type AccountBeauty } from '../services/beautyAccount';
 import { Button } from '../components/common/Button';
 
 type Phase = 'loading' | 'unavailable' | 'signed-out' | 'import-review' | 'ready';
@@ -40,6 +41,7 @@ export interface ReadyAccount {
   } | null;
   wardrobe: AccountWardrobe | null;
   family: AccountFamily | null;
+  beauty: AccountBeauty | null;
 }
 
 function messageFrom(error: unknown): string {
@@ -173,6 +175,7 @@ export function AccountRoot() {
 
   const wardrobe = useMemo(() => (mode === 'account' && phase === 'ready' ? createAccountWardrobe(accountApi) : null), [mode, phase]);
   const family = useMemo(() => (mode === 'account' && phase === 'ready' ? createAccountFamily(accountApi) : null), [mode, phase]);
+  const beauty = useMemo(() => (mode === 'account' && phase === 'ready' ? createAccountBeauty(accountApi) : null), [mode, phase]);
   const ready: ReadyAccount = {
     mode,
     profile,
@@ -240,6 +243,7 @@ export function AccountRoot() {
     } : null,
     wardrobe,
     family,
+    beauty,
   };
 
   if (phase === 'loading') return <Status title="Checking your account" body="Looking for a saved session on this computer." />;

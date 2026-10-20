@@ -11,6 +11,7 @@ import { loginAccount, registerAccount } from '../domain/accounts.js';
 import { getPreferences, getProfile, updatePreferences, updateProfile } from '../domain/profiles.js';
 import { createFamilyEvent, createFamilyMember, deleteFamilyEvent, deleteFamilyMember, getFamilyEvent, getFamilyMember, listFamily, listFamilyEvents, updateFamilyEvent, updateFamilyMember } from '../domain/family.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
+import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
 import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
@@ -161,6 +162,19 @@ export function createApp(deps: AppDeps): express.Express {
   app.patch('/api/family-events/:id', route((req, res) => res.json(updateFamilyEvent(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}, deps.now()))));
   app.delete('/api/family-events/:id', route((req, res) => {
     deleteFamilyEvent(deps.db, requireUser(req).userId, String(req.params.id));
+    res.json({ ok: true });
+  }));
+
+  app.get('/api/beauty-preferences', route((req, res) => res.json(getBeautyPreferences(deps.db, requireUser(req).userId))));
+  app.put('/api/beauty-preferences', route((req, res) => res.json(saveBeautyPreferences(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()))));
+  app.get('/api/beauty-looks', route((req, res) => res.json({ looks: listBeautyLooks(deps.db, requireUser(req).userId, req.query) })));
+  app.post('/api/beauty-looks', route((req, res) => res.status(201).json(createBeautyLook(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()))));
+  app.post('/api/beauty-looks/:id/links', route((req, res) => res.status(201).json(linkBeautyOutfit(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}))));
+  app.delete('/api/beauty-looks/:id/links/:linkId', route((req, res) => res.json(unlinkBeautyOutfit(deps.db, requireUser(req).userId, String(req.params.id), String(req.params.linkId)))));
+  app.get('/api/beauty-looks/:id', route((req, res) => res.json(getBeautyLook(deps.db, requireUser(req).userId, String(req.params.id)))));
+  app.patch('/api/beauty-looks/:id', route((req, res) => res.json(updateBeautyLook(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}, deps.now()))));
+  app.delete('/api/beauty-looks/:id', route((req, res) => {
+    deleteBeautyLook(deps.db, requireUser(req).userId, String(req.params.id));
     res.json({ ok: true });
   }));
 

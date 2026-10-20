@@ -431,6 +431,8 @@ export default function App({ account }: { account: ReadyAccount }) {
       {activeSubpage === 'beauty' && (
         <BeautyStudioScreen
           initialTab={beautyInitialTab}
+          accountBeauty={account.beauty}
+          accountWardrobe={account.wardrobe}
           onBack={() => {
             setActiveSubpage(null);
             window.scrollTo({ top: 0, behavior: 'smooth' });

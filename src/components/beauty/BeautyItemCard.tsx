@@ -11,13 +11,15 @@ import {
   NailItem,
 } from '../../types/beauty';
 import { ImageWithFallback } from '../common/ImageWithFallback';
-import { Sparkles, ShoppingBag, Eye } from 'lucide-react';
+import { Sparkles, ShoppingBag, Eye, Bookmark } from 'lucide-react';
 
 interface BeautyItemCardProps {
   item: HairstyleItem | HairColorItem | MakeupItem | NailItem;
   onInspect: (item: HairstyleItem | HairColorItem | MakeupItem | NailItem) => void;
   onAddToBag?: (item: HairstyleItem | HairColorItem | MakeupItem | NailItem) => void;
   onAskStylist?: (item: HairstyleItem | HairColorItem | MakeupItem | NailItem) => void;
+  onSave?: (item: HairstyleItem | HairColorItem | MakeupItem | NailItem) => void;
+  isSaved?: boolean;
 }
 
 export const BeautyItemCard: React.FC<BeautyItemCardProps> = ({
@@ -25,6 +27,8 @@ export const BeautyItemCard: React.FC<BeautyItemCardProps> = ({
   onInspect,
   onAddToBag,
   onAskStylist,
+  onSave,
+  isSaved = false,
 }) => {
   const getSubtext = () => {
     switch (item.category) {
@@ -110,6 +114,16 @@ export const BeautyItemCard: React.FC<BeautyItemCardProps> = ({
             >
               <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
               <span>Ask Stylist</span>
+            </button>
+          )}
+
+          {onSave && (
+            <button
+              onClick={() => onSave(item)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-[#9C6A61] hover:text-[#8A5B53] transition-colors cursor-pointer py-1"
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              <span>{isSaved ? 'Saved' : 'Save'}</span>
             </button>
           )}
 

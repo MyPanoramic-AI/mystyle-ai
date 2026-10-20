@@ -332,4 +332,10 @@ The same lint, strict TypeScript, build, and test commands were run again and ex
 
 `npm run lint`, `npx tsc --noEmit --strict` for the app and `server/api`, and `npm run build` exited 0. `test:api` 18 passed, including the 2 family tests and the 2 wardrobe tests. `test:family` 2 passed. `test:wardrobe` 2 passed. `test:account` 5 passed. `test:ai` 16 passed. `test:shopping` 15 passed. `test:tryon` 16 passed. The unique count is 70 because `test:api` already includes the family and wardrobe files. No push and no Render deploy.
 
+## 2026-10-20 — Beauty Studio saved looks
+
+**Status:** A signed-in adult can save beauty preferences and inspiration looks for hair, colour, makeup, nails, and a combined look. A look can be linked to an outfit or outfit plan owned by the same account. Demonstration beauty records are not imported. No photograph is generated or sent to OpenAI, Gemini, or FASHN. The coordinator still reports beauty image generation as not connected. Browser click-through was not available.
+
+`npm run lint`, `npx tsc --noEmit --strict` for the app and `server/api`, and `npm run build` exited 0. `test:api` 20 passed, including the 2 beauty tests. `test:beauty` 2 passed. `test:account` 5 passed. `test:ai` 16 passed. `test:shopping` 15 passed. `test:tryon` 16 passed. The unique count is 72 because `test:api` already includes beauty, family, and wardrobe. No push and no Render deploy.
+
 
