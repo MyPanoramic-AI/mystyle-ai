@@ -23,6 +23,7 @@ interface EventPlannerViewProps {
   outfits: WardrobeOutfit[];
   wardrobeItems: WardrobeItem[];
   onAddEvent: (event: Omit<PlannedEvent, 'id'>) => void;
+  onRemoveEvent?: (eventId: string) => void;
   onAssignOutfit: (eventId: string, outfitId: string) => void;
   onAskStylist: (prompt: string) => void;
   onSendToTryOn: (outfit: WardrobeOutfit, pieces: WardrobeItem[]) => void;
@@ -33,6 +34,7 @@ export const EventPlannerView: React.FC<EventPlannerViewProps> = ({
   outfits,
   wardrobeItems,
   onAddEvent,
+  onRemoveEvent,
   onAssignOutfit,
   onAskStylist,
   onSendToTryOn,
@@ -91,6 +93,9 @@ export const EventPlannerView: React.FC<EventPlannerViewProps> = ({
 
       {/* Events List */}
       <div className="space-y-5">
+        {events.length === 0 && (
+          <p className="text-xs text-[#5C585E]">No outfits are planned yet.</p>
+        )}
         {events.map((event) => {
           const assignedOutfit = outfits.find((o) => o.id === event.outfitId);
           const resolvedPieces = assignedOutfit
@@ -133,6 +138,11 @@ export const EventPlannerView: React.FC<EventPlannerViewProps> = ({
                 <h3 className="font-serif text-lg font-bold text-[#242326] leading-snug">
                   {event.title}
                 </h3>
+                {onRemoveEvent && (
+                  <button type="button" onClick={() => onRemoveEvent(event.id)} className="text-[11px] text-[#9C6A61] hover:underline cursor-pointer">
+                    Remove
+                  </button>
+                )}
 
                 <div className="flex flex-wrap items-center gap-3 text-xs text-[#5C585E]">
                   <span className="flex items-center gap-1">

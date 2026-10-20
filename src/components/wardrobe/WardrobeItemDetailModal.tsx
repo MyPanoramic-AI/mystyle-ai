@@ -26,6 +26,7 @@ interface WardrobeItemDetailModalProps {
   onAddToOutfit?: (item: WardrobeItem) => void;
   onLogWear?: (itemId: string) => void;
   onDelete?: (itemId: string) => void;
+  onEdit?: (item: WardrobeItem) => void;
   onAskStylist?: (prompt: string) => void;
 }
 
@@ -37,6 +38,7 @@ export const WardrobeItemDetailModal: React.FC<WardrobeItemDetailModalProps> = (
   onAddToOutfit,
   onLogWear,
   onDelete,
+  onEdit,
   onAskStylist,
 }) => {
   if (!isOpen || !item) return null;
@@ -223,6 +225,14 @@ export const WardrobeItemDetailModal: React.FC<WardrobeItemDetailModalProps> = (
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Remove Piece</span>
+            </button>
+          )}
+          {onEdit && (
+            <button
+              onClick={() => onEdit(item)}
+              className="px-3 py-1.5 text-xs text-[#242326] hover:text-[#9C6A61] transition-colors cursor-pointer"
+            >
+              Edit piece
             </button>
           )}
 

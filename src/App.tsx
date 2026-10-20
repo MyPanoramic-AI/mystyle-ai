@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { ReadyAccount } from './account/AccountRoot';
 import {
   NavigationTab,
@@ -61,6 +61,23 @@ export default function App({ account }: { account: ReadyAccount }) {
   const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(account.mode === 'account' && account.profile.onboardingStatus === 'pending');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
+  const [wardrobeCounts, setWardrobeCounts] = useState<{ pieces: number; outfits: number } | null>(null);
+
+  useEffect(() => {
+    if (!account.wardrobe) {
+      setWardrobeCounts(null);
+      return;
+    }
+    let cancelled = false;
+    void account.wardrobe.load().then((loaded) => {
+      if (!cancelled) setWardrobeCounts({ pieces: loaded.items.length, outfits: loaded.outfits.length });
+    }).catch(() => {
+      if (!cancelled) setWardrobeCounts({ pieces: 0, outfits: 0 });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [account.wardrobe]);
 
   const handleUpdateProfile = async (newProfile: UserProfile) => {
     const saved = await account.saveProfile(newProfile);
@@ -397,6 +414,7 @@ export default function App({ account }: { account: ReadyAccount }) {
       {/* 2.5. Internal Digital Wardrobe & Intelligent Outfit Planning Hub */}
       {activeSubpage === 'wardrobe' && (
         <WardrobeScreen
+          accountStore={account.wardrobe}
           initialTab={wardrobeInitialTab}
           onBack={() => {
             setActiveSubpage(null);
@@ -447,6 +465,8 @@ export default function App({ account }: { account: ReadyAccount }) {
           onOpenWardrobe={handleOpenWardrobe}
           onOpenBeautyStudio={() => handleOpenBeauty('complete-looks')}
           onOpenMembership={handleOpenMembership}
+          wardrobeCounts={wardrobeCounts}
+          usesAccount={account.mode === 'account'}
         />
       )}
 
@@ -509,6 +529,8 @@ export default function App({ account }: { account: ReadyAccount }) {
           onOpenWardrobe={handleOpenWardrobe}
           onOpenBeautyStudio={() => handleOpenBeauty('complete-looks')}
           onOpenMembership={handleOpenMembership}
+          wardrobeCounts={wardrobeCounts}
+          usesAccount={account.mode === 'account'}
         />
       )}
     </AppShell>

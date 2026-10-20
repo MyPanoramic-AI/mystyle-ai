@@ -48,6 +48,8 @@ interface ProfileDashboardProps {
   onOpenWardrobe?: (tab?: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps') => void;
   onOpenBeautyStudio?: () => void;
   onOpenMembership?: (tab?: MembershipSubpageTab) => void;
+  wardrobeCounts?: { pieces: number; outfits: number } | null;
+  usesAccount?: boolean;
 }
 
 export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
@@ -64,13 +66,17 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   onOpenWardrobe,
   onOpenBeautyStudio,
   onOpenMembership,
+  wardrobeCounts = null,
+  usesAccount = false,
 }) => {
   const [activeEditSection, setActiveEditSection] = useState<EditableSection | null>(null);
 
   const completeness = profileService.calculateCompleteness(profile);
   const familyMembers = familyService.getFamilyMembers();
-  const wardrobeItems = getWardrobeItems();
-  const wardrobeOutfits = getWardrobeOutfits();
+  const wardrobeItems = usesAccount ? [] : getWardrobeItems();
+  const wardrobeOutfits = usesAccount ? [] : getWardrobeOutfits();
+  const wardrobePieceCount = wardrobeCounts ? wardrobeCounts.pieces : wardrobeItems.length;
+  const wardrobeOutfitCount = wardrobeCounts ? wardrobeCounts.outfits : wardrobeOutfits.length;
   const savedBeauty = getSavedBeautyLooks();
   const membership = getMembership();
   const credits = getCreditBalance();
@@ -606,7 +612,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 </h3>
               </div>
               <span className="text-xs font-semibold text-[#9C6A61] bg-[#FAF7F2] px-2.5 py-0.5 rounded-full border border-[#9C6A61]/20">
-                {wardrobeItems.length} Pieces
+                {wardrobePieceCount} Pieces
               </span>
             </div>
 
@@ -615,7 +621,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
             </p>
 
             <div className="flex items-center gap-2 mb-4 text-xs text-[#5C585E]">
-              <span className="font-medium text-[#242326]">{wardrobeOutfits.length} Saved Looks</span>
+              <span className="font-medium text-[#242326]">{wardrobeOutfitCount} Saved Looks</span>
               <span>•</span>
               <span className="text-[#B49361] font-medium">Gap Intelligence Active</span>
             </div>

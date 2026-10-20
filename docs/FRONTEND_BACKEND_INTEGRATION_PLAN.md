@@ -1,6 +1,6 @@
 # Frontend and backend integration plan
 
-Date: 16 October 2026. Account registration, login, onboarding, and style-profile edits now use `server/api` through the Vite `/api` proxy. Shop, try-on, beauty, wardrobe, family, and membership screens still use their existing browser data.
+Date: 20 October 2026. Account registration, login, onboarding, style-profile edits, the signed-in stylist, and the signed-in wardrobe now use `server/api` through the Vite `/api` proxy. Shop, try-on, beauty, family, and membership screens still use their existing browser data. Demonstration wardrobe data is not imported.
 
 ## Current state
 

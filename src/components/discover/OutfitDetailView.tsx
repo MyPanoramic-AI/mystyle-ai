@@ -51,11 +51,12 @@ export const OutfitDetailView: React.FC<OutfitDetailViewProps> = ({
   }, [look.id]);
 
   const handleToggleSave = () => {
-    const nowSaved = savedLooksService.toggleSaveLook(look.id);
-    setIsSaved(nowSaved);
-    if (onToast) {
-      onToast(nowSaved ? `Saved "${look.title}" to your style collection` : `Removed "${look.title}"`);
-    }
+    void savedLooksService.toggleSaveLook(look.id, look.title).then((nowSaved) => {
+      setIsSaved(nowSaved);
+      if (onToast) onToast(nowSaved ? `Saved "${look.title}" to your style collection` : `Removed "${look.title}"`);
+    }).catch(() => {
+      if (onToast) onToast('Unable to save. Please retry.');
+    });
   };
 
   const handleShare = () => {

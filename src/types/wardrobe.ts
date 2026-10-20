@@ -34,6 +34,7 @@ export interface WardrobeItem {
   brand: string;
   color: string;
   colorHex: string;
+  sizeLabel?: string;
   seasons: WardrobeSeason[];
   occasions: WardrobeOccasion[];
   imageUrl: string;

@@ -15,6 +15,8 @@ interface WardrobeOutfitCardProps {
   onAskStylist?: (outfit: WardrobeOutfit) => void;
   onToggleFavorite?: (outfitId: string) => void;
   onLogWear?: (outfitId: string) => void;
+  onDelete?: (outfitId: string) => void;
+  onRename?: (outfitId: string) => void;
 }
 
 export const WardrobeOutfitCard: React.FC<WardrobeOutfitCardProps> = ({
@@ -25,6 +27,8 @@ export const WardrobeOutfitCard: React.FC<WardrobeOutfitCardProps> = ({
   onAskStylist,
   onToggleFavorite,
   onLogWear,
+  onDelete,
+  onRename,
 }) => {
   // Resolve items in slots
   const slotItemIds = [
@@ -40,6 +44,7 @@ export const WardrobeOutfitCard: React.FC<WardrobeOutfitCardProps> = ({
   const resolvedPieces = slotItemIds
     .map((id) => wardrobeItems.find((i) => i.id === id))
     .filter(Boolean) as WardrobeItem[];
+  const missingPieces = slotItemIds.length - resolvedPieces.length;
 
   return (
     <div className="group bg-white rounded-2xl overflow-hidden border border-[#242326]/8 shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col">
@@ -137,6 +142,9 @@ export const WardrobeOutfitCard: React.FC<WardrobeOutfitCardProps> = ({
 
         {/* Action Buttons */}
         <div className="mt-4 pt-3 border-t border-[#242326]/6 flex flex-wrap items-center justify-between gap-2">
+          {missingPieces > 0 && (
+            <p className="text-[11px] text-[#9C6A61] mb-2">A saved piece is no longer in your wardrobe.</p>
+          )}
           {onLogWear && (
             <button
               onClick={() => onLogWear(outfit.id)}
@@ -148,6 +156,12 @@ export const WardrobeOutfitCard: React.FC<WardrobeOutfitCardProps> = ({
           )}
 
           <div className="flex items-center gap-2 ml-auto">
+            {onRename && (
+              <button type="button" onClick={() => onRename(outfit.id)} className="text-xs text-[#5C585E] hover:text-[#242326] cursor-pointer">Rename</button>
+            )}
+            {onDelete && (
+              <button type="button" onClick={() => onDelete(outfit.id)} className="text-xs text-[#9C6A61] hover:text-[#242326] cursor-pointer">Remove</button>
+            )}
             {onAskStylist && (
               <button
                 onClick={() => onAskStylist(outfit)}

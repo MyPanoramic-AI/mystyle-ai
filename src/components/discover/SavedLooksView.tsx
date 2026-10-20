@@ -35,10 +35,11 @@ export const SavedLooksView: React.FC<SavedLooksViewProps> = ({
 
   const handleRemove = (lookId: string, title: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    savedLooksService.removeSavedLook(lookId);
-    if (onToast) {
-      onToast(`Removed "${title}" from saved looks`);
-    }
+    void savedLooksService.removeSavedLook(lookId).then(() => {
+      if (onToast) onToast(`Removed "${title}" from saved looks`);
+    }).catch(() => {
+      if (onToast) onToast('Unable to save. Please retry.');
+    });
   };
 
   // Map IDs to look objects

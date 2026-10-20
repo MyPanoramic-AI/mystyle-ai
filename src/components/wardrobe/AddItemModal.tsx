@@ -15,7 +15,9 @@ import { X, Camera, Plus, Check, Sparkles } from 'lucide-react';
 interface AddItemModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'>) => void;
+  initial?: WardrobeItem | null;
+  uploadPhoto?: (file: File) => Promise<string>;
+  onSave: (item: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'> & { id?: string }, file?: File | null) => Promise<void> | void;
 }
 
 // Preset demonstration garment photos to make adding items effortless
@@ -97,23 +99,27 @@ const COLOR_SWATCH_PRESETS = [
 export const AddItemModal: React.FC<AddItemModalProps> = ({
   isOpen,
   onClose,
+  initial = null,
+  uploadPhoto,
   onSave,
 }) => {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<WardrobeCategory>('tops');
-  const [subcategory, setSubcategory] = useState('Blouse');
-  const [brand, setBrand] = useState('Woolworths Studio W');
-  const [color, setColor] = useState('Ivory Cream');
-  const [colorHex, setColorHex] = useState('#F5F2EB');
-  const [seasons, setSeasons] = useState<WardrobeSeason[]>(['all-season']);
-  const [occasions, setOccasions] = useState<WardrobeOccasion[]>(['work', 'casual']);
-  const [imageUrl, setImageUrl] = useState(
-    'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=700&q=80'
-  );
-  const [fabric, setFabric] = useState('100% Cotton');
-  const [careNote, setCareNote] = useState('Gentle wash, cool iron');
-  const [pairingNotes, setPairingNotes] = useState('');
-  const [isCapsuleStaple, setIsCapsuleStaple] = useState(true);
+  const [name, setName] = useState(initial?.name ?? '');
+  const [category, setCategory] = useState<WardrobeCategory>(initial?.category ?? 'tops');
+  const [subcategory, setSubcategory] = useState(initial?.subcategory ?? 'Blouse');
+  const [brand, setBrand] = useState(initial?.brand ?? 'Woolworths Studio W');
+  const [sizeLabel, setSizeLabel] = useState(initial?.sizeLabel ?? '');
+  const [color, setColor] = useState(initial?.color ?? 'Ivory Cream');
+  const [colorHex, setColorHex] = useState(initial?.colorHex ?? '#F5F2EB');
+  const [seasons, setSeasons] = useState<WardrobeSeason[]>(initial?.seasons ?? ['all-season']);
+  const [occasions, setOccasions] = useState<WardrobeOccasion[]>(initial?.occasions ?? ['work', 'casual']);
+  const [imageUrl, setImageUrl] = useState(initial?.imageUrl || 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=700&q=80');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fabric, setFabric] = useState(initial?.fabric ?? '100% Cotton');
+  const [careNote, setCareNote] = useState(initial?.careNote ?? 'Gentle wash, cool iron');
+  const [pairingNotes, setPairingNotes] = useState(initial?.pairingNotes ?? '');
+  const [isCapsuleStaple, setIsCapsuleStaple] = useState(initial?.isCapsuleStaple ?? true);
 
   if (!isOpen) return null;
 
@@ -152,13 +158,16 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-
-    onSave({
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    setFormError(null);
+    void Promise.resolve(onSave({
+      id: initial?.id,
       name: name.trim(),
       category,
       subcategory: subcategory.trim() || 'Garment',
       brand: brand.trim() || 'Wardrobe Classic',
+      sizeLabel: sizeLabel.trim() || undefined,
       color,
       colorHex,
       seasons,
@@ -167,11 +176,15 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       fabric,
       careNote,
       pairingNotes,
-      isFavorite: false,
+      isFavorite: initial?.isFavorite ?? false,
       isCapsuleStaple,
+    }, photoFile)).then(() => {
+      onClose();
+    }).catch((error: unknown) => {
+      const status = typeof error === 'object' && error && 'status' in error ? Number((error as { status: number }).status) : 0;
+      setFormError(status === 401 ? 'Session expired.' : 'Unable to save. Please retry.');
+      setSaving(false);
     });
-
-    onClose();
   };
 
   return (
@@ -246,6 +259,18 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 className="w-full px-3 py-1.5 text-xs bg-white border border-[#242326]/15 rounded-lg focus:outline-none focus:border-[#9C6A61]"
                 placeholder="https://..."
               />
+              {uploadPhoto && (
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="mt-2 block w-full text-[11px] text-[#5C585E]"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setPhotoFile(file);
+                    if (file) setImageUrl(URL.createObjectURL(file));
+                  }}
+                />
+              )}
             </div>
           </div>
 
@@ -314,6 +339,18 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               />
             </div>
 
+            <div>
+              <label className="text-xs font-semibold text-[#242326] block mb-1">
+                Size
+              </label>
+              <input
+                type="text"
+                value={sizeLabel}
+                onChange={(e) => setSizeLabel(e.target.value)}
+                placeholder="e.g. M, 32, UK 6"
+                className="w-full px-3 py-2 text-xs bg-white border border-[#242326]/15 rounded-xl focus:outline-none focus:border-[#9C6A61]"
+              />
+            </div>
             <div>
               <label className="text-xs font-semibold text-[#242326] block mb-1">
                 Fabric Composition
@@ -419,12 +456,14 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           </div>
 
           {/* Submit */}
-          <div className="pt-3">
+          <div className="pt-3 space-y-2">
+            {formError && <p className="text-xs text-[#9C6A61]">{formError}</p>}
             <button
               type="submit"
-              className="w-full py-3 bg-[#9C6A61] hover:bg-[#8A5B53] text-white text-xs font-semibold uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+              disabled={saving}
+              className="w-full py-3 bg-[#9C6A61] hover:bg-[#8A5B53] disabled:opacity-60 text-white text-xs font-semibold uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
             >
-              Save Piece to Wardrobe
+              {saving ? 'Saving your item.' : initial ? 'Save changes' : 'Save Piece to Wardrobe'}
             </button>
           </div>
         </form>

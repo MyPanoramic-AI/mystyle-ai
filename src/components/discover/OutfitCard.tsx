@@ -31,11 +31,12 @@ export const OutfitCard: React.FC<OutfitCardProps> = ({
 
   const handleToggleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const nowSaved = savedLooksService.toggleSaveLook(look.id);
-    setIsSaved(nowSaved);
-    if (onToast) {
-      onToast(nowSaved ? `Saved "${look.title}" to your looks` : `Removed "${look.title}"`);
-    }
+    void savedLooksService.toggleSaveLook(look.id, look.title).then((nowSaved) => {
+      setIsSaved(nowSaved);
+      if (onToast) onToast(nowSaved ? `Saved "${look.title}" to your looks` : `Removed "${look.title}"`);
+    }).catch(() => {
+      if (onToast) onToast('Unable to save. Please retry.');
+    });
   };
 
   return (

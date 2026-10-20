@@ -49,4 +49,5 @@ export interface FashionCollection {
 export interface SavedLookItem {
   lookId: string;
   savedAt: string;
+  serverId?: string;
 }

@@ -320,4 +320,10 @@ The adapter calls `POST https://api.openai.com/v1/responses` with a strict JSON 
 
 The same lint, strict TypeScript, build, and test commands were run again and exited 0, with the same pass counts: `test:ai` 16, `test:account` 5, `test:api` 14, `test:tryon` 16, `test:shopping` 15. No push and no Render deploy.
 
+## 2026-10-20 — Account wardrobe, saved looks, and outfit planner
+
+**Status:** Signed-in wardrobe items, outfits, Discover inspirations, and outfit plans persist in SQLite. Demonstration data is not imported. Private garment photographs use the existing owner-only media store. The stylist still does not read the wardrobe, and no live OpenAI, Gemini, FASHN, or retailer call was made. The screens were not redesigned. Browser click-through was not available.
+
+`npm run lint`, `lint:api`, `npx tsc --noEmit --strict`, and `npm run build` exited 0. `test:wardrobe` 2 passed. `test:api` 16 passed. `test:account` 5 passed. `test:ai` 16 passed. `test:shopping` 15 passed. `test:tryon` 16 passed. No push and no Render deploy.
+
 

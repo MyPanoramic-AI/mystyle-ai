@@ -14,7 +14,7 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 
 - Registers an adult account, signs in, signs out, and checks the session.
 - Stores a style profile, optional measurements, and preference flags for the signed-in user.
-- Stores wardrobe items, saved looks made from those items, and saved product references (retailer source and external id only).
+- Stores wardrobe items, saved looks, outfit plans, and saved product references (retailer source and external id only). Signed-in wardrobe routes are documented in `WARDROBE_INTEGRATION.md`. Live model calls stay off.
 - Stores a minimal family record owned by the account. A dependent record cannot be an editor. No photograph is attached.
 - Accepts JPEG, PNG, and WebP uploads, returns them only to the owner, and deletes the file.
 - Returns empty entitlements and a zero credit balance. Nothing in this process can purchase or grant paid credits.

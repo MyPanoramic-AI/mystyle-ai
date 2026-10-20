@@ -31,6 +31,8 @@ interface HomeScreenProps {
   onOpenWardrobe?: (tab?: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps') => void;
   onOpenBeautyStudio?: () => void;
   onOpenMembership?: (tab?: MembershipSubpageTab) => void;
+  wardrobeCounts?: { pieces: number; outfits: number } | null;
+  usesAccount?: boolean;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -45,6 +47,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenWardrobe,
   onOpenBeautyStudio,
   onOpenMembership,
+  wardrobeCounts = null,
+  usesAccount = false,
 }) => {
   const handleBeautyAdvice = (category: string) => {
     onAskStylist(`Recommend complementary ${category.toLowerCase()} that harmonize with my personal style aesthetic.`);
@@ -88,6 +92,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {onOpenWardrobe && (
         <DigitalWardrobeCard
           onOpenWardrobe={onOpenWardrobe}
+          accountCounts={wardrobeCounts}
+          usesAccount={usesAccount}
         />
       )}
 

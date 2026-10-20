@@ -15,9 +15,10 @@ The file database uses foreign keys and WAL. Tests use an in-memory database, wh
 | `user_preferences` | Privacy and notification JSON, AI personalisation consent, marketing opt-in. Defaults are off |
 | `media_assets` | Owner, storage key, content type, byte size, purpose, created, deleted, retain-until |
 | `family_relationships` | Owner, display name, `adult` or `dependent`, optional label, `viewer` or `editor`, `active` or `revoked` |
-| `wardrobe_items` | Owner, name, category, colour, size label, optional media id |
-| `saved_looks` | Owner, title, notes |
+| `wardrobe_items` | Owner, name, category, colour, size, brand, seasons, occasions, notes, optional media id or image reference |
+| `saved_looks` | Owner, title, notes, kind (`wardrobe_outfit`, `inspiration`, or `concept`), occasion, and optional source key |
 | `saved_look_items` | Look id and wardrobe item id |
+| `outfit_plans` | Owner, date, title, occasion, notes, and optional outfit id. Added in `005_wardrobe_planner.sql` |
 | `saved_products` | Owner, retailer source, external product id, saved time. No price is stored |
 | `subscription_entitlements` | Present and empty. No route inserts a paid plan |
 | `credit_ledger` | Present. No route inserts a credit |

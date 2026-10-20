@@ -25,9 +25,12 @@ import {
   deleteWardrobeOutfit,
   getPlannedEvents,
   savePlannedEvent,
+  deletePlannedEvent,
   getWardrobeGaps,
   getCapsuleCollections,
 } from '../../services/wardrobeService';
+import { AccountApiError } from '../../services/accountApi';
+import type { AccountWardrobe } from '../../services/wardrobeAccount';
 import { WardrobeItemCard } from './WardrobeItemCard';
 import { WardrobeOutfitCard } from './WardrobeOutfitCard';
 import { WardrobeItemDetailModal } from './WardrobeItemDetailModal';
@@ -56,6 +59,7 @@ interface WardrobeScreenProps {
   onSendToShop: (searchQuery: string, title?: string) => void;
   onAskStylist: (prompt: string) => void;
   initialTab?: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps' | 'capsules';
+  accountStore?: AccountWardrobe | null;
 }
 
 export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
@@ -64,6 +68,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
   onSendToShop,
   onAskStylist,
   initialTab = 'pieces',
+  accountStore = null,
 }) => {
   const [activeTab, setActiveTab] = useState<
     'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps' | 'capsules'
@@ -83,45 +88,117 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
 
   // Modals state
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<WardrobeItem | null>(null);
+  const [editingItem, setEditingItem] = useState<WardrobeItem | null>(null);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [screenError, setScreenError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(Boolean(accountStore));
+
+  const explain = (error: unknown): string => {
+    if (error instanceof AccountApiError && error.status === 401) return 'Session expired.';
+    if (error instanceof AccountApiError && error.message.toLowerCase().includes('image')) return 'Image upload failed.';
+    return 'Unable to save. Please retry.';
+  };
+
+  const refreshAccount = async () => {
+    if (!accountStore) return;
+    const loaded = await accountStore.load();
+    setItems(loaded.items);
+    setOutfits(loaded.outfits);
+    setEvents(loaded.events);
+  };
 
   useEffect(() => {
-    setItems(getWardrobeItems());
-    setOutfits(getWardrobeOutfits());
-    setEvents(getPlannedEvents());
-    setGaps(getWardrobeGaps());
-  }, []);
+    let cancelled = false;
+    if (!accountStore) {
+      setItems(getWardrobeItems());
+      setOutfits(getWardrobeOutfits());
+      setEvents(getPlannedEvents());
+      setGaps(getWardrobeGaps());
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    void accountStore.load().then((loaded) => {
+      if (cancelled) return;
+      setItems(loaded.items);
+      setOutfits(loaded.outfits);
+      setEvents(loaded.events);
+      setGaps(getWardrobeGaps());
+      setScreenError(null);
+    }).catch((error: unknown) => {
+      if (!cancelled) setScreenError(explain(error));
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountStore]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleAddItem = (newItem: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'>) => {
+  const handleAddItem = async (newItem: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'> & { id?: string }, file?: File | null) => {
+    if (accountStore) {
+      const saved = await accountStore.saveItem(newItem, file);
+      await refreshAccount();
+      showToast(newItem.id ? `Saved changes to "${saved.name}"` : `Added "${saved.name}" to your Digital Wardrobe`);
+      return;
+    }
     const saved = saveWardrobeItem(newItem);
     setItems(getWardrobeItems());
     showToast(`Added "${saved.name}" to your Digital Wardrobe`);
   };
 
   const handleToggleFavoriteItem = (id: string) => {
+    if (accountStore) {
+      const item = items.find((entry) => entry.id === id);
+      if (!item) return;
+      void accountStore.updateItem({ ...item, isFavorite: !item.isFavorite }).then(() => refreshAccount()).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
     const updated = toggleFavoriteItem(id);
     setItems(updated);
   };
 
   const handleLogWearItem = (id: string) => {
+    if (accountStore) {
+      const item = items.find((entry) => entry.id === id);
+      if (!item) return;
+      void accountStore.updateItem({ ...item, timesWorn: item.timesWorn + 1, lastWornDate: 'Today' }).then(() => {
+        return refreshAccount();
+      }).then(() => showToast('Wear count logged for today')).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
     const updated = logItemWorn(id);
     setItems(updated);
     showToast('Wear count logged for today');
   };
 
   const handleDeleteItem = (id: string) => {
+    if (accountStore) {
+      void accountStore.deleteItem(id).then(() => refreshAccount()).then(() => showToast('Item removed from wardrobe')).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
     const updated = deleteWardrobeItem(id);
     setItems(updated);
     showToast('Item removed from wardrobe');
   };
 
   const handleSaveOutfit = (newOutfit: Omit<WardrobeOutfit, 'id' | 'dateCreated' | 'wearCount'>) => {
+    if (accountStore) {
+      setScreenError(null);
+      showToast('Saving your outfit.');
+      void accountStore.saveOutfit(newOutfit).then(async (saved) => {
+        await refreshAccount();
+        setActiveTab('outfits');
+        showToast(`Outfit saved successfully: "${saved.title}"`);
+      }).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
     saveWardrobeOutfit(newOutfit);
     setOutfits(getWardrobeOutfits());
     setActiveTab('outfits');
@@ -129,11 +206,23 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
   };
 
   const handleToggleFavoriteOutfit = (id: string) => {
+    if (accountStore) {
+      const outfit = outfits.find((entry) => entry.id === id);
+      if (!outfit) return;
+      void accountStore.updateOutfit({ ...outfit, isFavorite: !outfit.isFavorite }).then(() => refreshAccount()).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
     const updated = toggleFavoriteOutfit(id);
     setOutfits(updated);
   };
 
   const handleLogWearOutfit = (id: string) => {
+    if (accountStore) {
+      const outfit = outfits.find((entry) => entry.id === id);
+      if (!outfit) return;
+      void accountStore.updateOutfit({ ...outfit, wearCount: outfit.wearCount + 1, lastWornDate: 'Today' }).then(() => refreshAccount()).then(() => showToast('Outfit wear logged for today')).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
     const current = getWardrobeOutfits();
     const updated = current.map((o) =>
       o.id === id ? { ...o, wearCount: o.wearCount + 1, lastWornDate: 'Today' } : o
@@ -143,7 +232,35 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
     showToast('Outfit wear logged for today');
   };
 
+  const handleDeleteOutfit = (id: string) => {
+    const outfit = outfits.find((entry) => entry.id === id);
+    if (!outfit || !window.confirm(`Remove "${outfit.title}" from your saved outfits?`)) return;
+    if (accountStore) {
+      void accountStore.deleteOutfit(id).then(() => refreshAccount()).then(() => showToast('Outfit removed')).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
+    setOutfits(deleteWardrobeOutfit(id));
+    showToast('Outfit removed');
+  };
+
+  const handleRenameOutfit = (id: string) => {
+    const outfit = outfits.find((entry) => entry.id === id);
+    if (!outfit) return;
+    const title = window.prompt('Outfit name', outfit.title);
+    if (!title || !title.trim() || title.trim() === outfit.title) return;
+    if (accountStore) {
+      void accountStore.updateOutfit({ ...outfit, title: title.trim() }).then(() => refreshAccount()).then(() => showToast('Outfit saved successfully.')).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
+    saveWardrobeOutfit({ ...outfit, id, title: title.trim() });
+    setOutfits(getWardrobeOutfits());
+  };
+
   const handleAddEvent = (event: Omit<PlannedEvent, 'id'>) => {
+    if (accountStore) {
+      void accountStore.saveEvent(event).then(() => refreshAccount()).then(() => showToast(`Added event "${event.title}" to planner`)).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
     savePlannedEvent(event);
     setEvents(getPlannedEvents());
     showToast(`Added event "${event.title}" to planner`);
@@ -152,9 +269,23 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
   const handleAssignOutfitToEvent = (eventId: string, outfitId: string) => {
     const event = events.find((e) => e.id === eventId);
     if (!event) return;
+    if (accountStore) {
+      void accountStore.saveEvent({ ...event, outfitId }).then(() => refreshAccount()).then(() => showToast('Assigned outfit to event')).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
     savePlannedEvent({ ...event, outfitId });
     setEvents(getPlannedEvents());
     showToast('Assigned outfit to event');
+  };
+
+  const handleRemoveEvent = (eventId: string) => {
+    if (!window.confirm('Remove this planned outfit?')) return;
+    if (accountStore) {
+      void accountStore.deleteEvent(eventId).then(() => refreshAccount()).then(() => showToast('Planned outfit removed')).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
+    setEvents(deletePlannedEvent(eventId));
+    showToast('Planned outfit removed');
   };
 
   const handleShopGap = (gap: WardrobeGap) => {
@@ -256,6 +387,9 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
 
       {/* Main Viewport */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+        {loading && <p className="text-xs text-[#5C585E] mb-4">Loading your wardrobe.</p>}
+        {screenError && <p className="text-xs text-[#9C6A61] mb-4">{screenError}</p>}
+        {accountStore && <p className="text-[11px] text-[#5C585E] mb-4">Saved to your account. Demonstration wardrobe samples stay in this browser and are not imported.</p>}
         {/* TAB 1: Wardrobe Pieces */}
         {activeTab === 'pieces' && (
           <div className="space-y-6">
@@ -320,10 +454,10 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
               <div className="text-center py-16 bg-white rounded-3xl border border-[#242326]/8 p-8">
                 <Grid className="w-8 h-8 text-[#5C585E]/40 mx-auto mb-2" />
                 <h3 className="font-serif text-base font-semibold text-[#242326]">
-                  No clothing pieces match your filter
+                  {items.length === 0 ? 'Your wardrobe is empty.' : 'No clothing pieces match your filter'}
                 </h3>
                 <p className="text-xs text-[#5C585E] mt-1 max-w-sm mx-auto">
-                  Try adjusting your search criteria or add new garments from your wardrobe.
+                  {items.length === 0 ? 'Add your first item.' : 'Try adjusting your search criteria or add new garments from your wardrobe.'}
                 </p>
                 <button
                   onClick={() => {
@@ -401,6 +535,8 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
                   }
                   onToggleFavorite={handleToggleFavoriteOutfit}
                   onLogWear={handleLogWearOutfit}
+                  onDelete={handleDeleteOutfit}
+                  onRename={handleRenameOutfit}
                 />
               ))}
             </div>
@@ -414,6 +550,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
             outfits={outfits}
             wardrobeItems={items}
             onAddEvent={handleAddEvent}
+            onRemoveEvent={handleRemoveEvent}
             onAssignOutfit={handleAssignOutfitToEvent}
             onAskStylist={onAskStylist}
             onSendToTryOn={onSendToTryOn}
@@ -422,6 +559,8 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
 
         {/* TAB 5: Wardrobe Gaps & Smart Shopping */}
         {activeTab === 'gaps' && (
+          <div className="space-y-4">
+            <p className="text-xs text-[#5C585E]">These gap suggestions are a demonstration. They are not calculated from your saved wardrobe.</p>
           <WardrobeGapsView
             gaps={gaps}
             onShopGap={handleShopGap}
@@ -431,6 +570,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
               )
             }
           />
+          </div>
         )}
 
         {/* TAB 6: Capsules */}
@@ -459,6 +599,11 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
         allWardrobeItems={items}
         onLogWear={handleLogWearItem}
         onDelete={handleDeleteItem}
+        onEdit={(item) => {
+          setSelectedItemForDetail(null);
+          setEditingItem(item);
+          setIsAddItemOpen(true);
+        }}
         onAddToOutfit={(it) => {
           setActiveTab('studio');
           showToast(`Added ${it.name} to Studio`);
@@ -468,8 +613,14 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
 
       {/* Add Item Modal */}
       <AddItemModal
+        key={editingItem?.id ?? 'new-item'}
         isOpen={isAddItemOpen}
-        onClose={() => setIsAddItemOpen(false)}
+        initial={editingItem}
+        uploadPhoto={accountStore ? async () => '' : undefined}
+        onClose={() => {
+          setIsAddItemOpen(false);
+          setEditingItem(null);
+        }}
         onSave={handleAddItem}
       />
     </div>

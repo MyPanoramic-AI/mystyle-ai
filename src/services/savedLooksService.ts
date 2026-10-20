@@ -18,8 +18,29 @@ const DEFAULT_SAVED: SavedLookItem[] = [
 
 class SavedLooksService {
   private listeners: Set<() => void> = new Set();
+  private remote: {
+    list: () => Promise<{ looks: { id: string; kind: string; sourceKey: string | null; createdAt: string }[] }>;
+    save: (sourceKey: string, title: string) => Promise<{ id: string; duplicate?: boolean }>;
+    remove: (id: string) => Promise<void>;
+  } | null = null;
+  private remoteLooks: SavedLookItem[] = [];
+
+  public async useAccount(remote: SavedLooksService['remote']): Promise<void> {
+    this.remote = remote;
+    if (!remote) {
+      this.remoteLooks = [];
+      this.notify();
+      return;
+    }
+    const listed = await remote.list();
+    this.remoteLooks = listed.looks
+      .filter((look) => look.kind === 'inspiration' && look.sourceKey)
+      .map((look) => ({ lookId: look.sourceKey as string, savedAt: look.createdAt.slice(0, 10), serverId: look.id }));
+    this.notify();
+  }
 
   public getSavedLooks(): SavedLookItem[] {
+    if (this.remote) return this.remoteLooks;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
@@ -41,7 +62,20 @@ class SavedLooksService {
     return list.some((item) => item.lookId === lookId);
   }
 
-  public toggleSaveLook(lookId: string): boolean {
+  public async toggleSaveLook(lookId: string, title = lookId): Promise<boolean> {
+    if (this.remote) {
+      const existing = this.remoteLooks.find((item) => item.lookId === lookId);
+      if (existing?.serverId) {
+        await this.remote.remove(existing.serverId);
+        this.remoteLooks = this.remoteLooks.filter((item) => item.lookId !== lookId);
+        this.notify();
+        return false;
+      }
+      const saved = await this.remote.save(lookId, title);
+      this.remoteLooks = [{ lookId, savedAt: 'Today', serverId: saved.id }, ...this.remoteLooks.filter((item) => item.lookId !== lookId)];
+      this.notify();
+      return true;
+    }
     const current = this.getSavedLooks();
     const exists = current.some((item) => item.lookId === lookId);
 
@@ -57,7 +91,14 @@ class SavedLooksService {
     return !exists;
   }
 
-  public removeSavedLook(lookId: string): void {
+  public async removeSavedLook(lookId: string): Promise<void> {
+    if (this.remote) {
+      const existing = this.remoteLooks.find((item) => item.lookId === lookId);
+      if (existing?.serverId) await this.remote.remove(existing.serverId);
+      this.remoteLooks = this.remoteLooks.filter((item) => item.lookId !== lookId);
+      this.notify();
+      return;
+    }
     const current = this.getSavedLooks();
     const updated = current.filter((item) => item.lookId !== lookId);
     this.saveToStorage(updated);

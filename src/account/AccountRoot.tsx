@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import App from '../App';
 import { AccountApiError, accountApi } from '../services/accountApi';
 import type { UserProfile } from '../types';
@@ -15,6 +15,8 @@ import {
 } from '../services/profileContract';
 import { profileService } from '../services/profileService';
 import { loginError, registrationError } from '../services/registrationRules';
+import { savedLooksService } from '../services/savedLooksService';
+import { createAccountWardrobe, type AccountWardrobe } from '../services/wardrobeAccount';
 import { Button } from '../components/common/Button';
 
 type Phase = 'loading' | 'unavailable' | 'signed-out' | 'import-review' | 'ready';
@@ -35,6 +37,7 @@ export interface ReadyAccount {
     send: (id: string, text: string, idempotencyKey: string) => Promise<import('../services/accountApi').StylistServerMessage>;
     remove: (id: string) => Promise<void>;
   } | null;
+  wardrobe: AccountWardrobe | null;
 }
 
 function messageFrom(error: unknown): string {
@@ -70,6 +73,11 @@ export function AccountRoot() {
     setEmail(session.email);
     setProfile(nextProfile);
     setAiConsentState(preferences.aiPersonalisationConsent === true);
+    await savedLooksService.useAccount({
+      list: () => accountApi.looks(),
+      save: (sourceKey, title) => accountApi.createLook({ kind: 'inspiration', sourceKey, title }),
+      remove: (id) => accountApi.deleteLook(id),
+    });
     setMode('account');
     const stored = inspectBrowserStore(window.localStorage);
     const reviewed = window.sessionStorage.getItem(dismissKey(session.userId)) === '1';
@@ -161,6 +169,7 @@ export function AccountRoot() {
     }
   }
 
+  const wardrobe = useMemo(() => (mode === 'account' && phase === 'ready' ? createAccountWardrobe(accountApi) : null), [mode, phase]);
   const ready: ReadyAccount = {
     mode,
     profile,
@@ -194,6 +203,7 @@ export function AccountRoot() {
       }
     },
     logout: async () => {
+      await savedLooksService.useAccount(null);
       await accountApi.logout();
       generation.current += 1;
       setUserId(null);
@@ -225,6 +235,7 @@ export function AccountRoot() {
       send: async (id, text, idempotencyKey) => (await accountApi.sendStylistMessage(id, text, idempotencyKey)).message,
       remove: (id) => accountApi.deleteStylistConversation(id),
     } : null,
+    wardrobe,
   };
 
   if (phase === 'loading') return <Status title="Checking your account" body="Looking for a saved session on this computer." />;
@@ -232,6 +243,7 @@ export function AccountRoot() {
     return (
       <Status title="Account service unavailable" body={formError ?? 'The local account service is not running. Demonstration browsing is separate from a saved account.'}>
         <Button variant="primary" onClick={() => {
+          void savedLooksService.useAccount(null);
           setMode('demo');
           setProfile(profileService.getProfile());
           setEmail(null);
@@ -244,6 +256,7 @@ export function AccountRoot() {
   }
   if (phase === 'signed-out') {
     return <AuthScreen busy={busy} error={formError} onRegister={register} onLogin={login} onDemo={() => {
+      void savedLooksService.useAccount(null);
       setMode('demo');
       setProfile(profileService.getProfile());
       setPhase('ready');

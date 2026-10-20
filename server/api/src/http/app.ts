@@ -10,7 +10,7 @@ import { clearSessionCookie, destroySession, findSession, readCookie, requireCsr
 import { loginAccount, registerAccount } from '../domain/accounts.js';
 import { getPreferences, getProfile, updatePreferences, updateProfile } from '../domain/profiles.js';
 import { createFamilyMember, getFamilyMember, listFamily, updateFamilyMember } from '../domain/family.js';
-import { createLook, createWardrobeItem, deleteSavedProduct, getLook, getWardrobeItem, listLooks, listSavedProducts, listWardrobe, saveProduct } from '../domain/collections.js';
+import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
 import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
@@ -156,10 +156,31 @@ export function createApp(deps: AppDeps): express.Express {
     res.status(201).json(createWardrobeItem(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
   }));
   app.get('/api/wardrobe/:id', route((req, res) => res.json(getWardrobeItem(deps.db, requireUser(req).userId, String(req.params.id)))));
+  app.patch('/api/wardrobe/:id', route((req, res) => {
+    res.json(updateWardrobeItem(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}, deps.now()));
+  }));
+  app.delete('/api/wardrobe/:id', route((req, res) => {
+    deleteWardrobeItem(deps.db, requireUser(req).userId, String(req.params.id));
+    res.json({ ok: true });
+  }));
 
   app.get('/api/looks', route((req, res) => res.json({ looks: listLooks(deps.db, requireUser(req).userId) })));
   app.post('/api/looks', route((req, res) => res.status(201).json(createLook(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()))));
   app.get('/api/looks/:id', route((req, res) => res.json(getLook(deps.db, requireUser(req).userId, String(req.params.id)))));
+  app.patch('/api/looks/:id', route((req, res) => res.json(updateLook(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}, deps.now()))));
+  app.delete('/api/looks/:id', route((req, res) => {
+    deleteLook(deps.db, requireUser(req).userId, String(req.params.id));
+    res.json({ ok: true });
+  }));
+
+  app.get('/api/outfit-plans', route((req, res) => res.json({ plans: listPlans(deps.db, requireUser(req).userId) })));
+  app.get('/api/outfit-plans/:id', route((req, res) => res.json(getPlan(deps.db, requireUser(req).userId, String(req.params.id)))));
+  app.post('/api/outfit-plans', route((req, res) => res.status(201).json(createPlan(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()))));
+  app.patch('/api/outfit-plans/:id', route((req, res) => res.json(updatePlan(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}, deps.now()))));
+  app.delete('/api/outfit-plans/:id', route((req, res) => {
+    deletePlan(deps.db, requireUser(req).userId, String(req.params.id));
+    res.json({ ok: true });
+  }));
 
   app.get('/api/saved-products', route((req, res) => res.json({ products: listSavedProducts(deps.db, requireUser(req).userId) })));
   app.post('/api/saved-products', route((req, res) => {

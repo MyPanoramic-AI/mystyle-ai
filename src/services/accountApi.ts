@@ -1,3 +1,5 @@
+import type { WardrobeItem, WardrobeOccasion, WardrobeOutfit, WardrobeSeason } from '../types/wardrobe';
+
 export class AccountApiError extends Error {
   constructor(
     readonly code: string,
@@ -35,6 +37,77 @@ export interface AccountApi {
   stylistConversation(id: string): Promise<{ id: string; messages: StylistServerMessage[] }>;
   sendStylistMessage(id: string, text: string, idempotencyKey: string): Promise<{ message: StylistServerMessage }>;
   deleteStylistConversation(id: string): Promise<void>;
+  wardrobeItems(): Promise<{ items: WardrobeRecord[] }>;
+  createWardrobeItem(body: Record<string, unknown>): Promise<WardrobeRecord>;
+  updateWardrobeItem(id: string, body: Record<string, unknown>): Promise<WardrobeRecord>;
+  deleteWardrobeItem(id: string): Promise<void>;
+  looks(): Promise<{ looks: LookRecord[] }>;
+  createLook(body: Record<string, unknown>): Promise<LookRecord>;
+  updateLook(id: string, body: Record<string, unknown>): Promise<LookRecord>;
+  deleteLook(id: string): Promise<void>;
+  outfitPlans(): Promise<{ plans: PlanRecord[] }>;
+  createOutfitPlan(body: Record<string, unknown>): Promise<PlanRecord>;
+  updateOutfitPlan(id: string, body: Record<string, unknown>): Promise<PlanRecord>;
+  deleteOutfitPlan(id: string): Promise<void>;
+  uploadWardrobePhoto(imageBase64: string): Promise<{ id: string }>;
+}
+
+export interface WardrobeRecord {
+  id: string;
+  name: string;
+  category: WardrobeItem['category'];
+  colour: string | null;
+  colourHex: string | null;
+  sizeLabel: string | null;
+  mediaId: string | null;
+  brand: string | null;
+  subcategory: string | null;
+  seasons: WardrobeSeason[];
+  occasions: WardrobeOccasion[];
+  notes: string | null;
+  fabric: string | null;
+  careNote: string | null;
+  pairingNotes: string | null;
+  imageUrl: string | null;
+  isFavorite: boolean;
+  isCapsule: boolean;
+  timesWorn: number;
+  lastWornAt: string | null;
+  createdAt: string;
+}
+
+export interface LookRecord {
+  id: string;
+  title: string;
+  notes: string | null;
+  kind: 'wardrobe_outfit' | 'inspiration' | 'concept';
+  occasion: string | null;
+  season: string | null;
+  description: string | null;
+  sourceKey: string | null;
+  slots: WardrobeOutfit['slots'] | null;
+  isFavorite: boolean;
+  wearCount: number;
+  lastWornAt: string | null;
+  harmonyScore: number | null;
+  harmonyNote: string | null;
+  colorPalette: { name: string; hex: string }[] | null;
+  wardrobeItemIds: string[];
+  createdAt: string;
+  duplicate?: boolean;
+}
+
+export interface PlanRecord {
+  id: string;
+  title: string;
+  planDate: string;
+  occasion: string | null;
+  notes: string | null;
+  outfitId: string | null;
+  timeLabel: string | null;
+  locationLabel: string | null;
+  weatherLabel: string | null;
+  completed: boolean;
 }
 
 export interface StylistAvailability {
@@ -132,6 +205,19 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
       headers: { 'x-idempotency-key': idempotencyKey },
     }),
     deleteStylistConversation: (id) => request(`/api/stylist/conversations/${id}`, { method: 'DELETE', csrf: true }),
+    wardrobeItems: () => request('/api/wardrobe'),
+    createWardrobeItem: (body) => request('/api/wardrobe', { method: 'POST', body, csrf: true }),
+    updateWardrobeItem: (id, body) => request(`/api/wardrobe/${id}`, { method: 'PATCH', body, csrf: true }),
+    deleteWardrobeItem: (id) => request(`/api/wardrobe/${id}`, { method: 'DELETE', csrf: true }),
+    looks: () => request('/api/looks'),
+    createLook: (body) => request('/api/looks', { method: 'POST', body, csrf: true }),
+    updateLook: (id, body) => request(`/api/looks/${id}`, { method: 'PATCH', body, csrf: true }),
+    deleteLook: (id) => request(`/api/looks/${id}`, { method: 'DELETE', csrf: true }),
+    outfitPlans: () => request('/api/outfit-plans'),
+    createOutfitPlan: (body) => request('/api/outfit-plans', { method: 'POST', body, csrf: true }),
+    updateOutfitPlan: (id, body) => request(`/api/outfit-plans/${id}`, { method: 'PATCH', body, csrf: true }),
+    deleteOutfitPlan: (id) => request(`/api/outfit-plans/${id}`, { method: 'DELETE', csrf: true }),
+    uploadWardrobePhoto: (imageBase64) => request('/api/media', { method: 'POST', body: { purpose: 'wardrobe', imageBase64 }, csrf: true }),
   };
 }
 

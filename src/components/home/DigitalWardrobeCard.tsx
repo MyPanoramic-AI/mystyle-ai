@@ -9,13 +9,19 @@ import { getWardrobeItems, getWardrobeOutfits } from '../../services/wardrobeSer
 
 interface DigitalWardrobeCardProps {
   onOpenWardrobe: (tab?: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps') => void;
+  accountCounts?: { pieces: number; outfits: number } | null;
+  usesAccount?: boolean;
 }
 
 export const DigitalWardrobeCard: React.FC<DigitalWardrobeCardProps> = ({
   onOpenWardrobe,
+  accountCounts = null,
+  usesAccount = false,
 }) => {
-  const items = getWardrobeItems();
-  const outfits = getWardrobeOutfits();
+  const items = usesAccount ? [] : getWardrobeItems();
+  const outfits = usesAccount ? [] : getWardrobeOutfits();
+  const pieceCount = accountCounts ? accountCounts.pieces : items.length;
+  const outfitCount = accountCounts ? accountCounts.outfits : outfits.length;
 
   return (
     <section className="mb-10 sm:mb-12">
@@ -47,15 +53,15 @@ export const DigitalWardrobeCard: React.FC<DigitalWardrobeCardProps> = ({
             <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
               <div className="flex items-center gap-1.5 text-white/90">
                 <Layers className="w-3.5 h-3.5 text-[#B49361]" />
-                <span>{items.length} Digitised Pieces</span>
+                <span>{pieceCount} Digitised Pieces</span>
               </div>
               <div className="flex items-center gap-1.5 text-white/90">
                 <Sparkles className="w-3.5 h-3.5 text-[#9C6A61]" />
-                <span>{outfits.length} Created Outfits</span>
+                <span>{outfitCount} Created Outfits</span>
               </div>
               <div className="flex items-center gap-1.5 text-white/90">
                 <TrendingUp className="w-3.5 h-3.5 text-[#B49361]" />
-                <span>Gap Intelligence Active</span>
+                <span>{accountCounts ? 'Gap suggestions are a demonstration' : 'Gap Intelligence Active'}</span>
               </div>
             </div>
           </div>
@@ -73,7 +79,7 @@ export const DigitalWardrobeCard: React.FC<DigitalWardrobeCardProps> = ({
               onClick={() => onOpenWardrobe('pieces')}
               className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <span>Browse All {items.length} Wardrobe Pieces</span>
+              <span>Browse All {pieceCount} Wardrobe Pieces</span>
             </button>
           </div>
         </div>
