@@ -28,12 +28,37 @@ export interface AccountApi {
   getProfile(): Promise<Record<string, unknown>>;
   saveProfile(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   getPreferences(): Promise<Record<string, unknown>>;
+  savePreferences(body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  stylistAvailability(): Promise<StylistAvailability>;
+  stylistConversations(): Promise<{ conversations: { id: string; title: string; lastActivityAt: string }[] }>;
+  createStylistConversation(): Promise<{ id: string }>;
+  stylistConversation(id: string): Promise<{ id: string; messages: StylistServerMessage[] }>;
+  sendStylistMessage(id: string, text: string, idempotencyKey: string): Promise<{ message: StylistServerMessage }>;
+  deleteStylistConversation(id: string): Promise<void>;
+}
+
+export interface StylistAvailability {
+  provider: string;
+  liveEnabled: boolean;
+  acceptingMessages: boolean;
+  label: string;
+}
+
+export interface StylistServerMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  recommendation: Record<string, unknown> | null;
+  provider: string | null;
+  createdAt: string;
+  duplicate?: boolean;
 }
 
 interface RequestOptions {
   method?: string;
   body?: unknown;
   csrf?: boolean;
+  headers?: Record<string, string>;
 }
 
 export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeof fetch }): AccountApi {
@@ -51,6 +76,7 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     const headers: Record<string, string> = {};
     if (requestOptions.body !== undefined) headers['content-type'] = 'application/json';
     if (requestOptions.csrf && csrfToken) headers['x-csrf-token'] = csrfToken;
+    Object.assign(headers, requestOptions.headers);
     let response: Response;
     try {
       response = await fetchImpl(`${baseUrl}${path}`, {
@@ -94,6 +120,18 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     getProfile: () => request('/api/profile'),
     saveProfile: (body) => request('/api/profile', { method: 'PUT', body, csrf: true }),
     getPreferences: () => request('/api/preferences'),
+    savePreferences: (body) => request('/api/preferences', { method: 'PUT', body, csrf: true }),
+    stylistAvailability: () => request('/api/stylist/availability'),
+    stylistConversations: () => request('/api/stylist/conversations'),
+    createStylistConversation: () => request('/api/stylist/conversations', { method: 'POST', csrf: true }),
+    stylistConversation: (id) => request(`/api/stylist/conversations/${id}`),
+    sendStylistMessage: (id, text, idempotencyKey) => request(`/api/stylist/conversations/${id}/messages`, {
+      method: 'POST',
+      body: { text },
+      csrf: true,
+      headers: { 'x-idempotency-key': idempotencyKey },
+    }),
+    deleteStylistConversation: (id) => request(`/api/stylist/conversations/${id}`, { method: 'DELETE', csrf: true }),
   };
 }
 

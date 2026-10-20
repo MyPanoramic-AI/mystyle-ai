@@ -13,12 +13,16 @@ import { createFamilyMember, getFamilyMember, listFamily, updateFamilyMember } f
 import { createLook, createWardrobeItem, deleteSavedProduct, getLook, getWardrobeItem, listLooks, listSavedProducts, listWardrobe, saveProduct } from '../domain/collections.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
+import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
+import { createConversation, deleteConversation, listConversations, readConversation, recommendationsFor, sendMessage, stylistAvailability, usageFor } from '../ai/service.js';
 
 export interface AppDeps {
   db: Sql;
   config: ApiConfig;
   now: () => number;
   rateLimiter: RateLimiter;
+  aiConfig?: AiConfig;
+  aiFetch?: typeof fetch;
 }
 
 function securityHeaders(res: Response, page: boolean): void {
@@ -44,7 +48,7 @@ export function createApp(deps: AppDeps): express.Express {
     if (origin && deps.config.allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token, X-Idempotency-Key');
       res.setHeader('Vary', 'Origin');
     }
     if (req.method === 'OPTIONS') {
@@ -78,9 +82,12 @@ export function createApp(deps: AppDeps): express.Express {
     res.setHeader('Set-Cookie', sessionCookie(token, Math.floor(deps.config.sessionMs / 1000), deps.config.secureCookie));
   }
 
-  const route = (handler: (req: Request, res: Response) => void) => (req: Request, res: Response, next: NextFunction) => {
+  const route = (handler: (req: Request, res: Response) => unknown) => (req: Request, res: Response, next: NextFunction) => {
     try {
-      handler(req, res);
+      const result = handler(req, res);
+      if (result && typeof (result as Promise<unknown>).then === 'function') {
+        (result as Promise<unknown>).catch(next);
+      }
     } catch (error) {
       next(error);
     }
@@ -210,6 +217,41 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/integrations', route((req, res) => {
     requireUser(req);
     res.json(integrationBoundaries);
+  }));
+
+  const aiConfig = deps.aiConfig ?? loadAiConfig();
+  const aiLimiter = new RateLimiter(aiConfig.messageRateLimit, aiConfig.messageRateWindowMs, deps.now);
+  const stylist = { db: deps.db, config: aiConfig, now: deps.now, limiter: aiLimiter, fetchImpl: deps.aiFetch };
+
+  app.get('/api/stylist/availability', route((req, res) => {
+    requireUser(req);
+    res.json(stylistAvailability(aiConfig));
+  }));
+  app.get('/api/stylist/usage', route((req, res) => {
+    res.json(usageFor(deps.db, requireUser(req).userId));
+  }));
+  app.get('/api/stylist/conversations', route((req, res) => {
+    res.json({ conversations: listConversations(deps.db, requireUser(req).userId) });
+  }));
+  app.post('/api/stylist/conversations', route((req, res) => {
+    res.status(201).json(createConversation(deps.db, requireUser(req).userId, deps.now()));
+  }));
+  app.get('/api/stylist/conversations/:id', route((req, res) => {
+    res.json(readConversation(deps.db, requireUser(req).userId, String(req.params.id)));
+  }));
+  app.get('/api/stylist/conversations/:id/recommendations', route((req, res) => {
+    res.json({ recommendations: recommendationsFor(deps.db, requireUser(req).userId, String(req.params.id)) });
+  }));
+  app.delete('/api/stylist/conversations/:id', route((req, res) => {
+    deleteConversation(deps.db, requireUser(req).userId, String(req.params.id));
+    res.status(204).end();
+  }));
+  app.post('/api/stylist/conversations/:id/messages', route((req, res) => {
+    const userId = requireUser(req).userId;
+    const text = typeof req.body?.text === 'string' ? req.body.text : '';
+    return sendMessage(stylist, userId, String(req.params.id), text, req.header('x-idempotency-key') ?? null).then((message) => {
+      res.status(201).json({ message });
+    });
   }));
 
   app.get('/api/admin/audit', route((req, res) => {

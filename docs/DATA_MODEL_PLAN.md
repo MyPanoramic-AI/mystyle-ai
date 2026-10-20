@@ -1,6 +1,6 @@
 # Data Model Plan
 
-Status: the names below were the planning proposal. The tables that now exist are in `docs/DATABASE_SCHEMA.md` and `server/api/migrations/001_initial.sql`. The React app still stores demonstration data in `localStorage` and does not write these tables.
+Status: account and profile tables are implemented in `server/api/migrations`. Migration `003_ai_conversations.sql` adds `ai_conversations`, `ai_messages`, and `ai_usage`. Conversations and messages belong to one user and are deleted together. Usage rows stay after deletion and do not store message text or API keys. Costs are `0` with status `zero` for the mock provider, `estimate` only when the operator supplies per-million rates, or `unpriced` when a live call cannot be billed from the response. There is no account-data export route yet. The React demonstration store is still `localStorage` and is not uploaded automatically.
 
 Principles:
 

@@ -458,6 +458,14 @@ export default function App({ account }: { account: ReadyAccount }) {
           onNavigate={handleNavigate}
           onClearState={handleClearStylistState}
           onOpenDiscover={() => handleOpenDiscover()}
+          connection={account.stylist ? {
+            aiConsent: account.aiConsent,
+            onEnableConsent: () => account.setAiConsent(true),
+            availability: account.stylist.availability,
+            restore: account.stylist.restore,
+            send: account.stylist.send,
+            remove: account.stylist.remove,
+          } : undefined}
         />
       )}
 

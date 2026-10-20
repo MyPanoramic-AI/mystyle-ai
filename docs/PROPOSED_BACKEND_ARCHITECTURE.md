@@ -1,6 +1,6 @@
 # Proposed Backend Architecture
 
-Status: `server/api` now implements the local account, profile, media, wardrobe, and ledger foundation on `127.0.0.1:4331`. It is not connected to the React app. Try-on remains the separate lab on port 4317. Shopping remains the separate lab on port 4321 and is not a live retailer integration. See `BACKEND_IMPLEMENTATION.md`.
+Status: `server/api` implements local accounts, profiles, and the stylist coordinator on the same Express process. Signed-in React screens use it through the Vite proxy. Try-on remains the separate lab on port 4317. Shopping remains the separate lab on port 4321 and is not a live retailer integration. The stylist module is `server/api/src/ai`. Live model calls are off by default. See `AI_COORDINATOR_IMPLEMENTATION.md`.
 
 The React and Vite frontend stays. The backend is a modular Node.js service that the current `src/services/` modules can call later. SQLite is the database for the controlled proof of concept. PostgreSQL, PocketBase, and a mobile client are not part of this stage. The schema and HTTP contracts should still be ordinary enough to move to another SQL database and a future mobile client without rewriting the product rules.
 

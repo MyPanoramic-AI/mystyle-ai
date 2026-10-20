@@ -133,6 +133,14 @@ Login uses one message for an unknown email and a wrong password. Duplicate regi
 
 The React app now signs in through the Vite proxy. The session cookie stays HttpOnly. The CSRF token is kept in memory and sent as `x-csrf-token`. A saved browser style profile is shown for review and is not uploaded until the customer selects it. Family, wardrobe, beauty, membership, and credit keys are never included. Measurements are omitted unless that box is ticked. Opening the app at an address other than the local Vite origins is rejected by the origin check.
 
+## Stylist controls, 20 October 2026
+
+Stylist routes require the same session and CSRF checks. A conversation query always includes the signed-in user id, and another account receives 404. Personalisation is sent to a provider only when `ai_personalisation_consent` is true, and then only as styles, colour lists, size labels, budget band, shopping priorities, and retailer names. Display name, age, measurements, photographs, and family records are not included. Consent defaults to off.
+
+The Gemini key is read from `GEMINI_API_KEY` on the server. It is not returned by the API and it is not a `VITE_` variable. Live calls also require `AI_ALLOW_LIVE=true`, a model name, both budget limits above the estimated request, and operator-supplied token prices. The default is the local mock. Usage logs record provider, status, and cost status, not the message text. Recommendation cards render validated fields as text. Model markup is not inserted as HTML.
+
+POPIA points that are still outstanding before a production launch: a recorded consent notice, an account-data export, a retention job for old conversations, an operator agreement with the model provider, and a decision on whether conversation text is stored outside South Africa. Child profiles and child photographs are not sent to the stylist. Deleting a conversation removes its messages. Usage totals remain for cost accounting.
+
 ## Audit constraints observed
 
-No customer photograph was uploaded. No external AI credential was used. `npm run clean` was not run.
+No customer photograph was uploaded. No external AI credential was used for a live generation. `npm run clean` was not run.

@@ -17,6 +17,7 @@
     "shopping-lab": "tsx server/shopping/src/index.ts",
     "lint:api": "tsc -p server/api/tsconfig.json --noEmit",
     "test:api": "tsx --test server/api/tests/migrate.test.ts server/api/tests/auth.test.ts server/api/tests/profile.test.ts server/api/tests/isolation.test.ts server/api/tests/media.test.ts",
+    "test:ai": "tsx --test server/api/tests/ai.test.ts",
     "test:account": "tsx --test server/api/tests/account-client.test.ts",
     "api": "tsx server/api/src/index.ts",
     "start": "tsx server/api/src/index.ts"

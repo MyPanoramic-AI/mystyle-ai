@@ -15,7 +15,7 @@ export interface RunningApi {
   close: () => Promise<void>;
 }
 
-export async function startApi(overrides: Partial<ApiConfig> = {}): Promise<RunningApi> {
+export async function startApi(overrides: Partial<ApiConfig> = {}, extras: { aiConfig?: import('../src/ai/aiConfig.js').AiConfig; aiFetch?: typeof fetch } = {}): Promise<RunningApi> {
   const dir = mkdtempSync(path.join(tmpdir(), 'mystyle-api-'));
   const config: ApiConfig = {
     ...loadConfig({ API_HOST: '127.0.0.1' }),
@@ -33,6 +33,8 @@ export async function startApi(overrides: Partial<ApiConfig> = {}): Promise<Runn
     config,
     now: () => clock.value,
     rateLimiter: new RateLimiter(config.authRateLimit, config.authRateWindowMs, () => clock.value),
+    aiConfig: extras.aiConfig,
+    aiFetch: extras.aiFetch,
   });
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', () => resolve()));

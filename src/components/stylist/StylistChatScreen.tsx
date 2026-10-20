@@ -23,6 +23,17 @@ import { ProfileLensModal } from './ProfileLensModal';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { Sparkles, MessageCircle } from 'lucide-react';
+import { AccountApiError, type StylistServerMessage } from '../../services/accountApi';
+import { toChatMessage } from '../../services/stylistView';
+
+export interface StylistConnection {
+  aiConsent: boolean;
+  onEnableConsent: () => Promise<void>;
+  availability: () => Promise<{ acceptingMessages: boolean; liveEnabled: boolean; label: string }>;
+  restore: () => Promise<{ id: string; messages: StylistServerMessage[] }>;
+  send: (id: string, text: string, idempotencyKey: string) => Promise<StylistServerMessage>;
+  remove: (id: string) => Promise<void>;
+}
 
 interface StylistChatScreenProps {
   profile: UserProfile;
@@ -31,6 +42,7 @@ interface StylistChatScreenProps {
   onNavigate: (tab: NavigationTab) => void;
   onClearState: () => void;
   onOpenDiscover?: () => void;
+  connection?: StylistConnection;
 }
 
 export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
@@ -40,6 +52,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   onNavigate,
   onClearState,
   onOpenDiscover,
+  connection,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     getInitialConversation(profile, state)
@@ -48,6 +61,12 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [isLensModalOpen, setIsLensModalOpen] = useState<boolean>(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
   const [inputPrefill, setInputPrefill] = useState<string>('');
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [serviceLabel, setServiceLabel] = useState(connection ? 'Checking the stylist' : 'Demonstration replies on this device');
+  const [serviceNotice, setServiceNotice] = useState<string | null>(null);
+  const [localDemo, setLocalDemo] = useState(false);
+  const [serverReady, setServerReady] = useState(!connection);
+  const [offerLocalDemo, setOfferLocalDemo] = useState(false);
 
   const [lens, setLens] = useState<StylistFilterLens>({
     occasion: state.occasionTitle || 'Everyday Versatile',
@@ -66,6 +85,35 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    if (!connection) return;
+    let cancelled = false;
+    void connection.availability().then(async (availability) => {
+      if (cancelled) return;
+      setServiceLabel(availability.label);
+      if (!availability.acceptingMessages) {
+        setServiceNotice('Live AI is switched off. You can continue with the labelled demonstration on this device.');
+        setOfferLocalDemo(true);
+        setServerReady(true);
+        return;
+      }
+      const restored = await connection.restore();
+      if (cancelled) return;
+      setConversationId(restored.id);
+      if (restored.messages.length) setMessages(restored.messages.map(toChatMessage));
+      setServiceNotice(availability.liveEnabled ? null : 'These replies come from the demonstration stylist, not a live model.');
+      setServerReady(true);
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      setServiceNotice(error instanceof AccountApiError ? error.message : 'The stylist could not be reached.');
+      setOfferLocalDemo(true);
+      setServerReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Handle incoming new navigation state from Home screen
   useEffect(() => {
@@ -88,36 +136,64 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     attachment?: { name: string; url: string }
   ) => {
     if (!text.trim() && !attachment) return;
+    const typed = text.trim();
+    if (connection && !localDemo && attachment) {
+      setServiceNotice('Photographs are not sent to the stylist. The message uses your typed words only.');
+    }
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       timestamp: 'Just now',
-      text: text.trim() || `[Attached garment: ${attachment?.name}]`,
-      userAttachmentUrl: attachment?.url,
-      userAttachmentName: attachment?.name,
+      text: typed || 'I attached a photo, but it stays on this device.',
+      userAttachmentUrl: connection && !localDemo ? undefined : attachment?.url,
+      userAttachmentName: connection && !localDemo ? undefined : attachment?.name,
     };
 
     setMessages((prev) => [...prev, userMsg]);
+    if (connection && !localDemo && !typed) {
+      setServiceNotice('Photographs are not sent to the stylist.');
+      return;
+    }
     setIsTyping(true);
 
-    // Simulate realistic thoughtful stylist response timing (550ms)
-    setTimeout(() => {
-      const response = generateStylistResponse(text, profile, attachment);
+    if (!connection || localDemo) {
+      setTimeout(() => {
+        const response = generateStylistResponse(typed, profile, localDemo ? undefined : attachment);
+        const stylistMsg: ChatMessage = {
+          id: `stylist-${Date.now()}`,
+          sender: 'stylist',
+          timestamp: 'Just now',
+          text: response.text,
+          outfitCard: response.outfitCard,
+          beautyTip: response.beautyTip,
+          quickActions: response.quickActions,
+        };
+        setMessages((prev) => [...prev, stylistMsg]);
+        setIsTyping(false);
+      }, 600);
+      return;
+    }
 
-      const stylistMsg: ChatMessage = {
-        id: `stylist-${Date.now()}`,
+    if (!conversationId || !serverReady) {
+      setIsTyping(false);
+      setServiceNotice(serviceNotice ?? 'The stylist is not ready for a saved conversation.');
+      return;
+    }
+    const idempotencyKey = `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    void connection.send(conversationId, typed, idempotencyKey).then((message) => {
+      setMessages((prev) => [...prev, toChatMessage(message)]);
+      setIsTyping(false);
+    }).catch((error: unknown) => {
+      setIsTyping(false);
+      const failed: ChatMessage = {
+        id: `failed-${Date.now()}`,
         sender: 'stylist',
         timestamp: 'Just now',
-        text: response.text,
-        outfitCard: response.outfitCard,
-        beautyTip: response.beautyTip,
-        quickActions: response.quickActions,
+        text: error instanceof AccountApiError ? error.message : 'That message could not be sent.',
       };
-
-      setMessages((prev) => [...prev, stylistMsg]);
-      setIsTyping(false);
-    }, 600);
+      setMessages((prev) => [...prev, failed]);
+    });
   };
 
   const handleSelectPrompt = (prompt: string) => {
@@ -125,9 +201,26 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   };
 
   const handleResetSession = () => {
-    setMessages(getInitialConversation(profile, undefined));
-    onClearState();
-    setIsResetConfirmOpen(false);
+    const resetLocal = () => {
+      setMessages(getInitialConversation(profile, undefined));
+      onClearState();
+      setIsResetConfirmOpen(false);
+    };
+    if (!connection || localDemo || !conversationId) {
+      resetLocal();
+      return;
+    }
+    void connection.remove(conversationId).then(async () => {
+      const next = await connection.restore();
+      setConversationId(next.id);
+      setMessages(getInitialConversation(profile, undefined));
+      setServiceNotice('The saved conversation was deleted.');
+      onClearState();
+      setIsResetConfirmOpen(false);
+    }).catch((error: unknown) => {
+      setServiceNotice(error instanceof AccountApiError ? error.message : 'The conversation could not be deleted.');
+      setIsResetConfirmOpen(false);
+    });
   };
 
   return (
@@ -148,8 +241,32 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         <div className="text-center py-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9C6A61] px-3 py-1 rounded-full bg-[#FAF7F2] border border-[#242326]/5 inline-flex items-center gap-1.5">
             <Sparkles className="w-3 h-3 text-[#B49361]" />
-            Personal Styling Session Active · Tailored to {profile.personal.firstName || 'You'}
+            {localDemo || !connection ? 'Demonstration replies on this device' : serviceLabel}
           </span>
+          {connection && !connection.aiConsent && !localDemo && (
+            <div className="mt-3 rounded-2xl border border-[#242326]/10 bg-white px-4 py-3 text-xs text-[#5C585E]">
+              <p>Personalised styling is off, so saved colours, sizes, and budget stay out of the stylist.</p>
+              <button type="button" className="mt-2 font-semibold text-[#9C6A61]" onClick={() => void connection.onEnableConsent().catch((error: unknown) => {
+                setServiceNotice(error instanceof AccountApiError ? error.message : 'Personalised styling could not be turned on.');
+              })}>
+                Allow personalised styling
+              </button>
+            </div>
+          )}
+          {serviceNotice && (
+            <div className="mt-3 rounded-2xl border border-[#242326]/10 bg-white px-4 py-3 text-xs text-[#5C585E]">
+              <p>{serviceNotice}</p>
+              {offerLocalDemo && connection && !localDemo && (
+                <button type="button" className="mt-2 font-semibold text-[#9C6A61]" onClick={() => {
+                  setLocalDemo(true);
+                  setServiceLabel('Demonstration replies on this device');
+                  setServiceNotice('You are using the on-device demonstration. It is not a live model, and it can show sample shop cards.');
+                }}>
+                  Use the on-device demonstration
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Message Stream */}
@@ -171,7 +288,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div className="rounded-2xl px-4 py-3 bg-white border border-[#242326]/10 shadow-xs flex items-center gap-2">
-              <span className="text-xs text-[#5C585E] font-medium">Aria is styling your look</span>
+              <span className="text-xs text-[#5C585E] font-medium">{localDemo || !connection || serviceLabel.toLowerCase().includes('not a live') ? 'Aria is preparing a demonstration reply' : 'Aria is styling your look'}</span>
               <div className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.3s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.15s]" />

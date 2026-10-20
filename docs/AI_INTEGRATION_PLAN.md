@@ -1,6 +1,8 @@
 # AI Integration Plan
 
-Status: design only. The coordinator was not implemented. No model was called during the 16 October 2026 audit.
+Status: the stylist coordinator is implemented in `server/api/src/ai` and the signed-in My Stylist screen calls it. The default provider is a deterministic mock. Live Gemini calls stay off unless `AI_ALLOW_LIVE` is exactly `true` and the budget, model, credential, and price settings are present. No live model was called while building this phase. Shopping, virtual try-on, beauty, and wardrobe specialists return `not_connected`.
+
+The original design below is kept as the target shape. The implemented routes are `/api/stylist/*`, not `POST /api/assistant/tasks`.
 
 ## What exists now
 

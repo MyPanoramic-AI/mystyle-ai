@@ -484,3 +484,7 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 ## Suggested immediate sequence
 
 Close Phase 1's Git commit, then run Phase 2. Phase 3 can start as soon as a person can apply for publisher access. Do not open provider accounts or accept retailer terms as part of an unapproved coding session.
+
+## Update, 20 October 2026
+
+Accounts are connected, and the stylist coordinator is in `server/api` with a mock provider. Live model calls, FASHN, retailer feeds, and payments remain off. The next milestone is an approved live stylist test, described in `AI_STYLIST_LIVE_TEST_PLAN.md`. Do not treat the mock replies as a quality score for a live model.

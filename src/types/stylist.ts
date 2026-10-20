@@ -24,6 +24,7 @@ export interface StylistOutfitRecommendation {
   stylingTips: string[];
   matchScore?: number;
   totalEstimatedZar: number;
+  conceptOnly?: boolean;
 }
 
 export interface StylistBeautyTip {

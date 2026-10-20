@@ -27,6 +27,14 @@ export interface ReadyAccount {
   deferOnboarding: () => Promise<UserProfile>;
   logout: () => Promise<void>;
   leaveDemo: () => void;
+  aiConsent: boolean;
+  setAiConsent: (value: boolean) => Promise<void>;
+  stylist: {
+    availability: () => Promise<{ acceptingMessages: boolean; liveEnabled: boolean; label: string }>;
+    restore: () => Promise<{ id: string; messages: import('../services/accountApi').StylistServerMessage[] }>;
+    send: (id: string, text: string, idempotencyKey: string) => Promise<import('../services/accountApi').StylistServerMessage>;
+    remove: (id: string) => Promise<void>;
+  } | null;
 }
 
 function messageFrom(error: unknown): string {
@@ -48,19 +56,20 @@ export function AccountRoot() {
   const [profile, setProfile] = useState<UserProfile>(emptyAccountProfile());
   const [email, setEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [aiConsent, setAiConsentState] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const generation = useRef(0);
 
   async function loadSignedIn(nextUserId: string, gen: number): Promise<void> {
-    const [session, rawProfile] = await Promise.all([accountApi.session(), accountApi.getProfile()]);
-    await accountApi.getPreferences();
+    const [session, rawProfile, preferences] = await Promise.all([accountApi.session(), accountApi.getProfile(), accountApi.getPreferences()]);
     if (gen !== generation.current) return;
     const nextProfile = profileForAccount(fromApiProfile(rawProfile));
     setUserId(nextUserId || session.userId);
     setEmail(session.email);
     setProfile(nextProfile);
+    setAiConsentState(preferences.aiPersonalisationConsent === true);
     setMode('account');
     const stored = inspectBrowserStore(window.localStorage);
     const reviewed = window.sessionStorage.getItem(dismissKey(session.userId)) === '1';
@@ -197,6 +206,25 @@ export function AccountRoot() {
       setMode('account');
       void restore();
     },
+    aiConsent,
+    setAiConsent: async (value) => {
+      if (mode !== 'account') return;
+      const current = await accountApi.getPreferences();
+      await accountApi.savePreferences({ ...current, aiPersonalisationConsent: value });
+      setAiConsentState(value);
+    },
+    stylist: mode === 'account' ? {
+      availability: () => accountApi.stylistAvailability(),
+      restore: async () => {
+        const listed = await accountApi.stylistConversations();
+        const existing = listed.conversations[0];
+        const id = existing?.id ?? (await accountApi.createStylistConversation()).id;
+        const conversation = await accountApi.stylistConversation(id);
+        return { id, messages: conversation.messages };
+      },
+      send: async (id, text, idempotencyKey) => (await accountApi.sendStylistMessage(id, text, idempotencyKey)).message,
+      remove: (id) => accountApi.deleteStylistConversation(id),
+    } : null,
   };
 
   if (phase === 'loading') return <Status title="Checking your account" body="Looking for a saved session on this computer." />;

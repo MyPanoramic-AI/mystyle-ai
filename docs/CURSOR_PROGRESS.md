@@ -285,4 +285,17 @@ Recorded in `docs/FRONTEND_INTEGRATION_TEST_REPORT.md`. `test:account` 5 passed.
 - Email verification, password recovery, and payments are still unavailable.
 - The postponed FASHN generation and retailer feeds are unchanged.
 
+## 2026-10-20 — Stylist coordinator
+
+**Status:** The signed-in My Stylist screen uses `server/api`. The default provider is a local mock and is labelled as not a live model. Live Gemini configuration exists and is off. Shopping, try-on, beauty, and wardrobe specialists are not connected. Prompt 5 was already committed as `a76ff06`. This stylist work is not committed.
+
+### Tests
+
+`test:ai` 12 passed. `test:account` 5 passed. `test:api` 14 passed. `test:tryon` 16 passed. `test:shopping` 15 passed. `npm run lint`, `lint:api`, `npx tsc --noEmit --strict`, and `npm run build` exited 0. No browser click-through was available. No live model was called.
+
+### Remaining work
+
+- A live model test needs the owner's provider, model, price, and budget approval. See `AI_STYLIST_LIVE_TEST_PLAN.md`.
+- Do not push this change while Render auto-deploy is on, unless a new deployment is requested.
+
 
