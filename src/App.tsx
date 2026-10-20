@@ -403,7 +403,8 @@ export default function App({ account }: { account: ReadyAccount }) {
           onSendToTryOn={handleSendFamilyToTryOn}
           onSendToShop={handleSendFamilyToShop}
           onAskStylist={handleAskStylistFamily}
-          browserNotice={account.mode === 'account' ? 'These family records stay in this browser. They are not part of your saved account and are not uploaded.' : undefined}
+          browserNotice={account.mode === 'account' ? 'Family profiles and event plans are saved with this account. Dependent profiles cannot sign in, and they are not sent to AI or shopping services.' : 'Demonstration family profiles stay in this browser. They are not part of a saved account.'}
+          accountFamily={account.family}
           onBack={() => {
             setActiveSubpage(null);
             window.scrollTo({ top: 0, behavior: 'smooth' });

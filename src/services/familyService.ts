@@ -75,12 +75,8 @@ class FamilyService {
   private listeners: Array<() => void> = [];
 
   constructor() {
-    if (typeof window !== 'undefined') {
-      // Initialize with demo members if not present
-      if (!localStorage.getItem(FAMILY_MEMBERS_KEY)) {
-        this.saveFamilyMembers(INITIAL_DEMO_FAMILY_MEMBERS);
-      }
-    }
+    // Demonstration profiles are returned only when a screen asks for browser storage.
+    // They are never written until the demonstration user edits them, and never uploaded.
   }
 
   public subscribe(listener: () => void): () => void {

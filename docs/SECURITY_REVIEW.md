@@ -37,7 +37,7 @@ The browser store is origin-wide, unencrypted, and persistent. Any script runnin
 | `mystyle_privacy_settings` | Local preference flags |
 | `mystyle_notification_settings` | Local channel flags |
 
-`familyService` writes the child seed profiles as soon as the family module loads in a browser that has no existing key. That is real personal-information-shaped data sitting in a demo, and the pattern must not be copied to a server.
+`familyService` no longer writes demonstration profiles when the module loads. Demonstration screens still read those samples from memory. A signed-in family screen does not call that service, so the samples are not copied to the account.
 
 Photographs from onboarding are `blob:` URLs in React state. They are not in the keys above. They disappear on refresh. The privacy screen's "store high-resolution try-ons locally" and "ephemeral fitting photos" toggles do not govern this behaviour. They only persist booleans.
 
@@ -99,7 +99,7 @@ POPIA gives additional protection to personal information of children. The proof
 - send a child's name, age, or measurements to an AI provider
 - generate a try-on or beauty render of a child
 
-The current family UI may remain as a local demonstration until product and legal review decide whether family profiles of children belong in the commercial product at all. Server storage of child profiles is out of scope for the controlled proof of concept. See `POC_SCOPE.md`.
+The current family UI stores a dependent planning record for a signed-in adult. That record has a display name, relationship, optional sizes, colours, and a planned budget. It has no login, no photograph, and no date of birth. It is not included in the stylist context or sent to OpenAI, Gemini, FASHN, or a retailer. Legal review is still required before any wider use of dependent information. See `FAMILY_PRIVACY_AND_PERMISSIONS.md`.
 
 ### Photographs
 

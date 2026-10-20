@@ -9,7 +9,7 @@ import { RateLimiter } from '../auth/rateLimit.js';
 import { clearSessionCookie, destroySession, findSession, readCookie, requireCsrf, sessionCookie, SESSION_COOKIE, safeEqual, type SessionRecord } from '../auth/sessions.js';
 import { loginAccount, registerAccount } from '../domain/accounts.js';
 import { getPreferences, getProfile, updatePreferences, updateProfile } from '../domain/profiles.js';
-import { createFamilyMember, getFamilyMember, listFamily, updateFamilyMember } from '../domain/family.js';
+import { createFamilyEvent, createFamilyMember, deleteFamilyEvent, deleteFamilyMember, getFamilyEvent, getFamilyMember, listFamily, listFamilyEvents, updateFamilyEvent, updateFamilyMember } from '../domain/family.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
@@ -149,6 +149,19 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/family/:id', route((req, res) => res.json(getFamilyMember(deps.db, requireUser(req).userId, String(req.params.id)))));
   app.patch('/api/family/:id', route((req, res) => {
     res.json(updateFamilyMember(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}, deps.now()));
+  }));
+  app.delete('/api/family/:id', route((req, res) => {
+    deleteFamilyMember(deps.db, requireUser(req).userId, String(req.params.id));
+    res.json({ ok: true });
+  }));
+
+  app.get('/api/family-events', route((req, res) => res.json({ events: listFamilyEvents(deps.db, requireUser(req).userId) })));
+  app.post('/api/family-events', route((req, res) => res.status(201).json(createFamilyEvent(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()))));
+  app.get('/api/family-events/:id', route((req, res) => res.json(getFamilyEvent(deps.db, requireUser(req).userId, String(req.params.id)))));
+  app.patch('/api/family-events/:id', route((req, res) => res.json(updateFamilyEvent(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}, deps.now()))));
+  app.delete('/api/family-events/:id', route((req, res) => {
+    deleteFamilyEvent(deps.db, requireUser(req).userId, String(req.params.id));
+    res.json({ ok: true });
   }));
 
   app.get('/api/wardrobe', route((req, res) => res.json({ items: listWardrobe(deps.db, requireUser(req).userId) })));

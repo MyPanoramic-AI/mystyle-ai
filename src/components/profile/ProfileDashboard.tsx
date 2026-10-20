@@ -72,7 +72,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   const [activeEditSection, setActiveEditSection] = useState<EditableSection | null>(null);
 
   const completeness = profileService.calculateCompleteness(profile);
-  const familyMembers = familyService.getFamilyMembers();
+  const familyMembers = usesAccount ? [] : familyService.getFamilyMembers();
   const wardrobeItems = usesAccount ? [] : getWardrobeItems();
   const wardrobeOutfits = usesAccount ? [] : getWardrobeOutfits();
   const wardrobePieceCount = wardrobeCounts ? wardrobeCounts.pieces : wardrobeItems.length;
@@ -567,6 +567,9 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
 
             {/* Member preview avatars */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              {usesAccount && familyMembers.length === 0 ? (
+                <p className="text-xs text-[#5C585E] sm:col-span-3">Family profiles load from this account inside Family Styling.</p>
+              ) : null}
               {familyMembers.map((member) => (
                 <div
                   key={member.id}

@@ -12,6 +12,7 @@ import {
   FamilyShoppingItem,
 } from '../../types/family';
 import { familyService } from '../../services/familyService';
+import { familyStatus, type AccountFamily } from '../../services/familyAccount';
 import { FamilyPlannerView } from './FamilyPlannerView';
 import { FamilyMemberCard } from './FamilyMemberCard';
 import { FamilyMemberModal } from './FamilyMemberModal';
@@ -37,6 +38,7 @@ interface FamilyStylingScreenProps {
   onAskStylist: (prompt: string) => void;
   onBack: () => void;
   browserNotice?: string;
+  accountFamily?: AccountFamily | null;
 }
 
 export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
@@ -48,15 +50,18 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
   onAskStylist,
   onBack,
   browserNotice,
+  accountFamily = null,
 }) => {
   const [activeTab, setActiveTab] = useState<'planner' | 'members' | 'shopping' | 'saved'>(initialTab);
   const [familyMembers, setFamilyMembers] = useState<FamilyProfile[]>(() =>
-    familyService.getFamilyMembers()
+    accountFamily ? [] : familyService.getFamilyMembers()
   );
   const [savedPlans, setSavedPlans] = useState<FamilyStylePlan[]>(() =>
-    familyService.getSavedPlans()
+    accountFamily ? [] : familyService.getSavedPlans()
   );
   const [loadedPlan, setLoadedPlan] = useState<FamilyStylePlan | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(accountFamily ? null : null);
+  const [loadingAccount, setLoadingAccount] = useState(Boolean(accountFamily));
 
   // Modal state
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
@@ -66,12 +71,30 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
   const [shoppingItemsList, setShoppingItemsList] = useState<FamilyShoppingItem[]>([]);
 
   useEffect(() => {
+    if (accountFamily) {
+      let cancelled = false;
+      setLoadingAccount(true);
+      void Promise.all([accountFamily.loadMembers(), accountFamily.loadPlans()]).then(([members, plans]) => {
+        if (cancelled) return;
+        setFamilyMembers(members);
+        setSavedPlans(plans);
+        setStatusMessage(null);
+        setLoadingAccount(false);
+      }).catch((error) => {
+        if (cancelled) return;
+        setStatusMessage(familyStatus(error) === 'Unable to save changes.' ? 'Event planning unavailable.' : familyStatus(error));
+        setLoadingAccount(false);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
     const unsubscribe = familyService.subscribe(() => {
       setFamilyMembers(familyService.getFamilyMembers());
       setSavedPlans(familyService.getSavedPlans());
     });
     return unsubscribe;
-  }, []);
+  }, [accountFamily]);
 
   const handleOpenAddMember = () => {
     setMemberToEdit(null);
@@ -84,27 +107,37 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
   };
 
   const handleDeleteMember = (id: string) => {
-    if (window.confirm('Are you sure you want to remove this family member?')) {
+    if (!window.confirm('Are you sure you want to remove this family member?')) return;
+    if (!accountFamily) {
       familyService.deleteFamilyMember(id);
+      return;
     }
+    void accountFamily.deleteMember(id).then(() => accountFamily.loadMembers()).then((members) => {
+      setFamilyMembers(members);
+      setStatusMessage(null);
+    }).catch((error) => setStatusMessage(familyStatus(error)));
   };
 
   const handleSaveMember = (
     memberData: Omit<FamilyProfile, 'id' | 'createdAt'>,
     idToUpdate?: string
   ) => {
-    if (idToUpdate) {
-      const existing = familyMembers.find((m) => m.id === idToUpdate);
-      if (existing) {
-        familyService.updateFamilyMember({
-          ...existing,
-          ...memberData,
-        });
+    if (!accountFamily) {
+      if (idToUpdate) {
+        const existing = familyMembers.find((m) => m.id === idToUpdate);
+        if (existing) familyService.updateFamilyMember({ ...existing, ...memberData });
+      } else {
+        familyService.addFamilyMember(memberData);
       }
-    } else {
-      familyService.addFamilyMember(memberData);
+      setIsMemberModalOpen(false);
+      return;
     }
-    setIsMemberModalOpen(false);
+    setStatusMessage('Saving family profile.');
+    void accountFamily.saveMember(memberData, idToUpdate).then((saved) => {
+      setFamilyMembers((current) => idToUpdate ? current.map((member) => member.id === saved.id ? saved : member) : [...current, saved]);
+      setStatusMessage('Family profile saved.');
+      setIsMemberModalOpen(false);
+    }).catch((error) => setStatusMessage(familyStatus(error)));
   };
 
   const handleLoadPlan = (plan: FamilyStylePlan) => {
@@ -121,6 +154,7 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn pb-12">
+      {statusMessage ? <p className="rounded-2xl border border-[#B49361]/40 bg-[#E5CDBE]/30 px-4 py-3 text-sm text-[#242326]">{statusMessage}</p> : null}
       {browserNotice ? <p className="rounded-2xl border border-[#B49361]/40 bg-[#E5CDBE]/30 px-4 py-3 text-sm text-[#242326]">{browserNotice}</p> : null}
       {/* Top Bar with Back Button */}
       <div className="flex items-center justify-between">
@@ -227,6 +261,18 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
           onSendToShop={onSendToShop}
           onAskStylist={onAskStylist}
           onOpenShoppingList={handleOpenShoppingList}
+          persistPlan={accountFamily ? async (plan) => {
+            try {
+              const saved = await accountFamily.savePlan(plan);
+              setSavedPlans((current) => {
+                const exists = current.some((item) => item.id === saved.id);
+                return exists ? current.map((item) => item.id === saved.id ? saved : item) : [saved, ...current];
+              });
+              setLoadedPlan(saved);
+            } catch (error) {
+              throw new Error(familyStatus(error));
+            }
+          } : undefined}
         />
       )}
 
@@ -250,6 +296,13 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
             </Button>
           </div>
 
+          {loadingAccount ? <p className="text-sm text-[#5C585E]">Loading family profiles.</p> : null}
+          {familyMembers.length === 0 && !loadingAccount ? (
+            <div className="rounded-3xl border border-[#242326]/10 bg-white p-8 text-center">
+              <h3 className="font-serif text-xl text-[#242326]">No family profiles added</h3>
+              <p className="mt-2 text-sm text-[#5C585E]">Add your first family profile.</p>
+            </div>
+          ) : null}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {familyMembers.map((member) => (
               <FamilyMemberCard
@@ -266,7 +319,9 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
             <ShieldCheck className="w-5 h-5 text-[#9C6A61] shrink-0 mt-0.5" />
             <div className="text-xs text-[#5C585E] leading-relaxed">
               <strong className="text-[#242326]">Minor Privacy & Safeguarding:</strong>
-              {' '}Child measurements and profile preferences are strictly protected and never uploaded to public servers or external tracking networks. They remain exclusively in your client-side browser session.
+              {' '}{accountFamily
+                ? 'A dependent profile is a planning record on this adult account. It cannot sign in, and it is not sent to AI, try-on, or shopping services. Photographs of children are not accepted.'
+                : 'These demonstration profiles stay in this browser. They are not uploaded to an account.'}
             </div>
           </div>
         </div>
@@ -290,7 +345,14 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
             setLoadedPlan(null);
             setActiveTab('planner');
           }}
-          onPlanDeleted={() => setSavedPlans(familyService.getSavedPlans())}
+          onPlanDeleted={() => {
+            if (!accountFamily) setSavedPlans(familyService.getSavedPlans());
+          }}
+          onDeletePlan={accountFamily ? async (planId) => {
+            await accountFamily.deletePlan(planId);
+            setSavedPlans((current) => current.filter((plan) => plan.id !== planId));
+            setStatusMessage(null);
+          } : undefined}
         />
       )}
 

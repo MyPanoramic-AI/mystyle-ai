@@ -14,6 +14,7 @@ interface SavedFamilyPlansViewProps {
   onLoadPlan: (plan: FamilyStylePlan) => void;
   onStartNewPlan: () => void;
   onPlanDeleted: () => void;
+  onDeletePlan?: (planId: string) => Promise<void>;
 }
 
 export const SavedFamilyPlansView: React.FC<SavedFamilyPlansViewProps> = ({
@@ -21,9 +22,14 @@ export const SavedFamilyPlansView: React.FC<SavedFamilyPlansViewProps> = ({
   onLoadPlan,
   onStartNewPlan,
   onPlanDeleted,
+  onDeletePlan,
 }) => {
   const handleDelete = (e: React.MouseEvent, planId: string) => {
     e.stopPropagation();
+    if (onDeletePlan) {
+      void onDeletePlan(planId).then(onPlanDeleted);
+      return;
+    }
     familyService.deletePlan(planId);
     onPlanDeleted();
   };

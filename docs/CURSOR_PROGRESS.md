@@ -326,4 +326,10 @@ The same lint, strict TypeScript, build, and test commands were run again and ex
 
 `npm run lint`, `lint:api`, `npx tsc --noEmit --strict`, and `npm run build` exited 0. `test:wardrobe` 2 passed. `test:api` 16 passed. `test:account` 5 passed. `test:ai` 16 passed. `test:shopping` 15 passed. `test:tryon` 16 passed. No push and no Render deploy.
 
+## 2026-10-20 — Family profiles and event plans
+
+**Status:** A signed-in adult can save family style profiles and family event plans in SQLite. Dependent profiles cannot sign in or edit. Demonstration family records, including the sample child profiles, are not imported. No family record is sent to OpenAI, Gemini, FASHN, or a retailer. Personal outfit plans stay in `outfit_plans` and are not merged with family events. Browser click-through was not available.
+
+`npm run lint`, `npx tsc --noEmit --strict` for the app and `server/api`, and `npm run build` exited 0. `test:api` 18 passed, including the 2 family tests and the 2 wardrobe tests. `test:family` 2 passed. `test:wardrobe` 2 passed. `test:account` 5 passed. `test:ai` 16 passed. `test:shopping` 15 passed. `test:tryon` 16 passed. The unique count is 70 because `test:api` already includes the family and wardrobe files. No push and no Render deploy.
+
 

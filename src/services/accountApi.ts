@@ -50,6 +50,14 @@ export interface AccountApi {
   updateOutfitPlan(id: string, body: Record<string, unknown>): Promise<PlanRecord>;
   deleteOutfitPlan(id: string): Promise<void>;
   uploadWardrobePhoto(imageBase64: string): Promise<{ id: string }>;
+  familyMembers(): Promise<{ members: Record<string, unknown>[] }>;
+  createFamilyMember(body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  updateFamilyMember(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  deleteFamilyMember(id: string): Promise<void>;
+  familyEvents(): Promise<{ events: Record<string, unknown>[] }>;
+  createFamilyEvent(body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  updateFamilyEvent(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  deleteFamilyEvent(id: string): Promise<void>;
 }
 
 export interface WardrobeRecord {
@@ -218,6 +226,14 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     updateOutfitPlan: (id, body) => request(`/api/outfit-plans/${id}`, { method: 'PATCH', body, csrf: true }),
     deleteOutfitPlan: (id) => request(`/api/outfit-plans/${id}`, { method: 'DELETE', csrf: true }),
     uploadWardrobePhoto: (imageBase64) => request('/api/media', { method: 'POST', body: { purpose: 'wardrobe', imageBase64 }, csrf: true }),
+    familyMembers: () => request('/api/family'),
+    createFamilyMember: (body) => request('/api/family', { method: 'POST', body, csrf: true }),
+    updateFamilyMember: (id, body) => request(`/api/family/${id}`, { method: 'PATCH', body, csrf: true }),
+    deleteFamilyMember: (id) => request(`/api/family/${id}`, { method: 'DELETE', csrf: true }),
+    familyEvents: () => request('/api/family-events'),
+    createFamilyEvent: (body) => request('/api/family-events', { method: 'POST', body, csrf: true }),
+    updateFamilyEvent: (id, body) => request(`/api/family-events/${id}`, { method: 'PATCH', body, csrf: true }),
+    deleteFamilyEvent: (id) => request(`/api/family-events/${id}`, { method: 'DELETE', csrf: true }),
   };
 }
 

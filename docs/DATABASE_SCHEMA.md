@@ -14,11 +14,13 @@ The file database uses foreign keys and WAL. Tests use an in-memory database, wh
 | `profile_measurements` | Optional height, bust, waist, and hip in centimetres. Private. Not inferred from photographs |
 | `user_preferences` | Privacy and notification JSON, AI personalisation consent, marketing opt-in. Defaults are off |
 | `media_assets` | Owner, storage key, content type, byte size, purpose, created, deleted, retain-until |
-| `family_relationships` | Owner, display name, `adult` or `dependent`, optional label, `viewer` or `editor`, `active` or `revoked` |
+| `family_relationships` | Owner, display name, `adult` or `dependent`, relationship label, viewer permission, style lists, sizes, and optional planned budget in cents. Migration `006_family_plans.sql` adds the preference columns. No date of birth and no photograph |
 | `wardrobe_items` | Owner, name, category, colour, size, brand, seasons, occasions, notes, optional media id or image reference |
 | `saved_looks` | Owner, title, notes, kind (`wardrobe_outfit`, `inspiration`, or `concept`), occasion, and optional source key |
 | `saved_look_items` | Look id and wardrobe item id |
-| `outfit_plans` | Owner, date, title, occasion, notes, and optional outfit id. Added in `005_wardrobe_planner.sql` |
+| `outfit_plans` | Owner, date, title, occasion, notes, and optional outfit id. Added in `005_wardrobe_planner.sql`. These are personal plans, separate from family events |
+| `family_events` | Owner, title, date, occasion, formality, style direction, colour theme, planned budget in cents, notes, and status. Added in `006_family_plans.sql` |
+| `family_event_participants` | Event id, family profile id or `self`, planned allocation in cents, and an outfit note |
 | `saved_products` | Owner, retailer source, external product id, saved time. No price is stored |
 | `subscription_entitlements` | Present and empty. No route inserts a paid plan |
 | `credit_ledger` | Present. No route inserts a credit |

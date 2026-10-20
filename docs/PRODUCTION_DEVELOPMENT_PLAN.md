@@ -292,12 +292,13 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 ## Phase 8 — Connect existing frontend modules to genuine services
 
-**Status:** Wardrobe, saved outfits, Discover inspirations, and outfit plans are connected for signed-in accounts. Beauty generation and family records remain in the browser.
+**Status:** Wardrobe, saved outfits, Discover inspirations, outfit plans, and family styling are connected for signed-in accounts. Beauty generation remains in the browser.
 
 **Objectives**
 
 - Move wardrobe and saved items onto the API. This part is done for authenticated customers. See `WARDROBE_INTEGRATION.md`.
-- Leave beauty generation and family-child features on the local demonstration path.
+- Family profiles and family event plans are saved for the signed-in adult. See `FAMILY_STYLING_INTEGRATION.md`. Dependent profiles cannot sign in. Demonstration family records are not imported.
+- Leave beauty generation on the local demonstration path.
 
 **Dependencies**
 

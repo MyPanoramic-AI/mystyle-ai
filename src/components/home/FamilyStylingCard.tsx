@@ -11,19 +11,21 @@ import { Users, Sparkles, ArrowRight, Palette, ShieldCheck } from 'lucide-react'
 
 interface FamilyStylingCardProps {
   onOpenFamily: () => void;
+  usesAccount?: boolean;
 }
 
-export const FamilyStylingCard: React.FC<FamilyStylingCardProps> = ({ onOpenFamily }) => {
+export const FamilyStylingCard: React.FC<FamilyStylingCardProps> = ({ onOpenFamily, usesAccount = false }) => {
   const [members, setMembers] = useState<FamilyProfile[]>(() =>
-    familyService.getFamilyMembers()
+    usesAccount ? [] : familyService.getFamilyMembers()
   );
 
   useEffect(() => {
+    if (usesAccount) return undefined;
     const unsub = familyService.subscribe(() => {
       setMembers(familyService.getFamilyMembers());
     });
     return unsub;
-  }, []);
+  }, [usesAccount]);
 
   return (
     <div className="relative rounded-3xl overflow-hidden bg-[#242326] text-white border border-[#242326]/10 shadow-sm">
@@ -85,7 +87,7 @@ export const FamilyStylingCard: React.FC<FamilyStylingCardProps> = ({ onOpenFami
 
           <div className="flex items-center gap-1.5 text-[11px] text-white/60">
             <ShieldCheck className="w-3.5 h-3.5 text-[#B49361]" />
-            <span>Private device sandbox</span>
+            <span>{usesAccount ? 'Saved with your account' : 'Private device sandbox'}</span>
           </div>
         </div>
       </div>

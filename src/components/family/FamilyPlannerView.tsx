@@ -46,6 +46,7 @@ interface FamilyPlannerViewProps {
   onSendToShop: (shoppingItems: FamilyShoppingItem[]) => void;
   onAskStylist: (prompt: string) => void;
   onOpenShoppingList: (items: FamilyShoppingItem[]) => void;
+  persistPlan?: (plan: Omit<FamilyStylePlan, 'id' | 'savedAt'> & { id?: string }) => Promise<void>;
 }
 
 export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
@@ -56,6 +57,7 @@ export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
   onSendToShop,
   onAskStylist,
   onOpenShoppingList,
+  persistPlan,
 }) => {
   // Occasion & Formality
   const [selectedOccasion, setSelectedOccasion] = useState<OccasionType>(
@@ -89,6 +91,9 @@ export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
 
   // Saved notification state
   const [savedSuccessMsg, setSavedSuccessMsg] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [eventDate, setEventDate] = useState(initialPlan?.eventDate || '');
+  const [savingPlan, setSavingPlan] = useState(false);
 
   // Active palette object
   const activePalette = useMemo(() => {
@@ -181,12 +186,14 @@ export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
     }
   };
 
-  const handleSavePlan = () => {
-    const coordinationRationale = `Harmonised ${selectedOccasion} aesthetic in ${activePalette.name} with ${selectedDirection.toLowerCase()} direction. Outfits balance complementary tones without matching identical prints.`;
+  const handleSavePlan = async () => {
+    const coordinationRationale = `Harmonised ${selectedOccasion} aesthetic in ${activePalette.name} with ${selectedDirection.toLowerCase()} direction. These are planned outfit concepts, not shop prices or purchases.`;
 
     const planToSave = {
+      id: initialPlan?.id,
       title: `${selectedOccasion} · ${activePalette.name}`,
       occasion: selectedOccasion,
+      eventDate: eventDate || undefined,
       formality,
       styleDirection: selectedDirection,
       colorPalette: activePalette,
@@ -202,19 +209,37 @@ export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
       coordinationNote: coordinationRationale,
     };
 
-    familyService.savePlan(planToSave);
-    setSavedSuccessMsg(`"${planToSave.title}" saved to your Family Plans!`);
-    setTimeout(() => setSavedSuccessMsg(null), 4000);
+    setSaveError(null);
+    setSavingPlan(true);
+    try {
+      if (persistPlan) await persistPlan(planToSave);
+      else {
+        const { id: _ignored, ...demoPlan } = planToSave;
+        familyService.savePlan(demoPlan);
+      }
+      setSavedSuccessMsg('Event plan saved.');
+      setTimeout(() => setSavedSuccessMsg(null), 4000);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save changes.');
+    } finally {
+      setSavingPlan(false);
+    }
   };
 
   const handleAskStylistCoordination = () => {
-    const prompt = `Can you provide personal styling feedback on our family look for a ${selectedOccasion}? We are using the "${activePalette.name}" palette with a ${formality} dress code for ${activeAttendeesList.map((m) => m.name).join(', ')}. How can we ensure everyone looks cohesive in group photographs?`;
+    const adultNames = activeAttendeesList.filter((member) => member.classification === 'Adult').map((member) => member.name);
+    const prompt = `Can you provide personal styling feedback on an adult family look for a ${selectedOccasion}? We are using the "${activePalette.name}" palette with a ${formality} dress code for ${adultNames.join(', ') || 'the adults attending'}. Please do not ask for or use details about children.`;
     onAskStylist(prompt);
   };
 
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
+      {saveError && (
+        <div className="p-4 rounded-2xl bg-[#9C6A61]/10 border border-[#9C6A61]/20 text-xs text-[#9C6A61]">
+          {saveError}
+        </div>
+      )}
       {savedSuccessMsg && (
         <div className="bg-emerald-800 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between text-xs animate-fadeIn">
           <span className="flex items-center gap-2">
@@ -501,6 +526,15 @@ export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
           onChange={(e) => setTotalBudgetZar(Number(e.target.value))}
           className="w-full accent-[#9C6A61] cursor-pointer mb-4"
         />
+        <label className="block text-xs text-[#5C585E] mb-4">
+          Event date
+          <input
+            type="date"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+            className="mt-1 block w-full rounded-xl border border-[#242326]/10 bg-[#FAF7F2] px-3 py-2 text-sm text-[#242326]"
+          />
+        </label>
 
         {/* Per-member budget breakdown chips */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-[#242326]/6">
@@ -537,7 +571,7 @@ export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
 
             {/* Quick Action Buttons */}
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-              <Button onClick={handleSavePlan} variant="primary" size="sm">
+              <Button onClick={() => { void handleSavePlan(); }} variant="primary" size="sm" disabled={savingPlan}>
                 <span className="flex items-center gap-1.5">
                   <Heart className="w-3.5 h-3.5" />
                   <span>Save Plan</span>

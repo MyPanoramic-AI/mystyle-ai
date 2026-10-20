@@ -85,6 +85,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {onOpenFamily && (
         <FamilyStylingCard
           onOpenFamily={onOpenFamily}
+          usesAccount={usesAccount}
         />
       )}
 
