@@ -338,4 +338,12 @@ The same lint, strict TypeScript, build, and test commands were run again and ex
 
 `npm run lint`, `npx tsc --noEmit --strict` for the app and `server/api`, and `npm run build` exited 0. `test:api` 20 passed, including the 2 beauty tests. `test:beauty` 2 passed. `test:account` 5 passed. `test:ai` 16 passed. `test:shopping` 15 passed. `test:tryon` 16 passed. The unique count is 72 because `test:api` already includes beauty, family, and wardrobe. No push and no Render deploy.
 
+## 2026-10-20 — Browser customer-journey QA
+
+**Status:** A local Chrome pass ran against an isolated API on port 4341 and Vite on port 4173. The database was a temporary directory, not `server/api/private`. Live OpenAI, Gemini, FASHN, and retailer calls stayed off. The final Playwright run was 7 passed, 0 failed, and 0 blocked. Many specified journey steps were not clicked, so the complete-journey gate stays open. Evidence is in `END_TO_END_TEST_REPORT.md`, `CUSTOMER_JOURNEY_TEST_MATRIX.md`, `UI_UX_AUDIT.md`, `KNOWN_ISSUES.md`, and `RELEASE_READINESS.md`.
+
+Two confirmed defects were corrected and retested. The header overflowed at 768px because desktop navigation started at the `md` breakpoint; it now starts at `lg`, and the bottom navigation remains until then. The wardrobe add preview and saved family concept cards rendered an empty image `src`; they now omit the image when there is no URL.
+
+`npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. The build still warns about one 909.60 kB JavaScript chunk. It no longer warns about `__dirname`. `test:api` 21 passed, including the new temporary-database config test. `test:account` 5, `test:ai` 16, `test:shopping` 15, and `test:tryon` 16 passed. Wardrobe, family, and beauty were not launched again because `test:api` already includes them. The unique automated count is 73. The 7 browser tests are additional. The production bundle did not contain the scanned provider-key prefixes. No push and no Render deploy. The application is not commercially launch-ready.
+
 

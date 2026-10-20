@@ -16,3 +16,7 @@ server/shopping/private/*
 !server/shopping/private/.gitkeep
 server/api/private/*
 !server/api/private/.gitkeep
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

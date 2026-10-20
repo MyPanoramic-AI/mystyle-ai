@@ -369,7 +369,7 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 ## Phase 10 — Privacy, security, performance, and end-to-end testing
 
-**Status:** NOT STARTED
+**Status:** IN PROGRESS as of 20 October 2026. An isolated browser pass and the regression suites ran. Export, deletion, retention, and a visual review of every screen are still open. See `END_TO_END_TEST_REPORT.md`.
 
 **Objectives**
 
@@ -490,3 +490,7 @@ Close Phase 1's Git commit, then run Phase 2. Phase 3 can start as soon as a per
 ## Update, 20 October 2026
 
 Accounts are connected, and the stylist coordinator is in `server/api` with a mock provider. Live model calls, FASHN, retailer feeds, and payments remain off. The next milestone is an approved live stylist test, described in `AI_STYLIST_LIVE_TEST_PLAN.md`. Do not treat the mock replies as a quality score for a live model.
+
+## Update, 20 October 2026 — QA
+
+Playwright now runs the React app and API in Chrome against a temporary database. Seven browser tests passed. They cover registration and sign-in, invalid registration, an onboarding skip walk, shop and try-on labelling, a mock stylist conversation, one wardrobe/family/beauty persistence and isolation path, and horizontal overflow at six widths. Discover, profile editing, outfit planning, and several negative paths were not clicked. The header overflow at 768px and empty image sources were corrected. The client chunk is still 909.60 kB. Do not start the live stylist test until the remaining browser steps are either executed or explicitly accepted as out of scope, and do not enable a paid provider while closing them.

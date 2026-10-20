@@ -39,7 +39,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       />
 
       {/* Main Content Area - mobile optimized with responsive desktop breathing room */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-28 md:pb-16">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-28 lg:pb-16">
         {children}
       </main>
 

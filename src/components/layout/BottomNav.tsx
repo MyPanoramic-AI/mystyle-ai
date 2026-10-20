@@ -23,7 +23,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onNavigate }) 
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFFFFF]/95 backdrop-blur-md border-t border-[#242326]/8 pb-safe shadow-lg"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFFFFF]/95 backdrop-blur-md border-t border-[#242326]/8 pb-safe shadow-lg"
       aria-label="Mobile Navigation"
     >
       <div className="grid grid-cols-5 items-center h-16 max-w-lg mx-auto px-2">

@@ -243,11 +243,15 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
           {/* Garment Image Preview & URL */}
           <div className="flex items-center gap-4 p-3 bg-[#F6F2EC]/50 rounded-2xl border border-[#242326]/6">
-            <img
-              src={imageUrl}
-              alt="Preview"
-              className="w-16 h-20 rounded-xl object-cover bg-white shadow-2xs border border-[#242326]/8 shrink-0"
-            />
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt="Preview"
+                className="w-16 h-20 rounded-xl object-cover bg-white shadow-2xs border border-[#242326]/8 shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-20 rounded-xl bg-white border border-[#242326]/8 shrink-0" aria-hidden="true" />
+            )}
             <div className="flex-1 min-w-0">
               <label className="text-[10px] font-mono uppercase text-[#5C585E] block mb-1">
                 Photograph URL or Upload Simulator:

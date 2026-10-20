@@ -50,7 +50,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   }
   const admin = env.API_ADMIN_TOKEN?.trim() ?? '';
   if (admin && admin.length < 20) throw new Error('API_ADMIN_TOKEN must be at least 20 characters when set.');
-  const dataDir = path.join(apiRoot, 'private');
+  const requestedDataDir = env.API_DATA_DIR?.trim() ?? '';
+  if (requestedDataDir && !onRender && !path.isAbsolute(requestedDataDir)) {
+    throw new Error('API_DATA_DIR must be an absolute path.');
+  }
+  const dataDir = !onRender && requestedDataDir ? path.resolve(requestedDataDir) : path.join(apiRoot, 'private');
   const publicOrigin = env.RENDER_EXTERNAL_URL?.replace(/\/$/, '') || null;
   const allowedOrigins = configuredOrigins(env.API_ALLOWED_ORIGINS);
   if (publicOrigin && !allowedOrigins.includes(publicOrigin)) allowedOrigins.push(publicOrigin);

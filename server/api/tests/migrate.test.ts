@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import { loadConfig } from '../src/config.js';
 import { migrate, openDatabase } from '../src/db.js';
@@ -56,4 +58,13 @@ test('health reports the local bind without a filesystem path', async () => {
   } finally {
     await api.close();
   }
+});
+
+test('a test data directory stays off the development database unless Render is set', () => {
+  const isolated = path.join(tmpdir(), 'mystyle-qa-config');
+  const local = loadConfig({ API_DATA_DIR: isolated, API_PORT: '4341' });
+  assert.equal(local.databasePath, path.join(isolated, 'mystyle.sqlite'));
+  assert.equal(local.databasePath.includes(`${path.sep}private${path.sep}`), false);
+  const hosted = loadConfig({ RENDER: 'true', API_HOST: '0.0.0.0', API_DATA_DIR: isolated });
+  assert.equal(hosted.databasePath.endsWith(`${path.sep}private${path.sep}mystyle.sqlite`), true);
 });

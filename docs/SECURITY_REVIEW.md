@@ -146,3 +146,11 @@ POPIA points that are still outstanding before a production launch: a recorded c
 ## Audit constraints observed
 
 No customer photograph was uploaded. No external AI credential was used for a live generation. `npm run clean` was not run.
+
+## QA isolation, 20 October 2026
+
+The browser suite starts its own API with an absolute `API_DATA_DIR` under the system temporary directory. A relative `API_DATA_DIR` is rejected. When `RENDER=true`, `API_DATA_DIR` is ignored and the server keeps `server/api/private`, so a test variable cannot move a Render database. The Playwright process forces `AI_PROVIDER=mock`, `AI_ALLOW_LIVE=false`, and `AI_MAX_BUDGET_USD=0`. It copies the parent environment first and then sets those values. The existing listeners on ports 3000 and 4331 were not used.
+
+In Chrome, a second account did not see the first account's wardrobe piece, family profile name, or saved beauty look. That is narrower than the API isolation tests, which also passed in this session for profiles, media, wardrobe, family, beauty, and stylist conversations. Browser checks for a wrong password, duplicate registration, a missing API, and an expired session were not run.
+
+The production client bundle was scanned for common provider-key prefixes and variable names. None were present. Cookie `Secure` is still limited to Render mode, and local development remains HTTP. Email verification, password recovery, export, and retention are unchanged and still required before a public deployment.

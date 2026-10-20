@@ -1,14 +1,18 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import {defineConfig} from 'vite';
+
+const root = path.dirname(fileURLToPath(import.meta.url));
+const apiProxy = process.env.VITE_API_PROXY || 'http://127.0.0.1:4331';
 
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(root, '.'),
       },
     },
     server: {
@@ -19,7 +23,7 @@ export default defineConfig(() => {
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:4331',
+          target: apiProxy,
           changeOrigin: false,
         },
       },
@@ -27,7 +31,7 @@ export default defineConfig(() => {
     preview: {
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:4331',
+          target: apiProxy,
           changeOrigin: false,
         },
       },

@@ -45,7 +45,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </button>
 
         {/* Zone 2: Nav Links for Desktop/Tablet (Single-line whitespace-nowrap) */}
-        <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#5C585E]">
+          <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-[#5C585E]">
           <button
             onClick={() => onNavigate('home')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${

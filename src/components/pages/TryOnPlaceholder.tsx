@@ -70,7 +70,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               Virtual Fitting Room
             </h1>
             <p className="text-xs sm:text-sm text-[#5C585E] mt-1">
-              Visualize silhouettes, lengths, and fabric drape on your actual body proportions before buying.
+              This is a preview of the fitting room. Real try-on generation is not active, and this page does not create a photograph of you.
             </p>
           </div>
         </div>
@@ -202,7 +202,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               Upload a Full-Length Photo
             </h3>
             <p className="text-xs sm:text-sm text-[#5C585E] max-w-md mt-1.5 mb-6">
-              Stand in good lighting with simple posture. Our privacy-first model will map clothing garments onto your proportions.
+              Real virtual try-on generation is not active. Choosing a photo here does not send it to a fitting service.
             </p>
 
             <div className="flex flex-wrap gap-3 justify-center">

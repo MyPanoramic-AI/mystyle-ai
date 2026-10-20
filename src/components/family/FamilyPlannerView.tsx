@@ -613,11 +613,13 @@ export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
               <div>
                 {/* Photo Header */}
                 <div className="relative aspect-[16/10] overflow-hidden bg-[#E5CDBE]/20">
-                  <img
-                    src={concept.imageUrl}
-                    alt={concept.conceptTitle}
-                    className="w-full h-full object-cover hover:scale-102 transition-transform duration-500"
-                  />
+                  {concept.imageUrl ? (
+                    <img
+                      src={concept.imageUrl}
+                      alt={concept.conceptTitle}
+                      className="w-full h-full object-cover hover:scale-102 transition-transform duration-500"
+                    />
+                  ) : null}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#242326]/80 via-transparent to-black/20" />
 
                   {/* Member Name Badge */}
