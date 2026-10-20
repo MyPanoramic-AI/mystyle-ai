@@ -6,6 +6,9 @@ export interface AiConfig {
   maxBudgetUsd: number;
   maxUserBudgetUsd: number;
   maxOutputTokens: number;
+  maxInputTokens: number;
+  thinkingBudget: number;
+  maxLiveRequests: number;
   maxInputChars: number;
   messageRateLimit: number;
   messageRateWindowMs: number;
@@ -30,6 +33,9 @@ export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
     maxBudgetUsd: numberOrNull(env.AI_MAX_BUDGET_USD) ?? 0,
     maxUserBudgetUsd: numberOrNull(env.AI_MAX_USER_BUDGET_USD) ?? 0,
     maxOutputTokens: numberOrNull(env.AI_MAX_OUTPUT_TOKENS) ?? 800,
+    maxInputTokens: numberOrNull(env.AI_MAX_INPUT_TOKENS) ?? 4000,
+    thinkingBudget: numberOrNull(env.AI_THINKING_BUDGET) ?? 0,
+    maxLiveRequests: numberOrNull(env.AI_MAX_LIVE_REQUESTS) ?? 0,
     maxInputChars: numberOrNull(env.AI_MAX_INPUT_CHARS) ?? 2000,
     messageRateLimit: numberOrNull(env.AI_MESSAGE_RATE_LIMIT) ?? 30,
     messageRateWindowMs: numberOrNull(env.AI_MESSAGE_RATE_WINDOW_MS) ?? 15 * 60 * 1000,
@@ -41,5 +47,6 @@ export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
 
 export function estimateLiveUsd(config: AiConfig): number | null {
   if (config.inputUsdPerMillion == null || config.outputUsdPerMillion == null) return null;
-  return (config.maxOutputTokens / 1_000_000) * config.outputUsdPerMillion;
+  const outputTokens = config.maxOutputTokens + Math.max(config.thinkingBudget, 0);
+  return (config.maxInputTokens / 1_000_000) * config.inputUsdPerMillion + (outputTokens / 1_000_000) * config.outputUsdPerMillion;
 }

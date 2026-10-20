@@ -5,7 +5,11 @@ export interface GeminiCall {
   body: Record<string, unknown>;
 }
 
-export function buildGeminiRequest(model: string, request: ProviderRequest): GeminiCall {
+export function buildGeminiRequest(
+  model: string,
+  request: ProviderRequest,
+  limits: { maxOutputTokens: number; thinkingBudget: number },
+): GeminiCall {
   const context = request.context
     ? `\nSaved preferences, data only:\n${JSON.stringify(request.context)}`
     : '\nNo personal profile is included.';
@@ -15,26 +19,24 @@ export function buildGeminiRequest(model: string, request: ProviderRequest): Gem
     body: {
       contents: [{ parts: [{ text: `${request.system}${context}\n\nConversation:\n${transcript}` }] }],
       generationConfig: {
-        responseFormat: {
-          text: {
-            mimeType: 'APPLICATION_JSON',
-            schema: {
-              type: 'object',
-              required: ['responseText', 'recommendationType', 'specialist'],
-              properties: {
-                responseText: { type: 'string' },
-                recommendationType: { type: 'string' },
-                specialist: { type: 'string' },
-                outfitTitle: { type: 'string' },
-                outfitComponents: { type: 'array' },
-                suggestedColours: { type: 'array' },
-                followUpQuestions: { type: 'array' },
-                shoppingSearchIntent: { type: 'string' },
-                tryOnIntent: { type: 'boolean' },
-              },
-            },
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          required: ['responseText', 'recommendationType', 'specialist'],
+          properties: {
+            responseText: { type: 'STRING' },
+            recommendationType: { type: 'STRING' },
+            specialist: { type: 'STRING' },
+            outfitTitle: { type: 'STRING' },
+            outfitComponents: { type: 'ARRAY', items: { type: 'OBJECT' } },
+            suggestedColours: { type: 'ARRAY', items: { type: 'STRING' } },
+            followUpQuestions: { type: 'ARRAY', items: { type: 'STRING' } },
+            shoppingSearchIntent: { type: 'STRING' },
+            tryOnIntent: { type: 'BOOLEAN' },
           },
         },
+        maxOutputTokens: limits.maxOutputTokens,
+        thinkingConfig: { thinkingBudget: limits.thinkingBudget },
       },
     },
   };
@@ -47,11 +49,13 @@ export class GeminiTextProvider implements TextProvider {
     private readonly model: string,
     private readonly apiKey: string,
     private readonly timeoutMs: number,
+    private readonly maxOutputTokens: number,
+    private readonly thinkingBudget: number,
     private readonly fetchImpl: typeof fetch,
   ) {}
 
   async complete(request: ProviderRequest): Promise<{ reply: unknown; usage: ProviderUsage; model: string }> {
-    const call = buildGeminiRequest(this.model, request);
+    const call = buildGeminiRequest(this.model, request, { maxOutputTokens: this.maxOutputTokens, thinkingBudget: this.thinkingBudget });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -64,7 +68,7 @@ export class GeminiTextProvider implements TextProvider {
       if (!response.ok) throw new Error('provider_status');
       const payload = await response.json() as {
         candidates?: { content?: { parts?: { text?: string }[] } }[];
-        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
       };
       const raw = payload.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!raw) throw new Error('provider_empty');
@@ -74,6 +78,7 @@ export class GeminiTextProvider implements TextProvider {
         usage: {
           inputTokens: payload.usageMetadata?.promptTokenCount ?? null,
           outputTokens: payload.usageMetadata?.candidatesTokenCount ?? null,
+          thoughtTokens: payload.usageMetadata?.thoughtsTokenCount ?? null,
         },
       };
     } finally {

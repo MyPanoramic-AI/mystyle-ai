@@ -287,7 +287,7 @@ Recorded in `docs/FRONTEND_INTEGRATION_TEST_REPORT.md`. `test:account` 5 passed.
 
 ## 2026-10-20 — Stylist coordinator
 
-**Status:** The signed-in My Stylist screen uses `server/api`. The default provider is a local mock and is labelled as not a live model. Live Gemini configuration exists and is off. Shopping, try-on, beauty, and wardrobe specialists are not connected. Prompt 5 was already committed as `a76ff06`. This stylist work is not committed.
+**Status:** The signed-in My Stylist screen uses `server/api`. The default provider is a local mock and is labelled as not a live model. Live Gemini configuration exists and is off. Shopping, try-on, beauty, and wardrobe specialists are not connected. Prompt 5 was already committed as `a76ff06`. The coordinator was committed locally as `de5dcd2` and has not been pushed.
 
 ### Tests
 
@@ -297,5 +297,13 @@ Recorded in `docs/FRONTEND_INTEGRATION_TEST_REPORT.md`. `test:account` 5 passed.
 
 - A live model test needs the owner's provider, model, price, and budget approval. See `AI_STYLIST_LIVE_TEST_PLAN.md`.
 - Do not push this change while Render auto-deploy is on, unless a new deployment is requested.
+
+## 2026-10-20 — Live Gemini test prepared, not run
+
+**Status:** Waiting for approval. No Gemini request was sent. `server/api/.env` selects `gemini-2.5-flash`, keeps `AI_ALLOW_LIVE=false`, and keeps both budgets at 0. The Gemini key is not configured. The FASHN key was not copied.
+
+The adapter now sends `responseMimeType`, a JSON schema, `maxOutputTokens` 1024, and `thinkingBudget` 0. It allows one Gemini attempt and blocks a second overlapping call. The proposed ceiling is US$0.10. That ceiling is not guaranteed if Google bills thinking tokens beyond the requested budget. Standard paid prices checked on this date are US$0.30 per 1M input text tokens and US$2.50 per 1M output tokens, including thinking tokens.
+
+`lint:api` exited 0 and `test:ai` passed 13 tests after this change. No deployment and no push.
 
 

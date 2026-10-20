@@ -36,8 +36,8 @@ No live model was called. The Gemini success test uses a local fake HTTP respons
 - A synthetic successful Gemini body stored as `source: live` with cost status `estimate`.
 - All 26 evaluation prompts through the mock path or an unconnected specialist.
 
-## Not tested
+## Prompt 6.1 preparation, 20 October 2026
 
-- A real Gemini or OpenAI request.
-- Clicking through Home, onboarding, profile, and the stylist in a browser.
-- Live token prices. The estimate in the synthetic test uses rates supplied by the test, not a pricing page.
+No live Gemini request was made. `npm run lint:api` exited 0. `npm run test:ai` then passed 13 tests, including a local proof that a second overlapping live call does not reach the provider. The full suite listed above was run before that adapter change and is recorded with the coordinator commit `de5dcd2`.
+
+`gemini-2.5-flash` is still documented as stable. Standard paid pricing checked the same day is US$0.30 per 1M input text tokens and US$2.50 per 1M output tokens, including thinking tokens. `GEMINI_API_KEY` is not configured. Both development budgets remain 0. The proposed one-test ceiling of US$0.10 is not active, and the code cannot guarantee that Google will stay inside it if thinking tokens overflow.

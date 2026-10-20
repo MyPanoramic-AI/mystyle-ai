@@ -32,6 +32,19 @@ function stamp(now: number): string {
   return new Date(now).toISOString();
 }
 
+function liveAttempts(db: Sql): number {
+  const row = db.prepare(`SELECT COUNT(*) AS attempts FROM ai_usage WHERE provider = 'gemini' AND request_status IN ('succeeded', 'failed')`).get() as { attempts: number };
+  return Number(row.attempts);
+}
+
+let liveQueue: Promise<void> = Promise.resolve();
+
+function withLiveLock<T>(work: () => Promise<T>): Promise<T> {
+  const run = liveQueue.then(work, work);
+  liveQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+
 function spent(db: Sql, userId?: string): number {
   const row = userId
     ? db.prepare(`SELECT COALESCE(SUM(cost_usd), 0) AS spent FROM ai_usage WHERE user_id = ? AND request_status = 'succeeded'`).get(userId) as { spent: number }
@@ -41,7 +54,7 @@ function spent(db: Sql, userId?: string): number {
 
 function providerFor(config: AiConfig, fetchImpl: typeof fetch): TextProvider {
   if (config.provider === 'mock') return new MockTextProvider();
-  return new GeminiTextProvider(config.model ?? '', config.apiKey ?? '', config.timeoutMs, fetchImpl);
+  return new GeminiTextProvider(config.model ?? '', config.apiKey ?? '', config.timeoutMs, config.maxOutputTokens, config.thinkingBudget, fetchImpl);
 }
 
 function recordUsage(db: Sql, userId: string, conversationId: string | null, operation: string, draft: UsageDraft, now: number): void {
@@ -53,10 +66,10 @@ function recordUsage(db: Sql, userId: string, conversationId: string | null, ope
 }
 
 function liveCost(config: AiConfig, usage: ProviderUsage): { costUsd: number; costStatus: 'estimate' } {
-  if (usage.inputTokens == null || usage.outputTokens == null || config.inputUsdPerMillion == null || config.outputUsdPerMillion == null) {
+  if (usage.inputTokens == null || usage.outputTokens == null || usage.thoughtTokens == null || config.inputUsdPerMillion == null || config.outputUsdPerMillion == null) {
     throw new ApiError('ai_unpriced', 'The provider response did not include billable usage.', 502);
   }
-  const costUsd = (usage.inputTokens / 1_000_000) * config.inputUsdPerMillion + (usage.outputTokens / 1_000_000) * config.outputUsdPerMillion;
+  const costUsd = (usage.inputTokens / 1_000_000) * config.inputUsdPerMillion + ((usage.outputTokens + usage.thoughtTokens) / 1_000_000) * config.outputUsdPerMillion;
   return { costUsd, costStatus: 'estimate' };
 }
 
@@ -82,12 +95,12 @@ function safeFallback(): StylistReply {
 
 async function produce(runtime: StylistRuntime, text: string, history: ProviderMessage[], context: StyleContext | null, userId: string, conversationId: string): Promise<{ reply: StylistReply; draft: UsageDraft }> {
   const specialist = routeSpecialist(text);
-  if (specialist === 'shopping') return { reply: shoppingUnavailable(text), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null }, costUsd: 0, costStatus: 'zero' } };
-  if (specialist === 'try_on') return { reply: tryOnUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null }, costUsd: 0, costStatus: 'zero' } };
-  if (specialist === 'beauty') return { reply: beautyUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null }, costUsd: 0, costStatus: 'zero' } };
-  if (specialist === 'wardrobe') return { reply: wardrobeUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null }, costUsd: 0, costStatus: 'zero' } };
+  if (specialist === 'shopping') return { reply: shoppingUnavailable(text), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
+  if (specialist === 'try_on') return { reply: tryOnUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
+  if (specialist === 'beauty') return { reply: beautyUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
+  if (specialist === 'wardrobe') return { reply: wardrobeUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
   const provider = providerFor(runtime.config, runtime.fetchImpl ?? fetch);
-  if (runtime.config.provider === 'gemini') assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId));
+  if (runtime.config.provider === 'gemini') assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId), liveAttempts(runtime.db));
   try {
     const completed = await provider.complete({ system: STYLE_SYSTEM_PROMPT, messages: [...history, { role: 'user', text }], context });
     const validated = validateStylistReply(completed.reply, runtime.config.provider === 'mock' ? 'mock' : 'live');
@@ -102,12 +115,12 @@ async function produce(runtime: StylistRuntime, text: string, history: ProviderM
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.code === 'ai_unpriced') {
-        recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'failed', provider: provider.id, model: runtime.config.model, usage: { inputTokens: null, outputTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
+        recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'failed', provider: provider.id, model: runtime.config.model, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
       }
       throw error;
     }
     const aborted = error instanceof Error && error.name === 'AbortError';
-    recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'failed', provider: provider.id, model: runtime.config.model, usage: { inputTokens: null, outputTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
+    recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'failed', provider: provider.id, model: runtime.config.model, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
     throw new ApiError(aborted ? 'ai_timeout' : 'ai_provider_error', aborted ? 'The stylist took too long to reply.' : 'The stylist could not complete that reply.', aborted ? 504 : 502);
   }
 }
@@ -119,7 +132,7 @@ function contextFor(db: Sql, userId: string): StyleContext | null {
 }
 
 export function stylistAvailability(config: AiConfig): Record<string, unknown> {
-  const liveReady = config.provider === 'gemini' && config.allowLive && Boolean(config.apiKey) && Boolean(config.model) && config.inputUsdPerMillion != null && config.outputUsdPerMillion != null && config.maxBudgetUsd > 0 && config.maxUserBudgetUsd > 0;
+  const liveReady = config.provider === 'gemini' && config.allowLive && config.maxLiveRequests > 0 && Boolean(config.apiKey) && Boolean(config.model) && config.inputUsdPerMillion != null && config.outputUsdPerMillion != null && config.maxBudgetUsd > 0 && config.maxUserBudgetUsd > 0;
   return {
     provider: config.provider,
     liveEnabled: liveReady,
@@ -199,30 +212,34 @@ export async function sendMessage(runtime: StylistRuntime, userId: string, conve
   }
   if (!runtime.limiter.consume(`stylist:${userId}`)) throw new ApiError('rate_limited', 'Too many stylist messages. Wait and try again.', 429);
   const specialist = routeSpecialist(content);
-  if (specialist === 'style' && runtime.config.provider === 'gemini') {
-    try {
-      assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId));
-    } catch (error) {
-      if (error instanceof ApiError) recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'blocked', provider: 'gemini', model: runtime.config.model, usage: { inputTokens: null, outputTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
-      throw error;
+  const deliver = async () => {
+    if (specialist === 'style' && runtime.config.provider === 'gemini') {
+      try {
+        assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId), liveAttempts(runtime.db));
+      } catch (error) {
+        if (error instanceof ApiError) recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'blocked', provider: 'gemini', model: runtime.config.model, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
+        throw error;
+      }
     }
-  }
-  const history = (runtime.db.prepare('SELECT role, content FROM ai_messages WHERE conversation_id = ? ORDER BY created_at, id').all(conversationId) as { role: 'user' | 'assistant'; content: string }[])
-    .slice(-8)
-    .map((message) => ({ role: message.role, text: message.content }));
-  const created = stamp(runtime.now());
-  runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(randomUUID(), conversationId, 'user', content, null, null, null, null, created);
-  const context = contextFor(runtime.db, userId);
-  const produced = await produce(runtime, content, history, context, userId, conversationId);
-  const assistantId = randomUUID();
-  const answered = stamp(runtime.now());
-  runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-    assistantId, conversationId, 'assistant', produced.reply.responseText, JSON.stringify(produced.reply), produced.draft.provider, produced.draft.model, idempotencyKey, answered,
-  );
-  if (produced.draft.status === 'succeeded' || produced.draft.status === 'failed') {
-    recordUsage(runtime.db, userId, conversationId, 'stylist_message', produced.draft, runtime.now());
-  }
-  const title = content.slice(0, 60);
-  runtime.db.prepare(`UPDATE ai_conversations SET last_activity_at = ?, title = CASE WHEN title = 'New styling session' THEN ? ELSE title END WHERE id = ?`).run(answered, title, conversationId);
-  return { id: assistantId, role: 'assistant', content: produced.reply.responseText, recommendation: produced.reply, provider: produced.draft.provider, model: produced.draft.model, createdAt: answered, duplicate: false };
+    const history = (runtime.db.prepare('SELECT role, content FROM ai_messages WHERE conversation_id = ? ORDER BY created_at, id').all(conversationId) as { role: 'user' | 'assistant'; content: string }[])
+      .slice(-8)
+      .map((message) => ({ role: message.role, text: message.content }));
+    const created = stamp(runtime.now());
+    runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(randomUUID(), conversationId, 'user', content, null, null, null, null, created);
+    const context = contextFor(runtime.db, userId);
+    const produced = await produce(runtime, content, history, context, userId, conversationId);
+    const assistantId = randomUUID();
+    const answered = stamp(runtime.now());
+    runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+      assistantId, conversationId, 'assistant', produced.reply.responseText, JSON.stringify(produced.reply), produced.draft.provider, produced.draft.model, idempotencyKey, answered,
+    );
+    if (produced.draft.status === 'succeeded' || produced.draft.status === 'failed') {
+      recordUsage(runtime.db, userId, conversationId, 'stylist_message', produced.draft, runtime.now());
+    }
+    const title = content.slice(0, 60);
+    runtime.db.prepare(`UPDATE ai_conversations SET last_activity_at = ?, title = CASE WHEN title = 'New styling session' THEN ? ELSE title END WHERE id = ?`).run(answered, title, conversationId);
+    return { id: assistantId, role: 'assistant', content: produced.reply.responseText, recommendation: produced.reply, provider: produced.draft.provider, model: produced.draft.model, createdAt: answered, duplicate: false };
+  };
+  if (specialist === 'style' && runtime.config.provider === 'gemini') return withLiveLock(deliver);
+  return deliver();
 }

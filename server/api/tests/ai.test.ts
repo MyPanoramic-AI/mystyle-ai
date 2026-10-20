@@ -81,10 +81,13 @@ test('the Gemini request matches the documented structured-output contract and i
     system: 'Be a stylist.',
     messages: [{ role: 'user', text: 'What works with navy?' }],
     context: null,
-  });
+  }, { maxOutputTokens: 1024, thinkingBudget: 0 });
   assert.equal(call.url, 'https://generativelanguage.googleapis.com/v1beta/models/configured-model:generateContent');
-  const body = call.body as { generationConfig: { responseFormat: { text: { mimeType: string } } } };
-  assert.equal(body.generationConfig.responseFormat.text.mimeType, 'APPLICATION_JSON');
+  const body = call.body as { tools?: unknown; generationConfig: { responseMimeType: string; maxOutputTokens: number; thinkingConfig: { thinkingBudget: number } } };
+  assert.equal(body.generationConfig.responseMimeType, 'application/json');
+  assert.equal(body.generationConfig.maxOutputTokens, 1024);
+  assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 0);
+  assert.equal(body.tools, undefined);
   assert.equal(call.url.includes('generativelanguage.googleapis.com'), true);
 });
 
@@ -222,7 +225,7 @@ test('live calls stay blocked without a credential, price, or remaining budget',
   }) as typeof fetch;
   const api = await startApi({}, {
     aiFetch,
-    aiConfig: aiConfig({ provider: 'gemini', allowLive: true, apiKey: null, model: 'configured-model', maxBudgetUsd: 1, maxUserBudgetUsd: 1, inputUsdPerMillion: 1, outputUsdPerMillion: 1 }),
+    aiConfig: aiConfig({ provider: 'gemini', allowLive: true, apiKey: null, model: 'configured-model', maxBudgetUsd: 1, maxUserBudgetUsd: 1, maxLiveRequests: 1, inputUsdPerMillion: 1, outputUsdPerMillion: 1 }),
   });
   try {
     const ada = await session(api.base, 'ada-live@example.com');
@@ -248,7 +251,7 @@ test('a zero budget blocks a priced live call before the provider is contacted',
   }) as typeof fetch;
   const api = await startApi({}, {
     aiFetch,
-    aiConfig: aiConfig({ provider: 'gemini', allowLive: true, apiKey: 'server-only-test-key', model: 'configured-model', maxBudgetUsd: 0, maxUserBudgetUsd: 0, inputUsdPerMillion: 1, outputUsdPerMillion: 1 }),
+    aiConfig: aiConfig({ provider: 'gemini', allowLive: true, apiKey: 'server-only-test-key', model: 'configured-model', maxBudgetUsd: 0, maxUserBudgetUsd: 0, maxLiveRequests: 1, inputUsdPerMillion: 1, outputUsdPerMillion: 1 }),
   });
   try {
     const ada = await session(api.base, 'ada-budget@example.com');
@@ -274,7 +277,7 @@ test('provider failures, timeouts, and invalid structured output do not leak cre
   const responses: { status: number; body: string; abort?: boolean }[] = [
     { status: 500, body: secret },
     { status: 200, body: '', abort: true },
-    { status: 200, body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"specialist":"style"}' }] } }], usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 4 } }) },
+    { status: 200, body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"specialist":"style"}' }] } }], usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 4, thoughtsTokenCount: 0 } }) },
   ];
   const aiFetch = (async (_url: string, init?: RequestInit) => {
     const next = responses.shift();
@@ -294,6 +297,7 @@ test('provider failures, timeouts, and invalid structured output do not leak cre
       model: 'configured-model',
       maxBudgetUsd: 5,
       maxUserBudgetUsd: 5,
+      maxLiveRequests: 5,
       inputUsdPerMillion: 1,
       outputUsdPerMillion: 1,
       timeoutMs: 30,
@@ -345,7 +349,7 @@ test('a synthetic Gemini response records an estimated cost and is not a network
     };
     return new Response(JSON.stringify({
       candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] } }],
-      usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 50 },
+      usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 50, thoughtsTokenCount: 0 },
     }), { status: 200 });
   }) as typeof fetch;
   const api = await startApi({}, {
@@ -357,6 +361,7 @@ test('a synthetic Gemini response records an estimated cost and is not a network
       model: 'configured-model',
       maxBudgetUsd: 5,
       maxUserBudgetUsd: 5,
+      maxLiveRequests: 1,
       inputUsdPerMillion: 1,
       outputUsdPerMillion: 2,
       maxOutputTokens: 100,
@@ -378,6 +383,49 @@ test('a synthetic Gemini response records an estimated cost and is not a network
     const ledger = await usage.json() as { entries: { costStatus: string; costUsd: number }[] };
     assert.equal(ledger.entries[0]?.costStatus, 'estimate');
     assert.ok(Math.abs((ledger.entries[0]?.costUsd ?? 0) - 0.0002) < 0.0000001);
+  } finally {
+    await api.close();
+  }
+});
+
+test('a second overlapping live call does not reach Gemini', async () => {
+  let calls = 0;
+  const reply = { responseText: 'A navy shirt with ivory trousers.', recommendationType: 'style_suggestion', specialist: 'style' };
+  const aiFetch = (async () => {
+    calls += 1;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    return new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] } }],
+      usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 10, thoughtsTokenCount: 0 },
+    }), { status: 200 });
+  }) as typeof fetch;
+  const api = await startApi({}, {
+    aiFetch,
+    aiConfig: aiConfig({
+      provider: 'gemini',
+      allowLive: true,
+      apiKey: 'server-only-test-key',
+      model: 'configured-model',
+      maxBudgetUsd: 5,
+      maxUserBudgetUsd: 5,
+      maxLiveRequests: 1,
+      inputUsdPerMillion: 1,
+      outputUsdPerMillion: 1,
+    }),
+  });
+  try {
+    const ada = await session(api.base, 'ada-once@example.com');
+    const created = await fetch(`${api.base}/api/stylist/conversations`, { method: 'POST', headers: authHeaders(ada.cookie, ada.body.csrfToken) });
+    const conversation = await created.json() as { id: string };
+    const send = (text: string) => fetch(`${api.base}/api/stylist/conversations/${conversation.id}/messages`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ text }),
+    });
+    const results = await Promise.all([send('What should I wear to a wedding?'), send('Help me dress professionally without looking boring.')]);
+    const statuses = (await Promise.all(results.map((result) => result.status))).sort((left, right) => left - right);
+    assert.deepEqual(statuses, [201, 429]);
+    assert.equal(calls, 1);
   } finally {
     await api.close();
   }
