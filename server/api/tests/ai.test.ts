@@ -4,6 +4,7 @@ import { loadAiConfig } from '../src/ai/aiConfig.js';
 import { minimiseProfile } from '../src/ai/context.js';
 import { EVALUATION_PROMPTS } from '../src/ai/evaluationPrompts.js';
 import { buildGeminiRequest } from '../src/ai/geminiProvider.js';
+import { buildOpenAiRequest } from '../src/ai/openaiProvider.js';
 import { MockTextProvider } from '../src/ai/mockProvider.js';
 import { validateStylistReply } from '../src/ai/schema.js';
 import { routeSpecialist } from '../src/ai/specialists.js';
@@ -428,6 +429,205 @@ test('a second overlapping live call does not reach Gemini', async () => {
     assert.equal(calls, 1);
   } finally {
     await api.close();
+  }
+});
+
+test('the OpenAI request uses the Responses API and does not enable tools', () => {
+  const call = buildOpenAiRequest('gpt-5-mini', {
+    system: 'Be a stylist.',
+    messages: [{ role: 'user', text: 'What works with navy?' }],
+    context: null,
+  }, 1024);
+  const body = call.body as { store: boolean; tools?: unknown; max_output_tokens: number; text: { format: { type: string; strict: boolean } } };
+  assert.equal(call.url, 'https://api.openai.com/v1/responses');
+  assert.equal(body.store, false);
+  assert.equal(body.tools, undefined);
+  assert.equal(body.max_output_tokens, 1024);
+  assert.equal(body.text.format.type, 'json_schema');
+  assert.equal(body.text.format.strict, true);
+});
+
+function openAiReply() {
+  return {
+    responseText: 'A navy shirt with black trousers and ivory shoes.',
+    recommendationType: 'style_suggestion',
+    specialist: 'style',
+    availability: 'ready',
+    outfitTitle: 'Dinner',
+    outfitComponents: [{ name: 'Shirt', category: 'tops', colour: 'navy', notes: 'Breathable' }],
+    suggestedColours: ['navy', 'ivory'],
+    accessories: [],
+    budgetGuidance: null,
+    occasion: 'Dinner',
+    followUpQuestions: [],
+    shoppingSearchIntent: null,
+    tryOnIntent: false,
+    savedLookIntent: false,
+  };
+}
+
+function openAiPayload(text: string) {
+  return JSON.stringify({
+    output: [{ content: [{ type: 'output_text', text }] }],
+    usage: { input_tokens: 100, output_tokens: 50, input_tokens_details: { cached_tokens: 0 }, output_tokens_details: { reasoning_tokens: 0 } },
+  });
+}
+
+test('OpenAI failures stay local and a valid reply records usage', async () => {
+  const secret = 'server-only-test-key';
+  const responses = [
+    { status: 401, body: secret },
+    { status: 429, body: 'slow down' },
+    { status: 200, body: '', abort: true },
+    { status: 200, body: openAiPayload('{"specialist":"style","price":"R99"}') },
+    { status: 200, body: openAiPayload(JSON.stringify(openAiReply())) },
+  ];
+  let calls = 0;
+  const aiFetch = (async (_url: string, init?: RequestInit) => {
+    calls += 1;
+    const next = responses.shift();
+    if (next?.abort) {
+      return await new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+      });
+    }
+    return new Response(next?.body ?? '', { status: next?.status ?? 500 });
+  }) as typeof fetch;
+  const api = await startApi({}, {
+    aiFetch,
+    aiConfig: aiConfig({
+      provider: 'openai',
+      allowLive: true,
+      apiKey: secret,
+      model: 'gpt-5-mini',
+      maxBudgetUsd: 5,
+      maxUserBudgetUsd: 5,
+      maxLiveRequests: 5,
+      inputUsdPerMillion: 1,
+      outputUsdPerMillion: 2,
+      timeoutMs: 30,
+    }),
+  });
+  try {
+    const ada = await session(api.base, 'ada-openai@example.com');
+    const created = await fetch(`${api.base}/api/stylist/conversations`, { method: 'POST', headers: authHeaders(ada.cookie, ada.body.csrfToken) });
+    const conversation = await created.json() as { id: string };
+    const send = (text: string, key: string) => fetch(`${api.base}/api/stylist/conversations/${conversation.id}/messages`, {
+      method: 'POST',
+      headers: { ...authHeaders(ada.cookie, ada.body.csrfToken), 'x-idempotency-key': key },
+      body: JSON.stringify({ text }),
+    });
+    const unauthorised = await send('What should I wear to a wedding?', 'openai-auth-key1');
+    const unauthorisedBody = await unauthorised.text();
+    assert.equal(unauthorised.status, 502);
+    assert.equal(unauthorisedBody.includes(secret), false);
+    assert.equal(unauthorisedBody.includes('ai_provider_auth'), true);
+    const limited = await send('Help me dress professionally without looking boring.', 'openai-rate-key1');
+    const limitedBody = await limited.json() as { code: string };
+    assert.equal(limited.status, 429);
+    assert.equal(limitedBody.code, 'ai_provider_rate_limited');
+    const timed = await send('What colours work well with navy blue?', 'openai-time-key1');
+    assert.equal(timed.status, 504);
+    const invalid = await send('Put together an outfit for a summer birthday party.', 'openai-bad-key01');
+    const invalidBody = await invalid.json() as { message: { recommendation: { recommendationType: string; outfitComponents: unknown[] } } };
+    assert.equal(invalid.status, 201);
+    assert.equal(invalidBody.message.recommendation.recommendationType, 'clarification');
+    assert.deepEqual(invalidBody.message.recommendation.outfitComponents, []);
+    const before = calls;
+    const sent = await send('I want a smart-casual look for work.', 'openai-good-key1');
+    const body = await sent.json() as { message: { recommendation: { source: string; responseText: string } } };
+    assert.equal(sent.status, 201);
+    assert.equal(body.message.recommendation.source, 'live');
+    assert.equal(body.message.recommendation.responseText.includes('http'), false);
+    const repeat = await send('I want a smart-casual look for work.', 'openai-good-key1');
+    const repeated = await repeat.json() as { message: { duplicate: boolean } };
+    assert.equal(repeated.message.duplicate, true);
+    assert.equal(calls, before + 1);
+    const usage = await fetch(`${api.base}/api/stylist/usage`, { headers: { cookie: ada.cookie } });
+    const ledger = await usage.json() as { entries: { provider: string; costStatus: string; costUsd: number | null; durationMs: number | null; requestStatus: string }[] };
+    const priced = ledger.entries.find((entry) => entry.requestStatus === 'succeeded' && entry.provider === 'openai');
+    assert.equal(priced?.costStatus, 'estimate');
+    assert.ok(Math.abs((priced?.costUsd ?? 0) - 0.0002) < 0.0000001);
+    assert.equal(typeof priced?.durationMs, 'number');
+  } finally {
+    await api.close();
+  }
+});
+
+test('OpenAI stays off without a key or budget and omits private profile fields', async () => {
+  let calls = 0;
+  let captured = '';
+  const aiFetch = (async (_url: string, init?: RequestInit) => {
+    calls += 1;
+    captured = String(init?.body ?? '');
+    return new Response(openAiPayload(JSON.stringify(openAiReply())), { status: 200 });
+  }) as typeof fetch;
+  const blocked = await startApi({}, {
+    aiFetch,
+    aiConfig: aiConfig({ provider: 'openai', allowLive: true, apiKey: null, model: 'gpt-5-mini', maxBudgetUsd: 1, maxUserBudgetUsd: 1, maxLiveRequests: 1, inputUsdPerMillion: 0.25, outputUsdPerMillion: 2 }),
+  });
+  try {
+    const ada = await session(blocked.base, 'ada-openai-key@example.com');
+    const created = await fetch(`${blocked.base}/api/stylist/conversations`, { method: 'POST', headers: authHeaders(ada.cookie, ada.body.csrfToken) });
+    const conversation = await created.json() as { id: string };
+    const missing = await fetch(`${blocked.base}/api/stylist/conversations/${conversation.id}/messages`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ text: 'What should I wear to a wedding?' }),
+    });
+    assert.equal(missing.status, 503);
+    assert.equal(calls, 0);
+  } finally {
+    await blocked.close();
+  }
+  const priced = await startApi({}, {
+    aiFetch,
+    aiConfig: aiConfig({ provider: 'openai', allowLive: true, apiKey: 'server-only-test-key', model: 'gpt-5-mini', maxBudgetUsd: 0, maxUserBudgetUsd: 0, maxLiveRequests: 1, inputUsdPerMillion: 0.25, outputUsdPerMillion: 2 }),
+  });
+  try {
+    const ada = await session(priced.base, 'ada-openai-budget@example.com');
+    await fetch(`${priced.base}/api/profile`, {
+      method: 'PUT',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ displayName: 'Ada', measurements: { heightCm: 168 } }),
+    });
+    const created = await fetch(`${priced.base}/api/stylist/conversations`, { method: 'POST', headers: authHeaders(ada.cookie, ada.body.csrfToken) });
+    const conversation = await created.json() as { id: string };
+    const over = await fetch(`${priced.base}/api/stylist/conversations/${conversation.id}/messages`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ text: 'What should I wear to a wedding?' }),
+    });
+    assert.equal(over.status, 429);
+    assert.equal(calls, 0);
+  } finally {
+    await priced.close();
+  }
+  calls = 0;
+  const allowed = await startApi({}, {
+    aiFetch,
+    aiConfig: aiConfig({ provider: 'openai', allowLive: true, apiKey: 'server-only-test-key', model: 'gpt-5-mini', maxBudgetUsd: 5, maxUserBudgetUsd: 5, maxLiveRequests: 1, inputUsdPerMillion: 0.25, outputUsdPerMillion: 2 }),
+  });
+  try {
+    const ada = await session(allowed.base, 'ada-openai-private@example.com');
+    await fetch(`${allowed.base}/api/profile`, {
+      method: 'PUT',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ displayName: 'Ada', measurements: { heightCm: 168 } }),
+    });
+    const created = await fetch(`${allowed.base}/api/stylist/conversations`, { method: 'POST', headers: authHeaders(ada.cookie, ada.body.csrfToken) });
+    const conversation = await created.json() as { id: string };
+    const sent = await fetch(`${allowed.base}/api/stylist/conversations/${conversation.id}/messages`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ text: 'What should I wear to a wedding?' }),
+    });
+    assert.equal(sent.status, 201);
+    assert.equal(captured.includes('168'), false);
+    assert.equal(captured.includes('Ada'), false);
+    assert.equal(calls, 1);
+  } finally {
+    await allowed.close();
   }
 });
 

@@ -1,6 +1,6 @@
 # AI Stylist Live Test Plan
 
-Date: 20 October 2026. Status: prepared, waiting for approval. No live Gemini request has been sent.
+Date: 20 October 2026. Status: inactive. Prompt 6.2 selected OpenAI as the preferred provider. This Gemini plan must not be used for the next live test. No live Gemini request has been sent.
 
 ## Prepared request
 

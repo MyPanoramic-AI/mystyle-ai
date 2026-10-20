@@ -1,6 +1,6 @@
 export interface AiConfig {
   allowLive: boolean;
-  provider: 'mock' | 'gemini';
+  provider: 'mock' | 'gemini' | 'openai';
   model: string | null;
   apiKey: string | null;
   maxBudgetUsd: number;
@@ -15,6 +15,7 @@ export interface AiConfig {
   timeoutMs: number;
   inputUsdPerMillion: number | null;
   outputUsdPerMillion: number | null;
+  cachedInputUsdPerMillion: number | null;
 }
 
 function numberOrNull(raw: string | undefined): number | null {
@@ -24,12 +25,13 @@ function numberOrNull(raw: string | undefined): number | null {
 }
 
 export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
-  const provider = env.AI_PROVIDER === 'gemini' ? 'gemini' : 'mock';
+  const provider = env.AI_PROVIDER === 'openai' ? 'openai' : env.AI_PROVIDER === 'gemini' ? 'gemini' : 'mock';
+  const apiKey = provider === 'openai' ? env.OPENAI_API_KEY : provider === 'gemini' ? env.GEMINI_API_KEY : null;
   return {
     allowLive: env.AI_ALLOW_LIVE === 'true',
     provider,
     model: env.AI_MODEL?.trim() || null,
-    apiKey: env.GEMINI_API_KEY?.trim() || null,
+    apiKey: apiKey?.trim() || null,
     maxBudgetUsd: numberOrNull(env.AI_MAX_BUDGET_USD) ?? 0,
     maxUserBudgetUsd: numberOrNull(env.AI_MAX_USER_BUDGET_USD) ?? 0,
     maxOutputTokens: numberOrNull(env.AI_MAX_OUTPUT_TOKENS) ?? 800,
@@ -42,11 +44,12 @@ export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
     timeoutMs: numberOrNull(env.AI_TIMEOUT_MS) ?? 20_000,
     inputUsdPerMillion: numberOrNull(env.AI_INPUT_USD_PER_MILLION),
     outputUsdPerMillion: numberOrNull(env.AI_OUTPUT_USD_PER_MILLION),
+    cachedInputUsdPerMillion: numberOrNull(env.AI_CACHED_INPUT_USD_PER_MILLION),
   };
 }
 
 export function estimateLiveUsd(config: AiConfig): number | null {
   if (config.inputUsdPerMillion == null || config.outputUsdPerMillion == null) return null;
-  const outputTokens = config.maxOutputTokens + Math.max(config.thinkingBudget, 0);
+  const outputTokens = config.provider === 'gemini' ? config.maxOutputTokens + Math.max(config.thinkingBudget, 0) : config.maxOutputTokens;
   return (config.maxInputTokens / 1_000_000) * config.inputUsdPerMillion + (outputTokens / 1_000_000) * config.outputUsdPerMillion;
 }

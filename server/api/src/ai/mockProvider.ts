@@ -16,11 +16,19 @@ export interface ProviderUsage {
   inputTokens: number | null;
   outputTokens: number | null;
   thoughtTokens: number | null;
+  cachedTokens?: number | null;
+}
+
+export interface ProviderResult {
+  reply: unknown;
+  usage: ProviderUsage;
+  model: string | null;
+  durationMs: number;
 }
 
 export interface TextProvider {
-  readonly id: 'mock' | 'gemini';
-  complete(request: ProviderRequest): Promise<{ reply: unknown; usage: ProviderUsage; model: string | null }>;
+  readonly id: 'mock' | 'gemini' | 'openai';
+  complete(request: ProviderRequest): Promise<ProviderResult>;
 }
 
 function reply(partial: Partial<StylistReply> & Pick<StylistReply, 'responseText' | 'recommendationType'>): StylistReply {
@@ -49,14 +57,14 @@ function asked(history: ProviderMessage[], fragment: string): boolean {
 export class MockTextProvider implements TextProvider {
   readonly id = 'mock' as const;
 
-  async complete(request: ProviderRequest): Promise<{ reply: StylistReply; usage: ProviderUsage; model: null }> {
+  async complete(request: ProviderRequest): Promise<ProviderResult> {
     const latest = request.messages.filter((message) => message.role === 'user').at(-1)?.text ?? '';
     const text = latest.toLowerCase();
     const personal = request.context?.consent ? request.context : null;
     const colourNote = personal?.favouriteColours.length ? ` I kept ${personal.favouriteColours.slice(0, 2).join(' and ')} in mind.` : '';
     const avoidNote = personal?.avoidColours.length ? ` I left out ${personal.avoidColours[0]}.` : '';
     if (/try[- ]?on|photograph|photo of me/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         specialist: 'try_on',
         availability: 'not_connected',
         recommendationType: 'try_on_unavailable',
@@ -65,7 +73,7 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/buy|price|in stock|shop |retailer|superbalist|woolworths|link/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         specialist: 'shopping',
         availability: 'not_connected',
         recommendationType: 'shopping_unavailable',
@@ -74,7 +82,7 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/wardrobe|what i own|clothes i have/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         specialist: 'wardrobe',
         availability: 'not_connected',
         recommendationType: 'clarification',
@@ -83,7 +91,7 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/wedding/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
         occasion: 'Wedding',
         outfitTitle: 'Garden wedding guest',
@@ -99,7 +107,7 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/work|professional|smart-casual|office/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
         occasion: 'Work',
         outfitTitle: 'Easy smart-casual',
@@ -113,14 +121,14 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/navy/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
         suggestedColours: ['ivory', 'camel', 'soft white'],
         responseText: 'Navy sits well with ivory, camel, and soft white. A small gold or silver accessory is enough; you do not need a matching navy shoe.',
       }) };
     }
     if (/birthday|summer|party/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
         occasion: 'Summer party',
         outfitTitle: 'Daytime birthday',
@@ -133,7 +141,7 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/r\s?1[,.]?500|budget|rands?/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'clarification',
         budgetGuidance: 'Plan one stronger piece and keep the other pieces simple. I cannot quote a shop price.',
         responseText: 'I can shape an outfit around the budget you named, but verified prices are not available yet.',
@@ -141,7 +149,7 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/heel|comfort/.test(text)) {
-      return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
         outfitComponents: [
           { name: 'Leather loafer or low block heel', category: 'shoes', colour: 'black', notes: 'A polished flat is a complete choice.' },
@@ -149,7 +157,7 @@ export class MockTextProvider implements TextProvider {
         responseText: 'You can skip high heels. A loafer or a low block keeps a smart outfit comfortable.',
       }) };
     }
-    return { model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+    return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
       recommendationType: 'clarification',
       responseText: 'Tell me the occasion, how formal it should feel, and whether comfort or a colour matters most. I will suggest an outfit concept, not a shop listing.',
       followUpQuestions: ['What is the occasion?'],

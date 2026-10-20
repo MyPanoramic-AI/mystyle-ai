@@ -6,6 +6,7 @@ import { getPreferences, getProfile } from '../domain/profiles.js';
 import type { AiConfig } from './aiConfig.js';
 import { minimiseProfile, STYLE_SYSTEM_PROMPT, type StyleContext } from './context.js';
 import { GeminiTextProvider } from './geminiProvider.js';
+import { OpenAiTextProvider } from './openaiProvider.js';
 import { assertLiveAllowed } from './guards.js';
 import { MockTextProvider, type ProviderMessage, type ProviderUsage, type TextProvider } from './mockProvider.js';
 import { validateStylistReply, type StylistReply } from './schema.js';
@@ -26,6 +27,7 @@ interface UsageDraft {
   usage: ProviderUsage;
   costUsd: number | null;
   costStatus: 'zero' | 'estimate' | 'unpriced';
+  durationMs?: number | null;
 }
 
 function stamp(now: number): string {
@@ -33,7 +35,7 @@ function stamp(now: number): string {
 }
 
 function liveAttempts(db: Sql): number {
-  const row = db.prepare(`SELECT COUNT(*) AS attempts FROM ai_usage WHERE provider = 'gemini' AND request_status IN ('succeeded', 'failed')`).get() as { attempts: number };
+  const row = db.prepare(`SELECT COUNT(*) AS attempts FROM ai_usage WHERE provider IN ('gemini', 'openai') AND request_status IN ('succeeded', 'failed')`).get() as { attempts: number };
   return Number(row.attempts);
 }
 
@@ -52,24 +54,37 @@ function spent(db: Sql, userId?: string): number {
   return Number(row.spent);
 }
 
+function isLive(provider: AiConfig['provider']): boolean {
+  return provider === 'openai' || provider === 'gemini';
+}
+
 function providerFor(config: AiConfig, fetchImpl: typeof fetch): TextProvider {
-  if (config.provider === 'mock') return new MockTextProvider();
-  return new GeminiTextProvider(config.model ?? '', config.apiKey ?? '', config.timeoutMs, config.maxOutputTokens, config.thinkingBudget, fetchImpl);
+  if (config.provider === 'openai') return new OpenAiTextProvider(config.model ?? '', config.apiKey ?? '', config.timeoutMs, config.maxOutputTokens, fetchImpl);
+  if (config.provider === 'gemini') return new GeminiTextProvider(config.model ?? '', config.apiKey ?? '', config.timeoutMs, config.maxOutputTokens, config.thinkingBudget, fetchImpl);
+  return new MockTextProvider();
 }
 
 function recordUsage(db: Sql, userId: string, conversationId: string | null, operation: string, draft: UsageDraft, now: number): void {
   db.prepare(
-    `INSERT INTO ai_usage (id, user_id, conversation_id, operation_type, provider, model, input_tokens, output_tokens, cost_usd, cost_status, request_status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(randomUUID(), userId, conversationId, operation, draft.provider, draft.model, draft.usage.inputTokens, draft.usage.outputTokens, draft.costUsd, draft.costStatus, draft.status, stamp(now));
+    `INSERT INTO ai_usage (id, user_id, conversation_id, operation_type, provider, model, input_tokens, output_tokens, cost_usd, cost_status, request_status, created_at, duration_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(randomUUID(), userId, conversationId, operation, draft.provider, draft.model, draft.usage.inputTokens, draft.usage.outputTokens, draft.costUsd, draft.costStatus, draft.status, stamp(now), draft.durationMs ?? null);
   logEvent('stylist_usage', { provider: draft.provider, status: draft.status, costStatus: draft.costStatus });
 }
 
 function liveCost(config: AiConfig, usage: ProviderUsage): { costUsd: number; costStatus: 'estimate' } {
-  if (usage.inputTokens == null || usage.outputTokens == null || usage.thoughtTokens == null || config.inputUsdPerMillion == null || config.outputUsdPerMillion == null) {
+  if (usage.inputTokens == null || usage.outputTokens == null || config.inputUsdPerMillion == null || config.outputUsdPerMillion == null) {
     throw new ApiError('ai_unpriced', 'The provider response did not include billable usage.', 502);
   }
-  const costUsd = (usage.inputTokens / 1_000_000) * config.inputUsdPerMillion + ((usage.outputTokens + usage.thoughtTokens) / 1_000_000) * config.outputUsdPerMillion;
+  if (config.provider === 'gemini') {
+    if (usage.thoughtTokens == null) throw new ApiError('ai_unpriced', 'The provider response did not include billable usage.', 502);
+    const costUsd = (usage.inputTokens / 1_000_000) * config.inputUsdPerMillion + ((usage.outputTokens + usage.thoughtTokens) / 1_000_000) * config.outputUsdPerMillion;
+    return { costUsd, costStatus: 'estimate' };
+  }
+  const cached = usage.cachedTokens ?? 0;
+  const fresh = Math.max(usage.inputTokens - cached, 0);
+  const cachedRate = config.cachedInputUsdPerMillion ?? config.inputUsdPerMillion;
+  const costUsd = (fresh / 1_000_000) * config.inputUsdPerMillion + (cached / 1_000_000) * cachedRate + (usage.outputTokens / 1_000_000) * config.outputUsdPerMillion;
   return { costUsd, costStatus: 'estimate' };
 }
 
@@ -100,16 +115,16 @@ async function produce(runtime: StylistRuntime, text: string, history: ProviderM
   if (specialist === 'beauty') return { reply: beautyUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
   if (specialist === 'wardrobe') return { reply: wardrobeUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
   const provider = providerFor(runtime.config, runtime.fetchImpl ?? fetch);
-  if (runtime.config.provider === 'gemini') assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId), liveAttempts(runtime.db));
+  if (isLive(runtime.config.provider)) assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId), liveAttempts(runtime.db));
   try {
     const completed = await provider.complete({ system: STYLE_SYSTEM_PROMPT, messages: [...history, { role: 'user', text }], context });
     const validated = validateStylistReply(completed.reply, runtime.config.provider === 'mock' ? 'mock' : 'live');
     if (!validated) {
       return { reply: safeFallback(), draft: { status: 'failed', provider: provider.id, model: completed.model, usage: completed.usage, costUsd: null, costStatus: 'unpriced' } };
     }
-    if (runtime.config.provider === 'gemini') {
+    if (isLive(runtime.config.provider)) {
       const priced = liveCost(runtime.config, completed.usage);
-      return { reply: validated, draft: { status: 'succeeded', provider: provider.id, model: completed.model, usage: completed.usage, ...priced } };
+      return { reply: validated, draft: { status: 'succeeded', provider: provider.id, model: completed.model, usage: completed.usage, durationMs: completed.durationMs, ...priced } };
     }
     return { reply: { ...validated, source: 'mock' }, draft: { status: 'succeeded', provider: 'mock', model: null, usage: completed.usage, costUsd: 0, costStatus: 'zero' } };
   } catch (error) {
@@ -120,7 +135,10 @@ async function produce(runtime: StylistRuntime, text: string, history: ProviderM
       throw error;
     }
     const aborted = error instanceof Error && error.name === 'AbortError';
+    const code = error instanceof Error && 'code' in error ? String((error as { code?: string }).code) : '';
     recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'failed', provider: provider.id, model: runtime.config.model, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
+    if (code === 'provider_auth') throw new ApiError('ai_provider_auth', 'The stylist provider did not accept the server credential.', 502);
+    if (code === 'provider_rate_limit') throw new ApiError('ai_provider_rate_limited', 'The stylist provider asked us to wait.', 429);
     throw new ApiError(aborted ? 'ai_timeout' : 'ai_provider_error', aborted ? 'The stylist took too long to reply.' : 'The stylist could not complete that reply.', aborted ? 504 : 502);
   }
 }
@@ -132,7 +150,7 @@ function contextFor(db: Sql, userId: string): StyleContext | null {
 }
 
 export function stylistAvailability(config: AiConfig): Record<string, unknown> {
-  const liveReady = config.provider === 'gemini' && config.allowLive && config.maxLiveRequests > 0 && Boolean(config.apiKey) && Boolean(config.model) && config.inputUsdPerMillion != null && config.outputUsdPerMillion != null && config.maxBudgetUsd > 0 && config.maxUserBudgetUsd > 0;
+  const liveReady = isLive(config.provider) && config.allowLive && config.maxLiveRequests > 0 && Boolean(config.apiKey) && Boolean(config.model) && config.inputUsdPerMillion != null && config.outputUsdPerMillion != null && config.maxBudgetUsd > 0 && config.maxUserBudgetUsd > 0;
   return {
     provider: config.provider,
     liveEnabled: liveReady,
@@ -192,7 +210,7 @@ export function deleteConversation(db: Sql, userId: string, conversationId: stri
 
 export function usageFor(db: Sql, userId: string): Record<string, unknown> {
   const rows = db.prepare(
-    'SELECT operation_type AS operationType, provider, model, input_tokens AS inputTokens, output_tokens AS outputTokens, cost_usd AS costUsd, cost_status AS costStatus, request_status AS requestStatus, created_at AS createdAt FROM ai_usage WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+    'SELECT operation_type AS operationType, provider, model, input_tokens AS inputTokens, output_tokens AS outputTokens, cost_usd AS costUsd, cost_status AS costStatus, request_status AS requestStatus, duration_ms AS durationMs, created_at AS createdAt FROM ai_usage WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
   ).all(userId);
   return { spentUsd: spent(db, userId), entries: rows };
 }
@@ -213,11 +231,11 @@ export async function sendMessage(runtime: StylistRuntime, userId: string, conve
   if (!runtime.limiter.consume(`stylist:${userId}`)) throw new ApiError('rate_limited', 'Too many stylist messages. Wait and try again.', 429);
   const specialist = routeSpecialist(content);
   const deliver = async () => {
-    if (specialist === 'style' && runtime.config.provider === 'gemini') {
+    if (specialist === 'style' && isLive(runtime.config.provider)) {
       try {
         assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId), liveAttempts(runtime.db));
       } catch (error) {
-        if (error instanceof ApiError) recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'blocked', provider: 'gemini', model: runtime.config.model, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
+        if (error instanceof ApiError) recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'blocked', provider: runtime.config.provider, model: runtime.config.model, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
         throw error;
       }
     }
@@ -240,6 +258,6 @@ export async function sendMessage(runtime: StylistRuntime, userId: string, conve
     runtime.db.prepare(`UPDATE ai_conversations SET last_activity_at = ?, title = CASE WHEN title = 'New styling session' THEN ? ELSE title END WHERE id = ?`).run(answered, title, conversationId);
     return { id: assistantId, role: 'assistant', content: produced.reply.responseText, recommendation: produced.reply, provider: produced.draft.provider, model: produced.draft.model, createdAt: answered, duplicate: false };
   };
-  if (specialist === 'style' && runtime.config.provider === 'gemini') return withLiveLock(deliver);
+  if (specialist === 'style' && isLive(runtime.config.provider)) return withLiveLock(deliver);
   return deliver();
 }

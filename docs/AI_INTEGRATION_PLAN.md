@@ -1,6 +1,6 @@
 # AI Integration Plan
 
-Status: the stylist coordinator is implemented in `server/api/src/ai` and the signed-in My Stylist screen calls it. The default provider is a deterministic mock. Live Gemini calls stay off unless `AI_ALLOW_LIVE` is exactly `true` and the budget, model, credential, and price settings are present. No live model was called while building this phase. Shopping, virtual try-on, beauty, and wardrobe specialists return `not_connected`.
+Status: the stylist coordinator is implemented in `server/api/src/ai` and the signed-in My Stylist screen calls it. The code default, when `AI_PROVIDER` is unset, remains the deterministic mock. The private server environment now prefers OpenAI (`AI_PROVIDER=openai`, `AI_MODEL=gpt-5-mini`) with `AI_ALLOW_LIVE=false` and both budgets at 0. The Gemini adapter remains in the tree and is inactive. No live OpenAI or Gemini request has been made. Shopping, virtual try-on, beauty, and wardrobe specialists return `not_connected`.
 
 The original design below is kept as the target shape. The implemented routes are `/api/stylist/*`, not `POST /api/assistant/tasks`.
 
@@ -95,7 +95,7 @@ interface TryOnProvider {
 }
 ```
 
-Configuration names the active text provider and the active try-on provider. Gemini may be one text provider later, because the AI Studio export anticipated it. It is not wired today, and it is not assumed to be the try-on engine. Try-on uses a specialist image provider.
+Configuration names the active text provider and the active try-on provider. OpenAI is the preferred text provider and is implemented behind the live switch. Gemini remains selectable with `AI_PROVIDER=gemini` and is inactive. Neither provider is the try-on engine. Try-on uses a specialist image provider.
 
 ## Controls
 

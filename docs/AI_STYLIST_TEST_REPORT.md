@@ -41,3 +41,21 @@ No live model was called. The Gemini success test uses a local fake HTTP respons
 No live Gemini request was made. `npm run lint:api` exited 0. `npm run test:ai` then passed 13 tests, including a local proof that a second overlapping live call does not reach the provider. The full suite listed above was run before that adapter change and is recorded with the coordinator commit `de5dcd2`.
 
 `gemini-2.5-flash` is still documented as stable. Standard paid pricing checked the same day is US$0.30 per 1M input text tokens and US$2.50 per 1M output tokens, including thinking tokens. `GEMINI_API_KEY` is not configured. Both development budgets remain 0. The proposed one-test ceiling of US$0.10 is not active, and the code cannot guarantee that Google will stay inside it if thinking tokens overflow.
+
+## Prompt 6.2 OpenAI adapter, 20 October 2026
+
+No live OpenAI request was made. The new tests use a local fake HTTP response. `OPENAI_API_KEY` is empty in `server/api/.env`. `AI_ALLOW_LIVE` is false and both budgets are 0.
+
+| Command | Result |
+| --- | --- |
+| `npm run lint` | Exit 0 |
+| `npm run lint:api` | Exit 0 |
+| `npx tsc --noEmit --strict` | Exit 0 |
+| `npm run build` | Exit 0. Vite printed the existing `__dirname` warning and the existing chunk-size warning |
+| `npm run test:ai` | 16 passed, 0 failed |
+| `npm run test:account` | 5 passed, 0 failed |
+| `npm run test:api` | 14 passed, 0 failed |
+| `npm run test:tryon` | 16 passed, 0 failed |
+| `npm run test:shopping` | 15 passed, 0 failed |
+
+The OpenAI tests cover a strict Responses API request with no tools, a synthetic structured reply and its token cost, invalid structured output turned into a clarification, authentication failure without the test key in the response, a missing key with zero fetches, a provider 429, a timeout, usage and duration, a zero budget before any fetch, an idempotent resend that does not fetch again, and a consent-off request that omits the display name and a measurement. The earlier Gemini overlap test still proves the shared live lock. Cross-account isolation remains covered by the conversation test. Schema rejection still blocks price, stock, retailer, SKU, and URL fields.

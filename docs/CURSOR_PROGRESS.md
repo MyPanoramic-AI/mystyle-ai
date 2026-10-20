@@ -306,4 +306,12 @@ The adapter now sends `responseMimeType`, a JSON schema, `maxOutputTokens` 1024,
 
 `lint:api` exited 0 and `test:ai` passed 13 tests after this change. No deployment and no push.
 
+## 2026-10-20 — OpenAI is the preferred stylist provider
+
+**Status:** Implemented and tested offline. No live OpenAI request was sent. The private environment selects `gpt-5-mini`, keeps `AI_ALLOW_LIVE=false`, and keeps both budgets at 0. `OPENAI_API_KEY` is not configured. The Gemini adapter remains in the repository and is inactive. The FASHN lab, shopping lab, and consumer UI were not changed. This change has not been pushed, and Render was not deployed.
+
+The adapter calls `POST https://api.openai.com/v1/responses` with a strict JSON schema, `store` false, `reasoning.effort` `minimal`, and `max_output_tokens` 1024. Output tokens are not double-counted with reasoning tokens. A US$0.10 ceiling is not guaranteed until a live call shows that OpenAI honours the output cap. See `AI_USAGE_AND_COST_CONTROLS.md`.
+
+`npm run lint`, `lint:api`, `npx tsc --noEmit --strict`, and `npm run build` exited 0. `test:ai` 16 passed. `test:account` 5 passed. `test:api` 14 passed. `test:tryon` 16 passed. `test:shopping` 15 passed. No browser click-through was available.
+
 

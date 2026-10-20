@@ -4,7 +4,7 @@ import { estimateLiveUsd } from './aiConfig.js';
 
 export function assertLiveAllowed(config: AiConfig, spentUsd: number, userSpentUsd: number, liveAttempts: number): number {
   if (!config.allowLive) throw new ApiError('ai_disabled', 'Live AI is switched off.', 503);
-  if (config.provider !== 'gemini') throw new ApiError('ai_disabled', 'The configured stylist is the local demonstration.', 503);
+  if (config.provider !== 'openai' && config.provider !== 'gemini') throw new ApiError('ai_disabled', 'The configured stylist is the local demonstration.', 503);
   if (!config.apiKey) throw new ApiError('ai_unconfigured', 'The live stylist has no server credential.', 503);
   if (!config.model) throw new ApiError('ai_unconfigured', 'The live stylist has no model configured.', 503);
   const estimate = estimateLiveUsd(config);

@@ -11,11 +11,13 @@ The signed-in My Stylist screen talks to the existing Express API. The keyword s
 | `server/api/src/ai/service.ts` | Conversations, messages, usage, and the request flow |
 | `server/api/src/ai/specialists.ts` | Routing and the unconnected specialist replies |
 | `server/api/src/ai/mockProvider.ts` | Deterministic local style replies |
-| `server/api/src/ai/geminiProvider.ts` | Gemini `generateContent` adapter, used only when live mode is allowed |
+| `server/api/src/ai/openaiProvider.ts` | Preferred live adapter. OpenAI Responses API with strict JSON schema. Inactive while live mode is off |
+| `server/api/src/ai/geminiProvider.ts` | Gemini `generateContent` adapter. Kept available and inactive |
 | `server/api/src/ai/schema.ts` | Validates a reply before it is stored or rendered |
 | `server/api/src/ai/context.ts` | Minimises the profile when consent is on |
 | `server/api/src/ai/guards.ts` | Blocks live calls that are unconfigured, unpriced, or over budget |
 | `server/api/migrations/003_ai_conversations.sql` | Conversation, message, and usage tables |
+| `server/api/migrations/004_ai_usage_duration.sql` | Adds `duration_ms` to usage rows |
 
 The shopping lab and the FASHN lab are not imported.
 
@@ -29,7 +31,7 @@ A message is classified with rules:
 - Wardrobe-ownership language goes to the wardrobe specialist, which returns `not_connected`.
 - Everything else goes to the style specialist.
 
-The style specialist calls the configured provider. The default provider is `mock`.
+The style specialist calls the configured provider. If `AI_PROVIDER` is unset, the provider is `mock`. The private environment sets `openai`.
 
 ## Routes
 
@@ -56,10 +58,12 @@ A stored recommendation has response text, recommendation type, specialist, avai
 
 Official documents checked on 20 October 2026:
 
-- Gemini structured output: `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` with header `x-goog-api-key` and `generationConfig.responseFormat.text.mimeType` of `APPLICATION_JSON`. Source: `https://ai.google.dev/gemini-api/docs/generate-content/structured-output`.
-- OpenAI structured outputs: Responses API `text.format` of type `json_schema` with `strict: true`. Source: `https://developers.openai.com/api/docs/guides/structured-outputs`.
+- OpenAI model `gpt-5-mini` supports the Responses API and structured outputs. Context is 400,000 tokens and the documented maximum output is 128,000 tokens. Source: `https://developers.openai.com/api/docs/models/gpt-5-mini`.
+- OpenAI structured outputs use `POST https://api.openai.com/v1/responses` with `Authorization: Bearer`, `text.format.type` of `json_schema`, `strict: true`, and `additionalProperties: false`. Source: `https://developers.openai.com/api/docs/guides/structured-outputs`.
+- `max_output_tokens` bounds visible output and reasoning tokens together. `usage.output_tokens` already includes `output_tokens_details.reasoning_tokens`. `store` can be false. `reasoning.effort` accepts `minimal`. Sources: the Responses create reference and the structured-outputs guide on the same date.
+- Gemini structured output remains `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` with header `x-goog-api-key` and `generationConfig.responseMimeType` of `application/json`.
 
-Gemini is the first live adapter because the repository already reserved a server-side Gemini key and the documented API accepts a JSON schema. The model id is `AI_MODEL`. No model name is hard-coded. OpenAI was not implemented. Neither provider is called unless the live switch, credential, model, prices, and budgets all allow it.
+OpenAI is the preferred provider. The request sets `store` false, `reasoning.effort` to `minimal`, `max_output_tokens` from `AI_MAX_OUTPUT_TOKENS`, and no tools. The model id comes from `AI_MODEL`. The Gemini adapter stays in the repository and is selected only when `AI_PROVIDER=gemini`. Neither provider is called unless the live switch, credential, model, prices, and budgets all allow it. Photographs and measurements are not included. Consent off sends no profile.
 
 ## Retention
 

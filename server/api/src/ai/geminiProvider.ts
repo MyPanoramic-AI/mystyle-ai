@@ -1,4 +1,4 @@
-import type { ProviderRequest, ProviderUsage, TextProvider } from './mockProvider.js';
+import type { ProviderRequest, ProviderResult, ProviderUsage, TextProvider } from './mockProvider.js';
 
 export interface GeminiCall {
   url: string;
@@ -54,9 +54,10 @@ export class GeminiTextProvider implements TextProvider {
     private readonly fetchImpl: typeof fetch,
   ) {}
 
-  async complete(request: ProviderRequest): Promise<{ reply: unknown; usage: ProviderUsage; model: string }> {
+  async complete(request: ProviderRequest): Promise<ProviderResult> {
     const call = buildGeminiRequest(this.model, request, { maxOutputTokens: this.maxOutputTokens, thinkingBudget: this.thinkingBudget });
     const controller = new AbortController();
+    const started = Date.now();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const response = await this.fetchImpl(call.url, {
@@ -75,6 +76,7 @@ export class GeminiTextProvider implements TextProvider {
       return {
         reply: JSON.parse(raw) as unknown,
         model: this.model,
+        durationMs: Date.now() - started,
         usage: {
           inputTokens: payload.usageMetadata?.promptTokenCount ?? null,
           outputTokens: payload.usageMetadata?.candidatesTokenCount ?? null,
