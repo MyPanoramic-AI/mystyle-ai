@@ -1,18 +1,28 @@
 # AI Stylist Live Test Plan
 
-Date: 20 October 2026. Status: inactive. Prompt 6.2 selected OpenAI as the preferred provider. This Gemini plan must not be used for the next live test. No live Gemini request has been sent.
+Date: 20 October 2026. Status: prepared, waiting for approval. No live OpenAI request has been sent. No live Gemini request has been sent.
+
+The earlier Gemini preparation is inactive. Do not use it for the next live test.
 
 ## Prepared request
 
-Provider: Gemini. Model: `gemini-2.5-flash`, still listed as a stable model at `https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash`. That page also says access to 2.5 models is limited to accounts that have used them. This project cannot confirm that the configured key has access without making a live call.
+Provider: OpenAI. Model: `gpt-5-mini`.
 
-The request is one text-only `generateContent` call. It does not enable tools, search grounding, or image input. Structured output uses `generationConfig.responseMimeType` of `application/json` and `responseSchema`, which is the REST form shown for Gemini 2.5. `maxOutputTokens` is 1024. `thinkingConfig.thinkingBudget` is 0. The adapter reads `promptTokenCount`, `candidatesTokenCount`, and `thoughtsTokenCount`.
+Checked again on 20 October 2026 at `https://developers.openai.com/api/docs/models/gpt-5-mini`:
+
+- Responses API: supported at `POST https://api.openai.com/v1/responses`.
+- Structured outputs: supported.
+- Text input and text output. The prepared call sends text only.
+- Context window 400,000 tokens. Documented maximum output 128,000 tokens.
+- Standard text rates on that page: input US$0.25 per 1M, cached input US$0.025 per 1M, output US$2 per 1M.
+
+The adapter sends `text.format` of type `json_schema` with `strict: true`, which is the Responses form in `https://developers.openai.com/api/docs/guides/structured-outputs`. It sets `store` false, `reasoning.effort` to `minimal`, and `max_output_tokens` 1024. It does not send tools, web search, file search, or images. `usage.output_tokens` already includes reasoning tokens, so the cost estimate does not add them again.
 
 Message:
 
 "Suggest a stylish outfit for dinner at an upmarket restaurant in Johannesburg. My budget is R1,500. I prefer navy, black and ivory, and I don't like bright orange. Explain your choices."
 
-Synthetic context, included only if this test is approved and only as this text. It is not loaded from a customer account:
+Synthetic context, included only if this test is approved and only as preference text. It is not loaded from a customer account:
 
 - Style: smart casual, modern minimalist.
 - Preferred colours: navy, black, ivory.
@@ -23,34 +33,41 @@ Synthetic context, included only if this test is approved and only as this text.
 
 No name, measurements, photographs, family records, or saved conversations are included.
 
-## Pricing checked on 20 October 2026
+## Controls that stay in place until approval
 
-Source: `https://ai.google.dev/gemini-api/docs/pricing`, standard paid tier for `gemini-2.5-flash`.
+`server/api/.env` is gitignored and is not tracked. On this check it contains:
 
-- Input, text: US$0.30 per 1M tokens.
-- Output, including thinking tokens: US$2.50 per 1M tokens.
-- Free tier is listed as free of charge and may be used to improve Google's products. A billed key should be costed at the paid rates.
+- `AI_PROVIDER=openai`
+- `AI_MODEL=gpt-5-mini`
+- `AI_ALLOW_LIVE=false`
+- `AI_MAX_BUDGET_USD=0`
+- `AI_MAX_USER_BUDGET_USD=0`
+- `AI_MAX_OUTPUT_TOKENS=1024`
+- `AI_MAX_INPUT_TOKENS=4000`
+- `AI_MAX_LIVE_REQUESTS=1`
+- The verified `gpt-5-mini` rates above
+- `OPENAI_API_KEY` and `GEMINI_API_KEY` present as names only. Both values are empty.
 
-The private `server/api/.env` has these rates, `AI_ALLOW_LIVE=false`, and both budgets at 0. `AI_MAX_LIVE_REQUESTS=1`. There is no automatic retry. A failed or successful Gemini attempt counts toward that cap. A second overlapping call is blocked before another fetch. `GEMINI_API_KEY` is not configured. The FASHN key was not copied.
+There is no automatic retry. A failed or successful OpenAI or Gemini attempt counts toward the one-request cap. A second overlapping call is blocked before another fetch.
 
 ## Proposed ceiling
 
-The proposed maximum for the one approved test is US$0.10. That amount is not active. Both budgets remain 0 until approval.
+The proposed maximum for the one approved test is US$0.10. That amount is not active. Both budgets remain 0.
 
-The code reserves an estimate of 4,000 input tokens plus 1,024 output tokens at the rates above, about US$0.0038, and refuses the call when that estimate would pass the budget. It also sends `thinkingBudget` 0 and does not send grounding tools.
+If OpenAI honours `max_output_tokens` 1024, the pre-call reservation is 4,000 input tokens plus 1,024 output tokens, about US$0.003. The code refuses the call when that estimate would pass either budget.
 
-This is not a guarantee that Google will bill US$0.10 or less. Google's thinking documentation says a thinking budget can overflow, and output tokens can reach the model limit of 65,536. At US$2.50 per 1M output tokens, 65,536 tokens would be about US$0.16 before input. The stable model documents that `thinkingBudget` 0 disables thinking, but that has not been confirmed with a live call on this account.
+This is not a guarantee of US$0.10 or less. The model page says `gpt-5-mini` can emit up to 128,000 output tokens. At US$2 per 1M output tokens, that upper bound is about US$0.26 before input. This project has not made a live call to prove the service honours the requested cap.
 
-## Still required before the call
+## The first live request is not ready
 
-1. The owner approves Gemini, `gemini-2.5-flash`, and the US$0.10 ceiling in writing.
-2. The owner adds `GEMINI_API_KEY` to `server/api/.env` only.
-3. For that one local run, set both budgets to `0.10` and `AI_ALLOW_LIVE=true`, then set `AI_ALLOW_LIVE=false` and both budgets back to 0 immediately afterward.
+1. Save a real `OPENAI_API_KEY` on the existing line in `server/api/.env`. Do not put it in `.env.example`, chat, or the React app. The saved file currently has an empty value.
+2. Approve OpenAI, `gpt-5-mini`, and the fact that US$0.10 is a proposed ceiling rather than a measured guarantee.
+3. For that one local run only, set both budgets to `0.10` and `AI_ALLOW_LIVE=true`, then set `AI_ALLOW_LIVE=false` and both budgets back to 0 immediately afterward.
 4. Do not push or deploy.
 
 ## What to record after approval
 
-- Latency, model id, prompt tokens, candidate tokens, and thought tokens.
+- Latency, model id, input tokens, output tokens, cached tokens, and reasoning tokens.
 - The estimate using the rates above.
 - Whether the reply invented a product, a price, or a shop link.
 - A human reading of the styling. Passing JSON validation is not a quality score.

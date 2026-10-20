@@ -314,4 +314,10 @@ The adapter calls `POST https://api.openai.com/v1/responses` with a strict JSON 
 
 `npm run lint`, `lint:api`, `npx tsc --noEmit --strict`, and `npm run build` exited 0. `test:ai` 16 passed. `test:account` 5 passed. `test:api` 14 passed. `test:tryon` 16 passed. `test:shopping` 15 passed. No browser click-through was available.
 
+## 2026-10-20 — OpenAI live test prepared, not run
+
+**Status:** Waiting for approval. No OpenAI or Gemini request was sent. A presence check of the saved `server/api/.env` found both `OPENAI_API_KEY` and `GEMINI_API_KEY` as empty assignments. The file is gitignored and untracked. `AI_ALLOW_LIVE` remains false and both budgets remain 0. `gpt-5-mini` still documents Responses API and structured-output support. The one-text test and the US$0.10 proposal are in `AI_STYLIST_LIVE_TEST_PLAN.md`. That ceiling is not a measured guarantee.
+
+The same lint, strict TypeScript, build, and test commands were run again and exited 0, with the same pass counts: `test:ai` 16, `test:account` 5, `test:api` 14, `test:tryon` 16, `test:shopping` 15. No push and no Render deploy.
+
 
