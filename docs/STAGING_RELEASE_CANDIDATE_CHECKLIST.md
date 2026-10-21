@@ -4,7 +4,7 @@ Date: 21 October 2026. This checklist supports a **future controlled staging** d
 
 ## Source and Git
 
-- [x] Freeze commit id: set after Prompt 15 local commit (see `CURSOR_PROGRESS.md` / git log)
+- [x] Freeze commit id: `626b8a86c10aed0724bc096dadead052ec75bb39` (Prompt 15 RC prep; re-verify before any push)
 - [ ] Working tree clean after RC tag; secrets untracked
 - [x] Auto-deploy risk understood: **do not push** until staging branch/service policy is approved
 - [x] Local branch historically ahead of origin (14+ commits before this phase; +1 after RC prep commit)
