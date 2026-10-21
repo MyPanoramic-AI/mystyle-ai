@@ -106,3 +106,22 @@ The product-detail close control and the small-screen wardrobe add control now h
 ### Performance
 
 The 21 October production JavaScript chunk is 910.21 kB, gzip 217.76 kB. The 20 October chunk was 909.60 kB, gzip 217.55 kB. No route split was added. There is still one client bundle because navigation is tab state in `App`, not URL routes. Splitting it would change loading. The chunk warning remains. Editorial JPEGs of about 605 kB to 989 kB are still the larger download.
+
+## 21 October 2026 — contrast and demonstration labels
+
+Text that failed on the registration, Home, and Shop screens was darkened without changing page backgrounds. Small gold text uses `#866a40` instead of `#B49361`. Small rose text uses `#91635a` instead of `#9C6A61`. The "Smart Curation" chip, which sits on a blush tint, uses `#6b433e`. Gold on the dark membership card stays `#B49361`, because that pair already clears 4.5:1 and the darker text would not.
+
+Calculated pairs against `#F6F2EC`, the darkest common cream:
+
+| Text | On cream | Result |
+| --- | ---: | --- |
+| `#B49361` | 2.58:1 | Below AA for small text |
+| `#866a40` | 4.54:1 | Meets 4.5:1 |
+| `#9C6A61` | 4.05:1 | Below AA for small text |
+| `#91635a` | 4.55:1 | Meets 4.5:1 |
+
+`#866a40` on the dark membership background is 3.41:1, so that card was left on `#B49361` (5.99:1). Borders, button fills, and gold dots were not recolored.
+
+The follow-up axe scan of registration, signed-in Home, and Shop reported no violations. Before this pass the same scan reported color-contrast only: 1 node, 16 nodes, and 35 nodes. This is not a WCAG conformance claim. Other screens were not scanned. Keyboard order and touch-target size were not measured.
+
+Beauty "Products total" is now "Demonstration estimate" with a "Demo R" amount. The stylist greeting no longer shows a style-match percentage. The score was a fixed catalogue number, so the badge now says "Demonstration suggestion". Shop, membership, and try-on lines that implied a live price, a saved discount, a completed fitting, or a real payment were rewritten in place.

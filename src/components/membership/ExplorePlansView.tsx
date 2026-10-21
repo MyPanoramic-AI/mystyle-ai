@@ -37,7 +37,7 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
   const handleChoose = (planId: SubscriptionPlanId) => {
     onSelectPlan(planId, billingCycle);
     const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
-    setSuccessMessage(`Successfully switched to ${plan?.name} tier (${billingCycle}).`);
+    setSuccessMessage(`Demonstration only: ${plan?.name} is shown in this browser. No payment was taken.`);
     setTimeout(() => {
       setSuccessMessage(null);
     }, 4000);
@@ -81,8 +81,8 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
               }`}
             >
               <span>Annual Billing</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#B49361] text-white">
-                Save 17%
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#B49361] text-[#242326]">
+                Demonstration
               </span>
             </button>
           </div>
@@ -227,7 +227,7 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
                         ? `Switch to ${billingCycle === 'monthly' ? 'Monthly' : 'Annual'}`
                         : plan.id === 'free'
                         ? 'Downgrade to Free'
-                        : `Select ${plan.name}`}
+                        : `Preview ${plan.name}`}
                     </span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
@@ -245,7 +245,7 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
             <ShieldCheck className="w-4 h-4 text-[#B49361]" />
             Cancel Anytime
           </span>
-          <p>You remain in complete control. Subscriptions can be paused or cancelled at any time with one click.</p>
+          <p>This is a demonstration control. Nothing is billed, and the plan can be changed again in this browser.</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#F6F2EC] border border-[#242326]/6 space-y-1">
@@ -253,7 +253,7 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
             <Zap className="w-4 h-4 text-[#9C6A61]" />
             Credit Rollover
           </span>
-          <p>Unused credits roll over to the next month on Signature and Atelier plans so you never lose what you paid for.</p>
+          <p>Credit figures stay in this browser. They are not a paid balance, and unused amounts are not a real rollover.</p>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#F6F2EC] border border-[#242326]/6 space-y-1">
@@ -261,7 +261,7 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
             <Info className="w-4 h-4 text-[#242326]" />
             Local Currency
           </span>
-          <p>All prices are quoted in South African Rand (ZAR) inclusive of VAT with local payment processing simulation.</p>
+          <p>Plan figures are demonstration amounts in rand. They are not a VAT invoice and no payment is processed.</p>
         </div>
       </div>
     </div>

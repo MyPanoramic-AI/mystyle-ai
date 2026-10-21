@@ -20,7 +20,7 @@ export const PersonalisedGreeting: React.FC<PersonalisedGreetingProps> = ({
   return (
     <section className="mb-4 sm:mb-5 pt-0.5 sm:pt-1">
       <div>
-        <span className="text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
+        <span className="text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#866a40] block mb-1">
           Personal Styling Companion
         </span>
 
@@ -29,7 +29,7 @@ export const PersonalisedGreeting: React.FC<PersonalisedGreetingProps> = ({
           {hasName ? (
             <>
               {greeting}{' '}
-              <span className="text-[#9C6A61] block sm:inline font-normal italic">
+              <span className="text-[#91635a] block sm:inline font-normal italic">
                 What are we styling today?
               </span>
             </>

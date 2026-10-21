@@ -27,10 +27,10 @@ export const ShoppingPreview: React.FC<ShoppingPreviewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361]">
+            <span className="text-xs font-semibold tracking-wider uppercase text-[#866a40]">
               Shop your way
             </span>
-            <span className="text-[10px] font-semibold text-[#9C6A61] bg-[#E5CDBE]/30 px-2 py-0.5 rounded-md">
+            <span className="text-[10px] font-semibold text-[#6b433e] bg-[#E5CDBE]/30 px-2 py-0.5 rounded-md">
               {badge}
             </span>
           </div>
@@ -41,7 +41,7 @@ export const ShoppingPreview: React.FC<ShoppingPreviewProps> = ({
 
         {/* Budget Pill */}
         <div className="flex items-center gap-1.5 text-xs text-[#5C585E] bg-white px-3 py-1.5 rounded-xl border border-[#242326]/8 shadow-2xs self-start sm:self-auto">
-          <Wallet className="w-3.5 h-3.5 text-[#B49361]" />
+          <Wallet className="w-3.5 h-3.5 text-[#866a40]" />
           <span>Target: <strong className="text-[#242326] font-medium">{budgetText}</strong></span>
         </div>
       </div>
@@ -55,7 +55,7 @@ export const ShoppingPreview: React.FC<ShoppingPreviewProps> = ({
             onClick={() => onNavigate('shop')}
             className="group p-4 rounded-2xl bg-white border border-[#242326]/10 text-left hover:border-[#9C6A61]/40 shadow-2xs hover:shadow transition-all cursor-pointer focus-visible:outline-none"
           >
-            <span className="text-xs font-semibold text-[#242326] group-hover:text-[#9C6A61] transition-colors block mb-1">
+            <span className="text-xs font-semibold text-[#242326] group-hover:text-[#91635a] transition-colors block mb-1">
               {cat.name}
             </span>
             <span className="text-[11px] text-[#5C585E] line-clamp-2 leading-snug">
@@ -68,7 +68,7 @@ export const ShoppingPreview: React.FC<ShoppingPreviewProps> = ({
       {/* Action Strip */}
       <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-white via-[#F6F2EC] to-white border border-[#242326]/10 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3 text-center sm:text-left">
-          <div className="w-10 h-10 rounded-xl bg-[#B49361]/15 text-[#B49361] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[#B49361]/15 text-[#866a40] flex items-center justify-center shrink-0">
             <Tag className="w-5 h-5" />
           </div>
           <div>

@@ -133,11 +133,13 @@ These are not new defects from this run. They remain launch blockers and are lis
 
 - Severity: serious in the axe scan. It was not changed, because the colour is the editorial palette.
 - Registration has 1 contrast node, home has 16, and shop has 35. Examples include `#B49361` and `#9C6A61` on cream. This is not a WCAG conformance result. Recoloring needs a design decision.
+- Corrected later the same day for registration, Home, and Shop. See the section below. Other screens were not scanned.
 
 ### K6 — Beauty and family prices can still read as offers
 
 - Severity: medium.
 - Beauty cards show "Products total" in rand. Family planning shows occasion budgets. Those figures are local demonstration content. They were not relabelled in this pass, to avoid a catalogue rewrite. Shop and the stylist suggestion card now use explicit demo wording.
+- Beauty totals were relabelled later the same day. Family occasion budgets are still planning figures.
 
 ### K7 — No dedicated reschedule control
 
@@ -148,6 +150,27 @@ These are not new defects from this run. They remain launch blockers and are lis
 
 - Severity: low.
 - The greeting card still shows a percentage such as "99% Style Match" beside the demonstration label.
+- Corrected later the same day. The badge now says "Demonstration suggestion".
+
+## Corrected later on 21 October 2026
+
+### K5 — Gold text contrast on the scanned screens
+
+- Severity: serious in the earlier axe scan.
+- `#B49361` on `#F6F2EC` is 2.58:1. `#9C6A61` on the same cream is 4.05:1. Small text needs 4.5:1.
+- Correction: light-background text on registration, Home, and Shop uses `#866a40` and `#91635a`. The blush chip uses `#6b433e`. Gold text on the dark membership card stays `#B49361`.
+- Retest: axe reports no violations on registration, Home, or Shop. Other screens were not scanned.
+
+### K6 — Beauty demonstration prices
+
+- Severity: medium.
+- Beauty totals now say "Demonstration estimate" and "Demo R". Family occasion budgets were not relabelled. They are planning figures chosen in the form, not retailer prices.
+
+### K8 — Style-match percentage
+
+- Severity: low.
+- The greeting percentage was a fixed number in the local catalogue, not a measured score.
+- The badge now says "Demonstration suggestion". The try-on dialog says "Demonstration preview" instead of a fit percentage.
 
 ### K4 — Browser coverage
 

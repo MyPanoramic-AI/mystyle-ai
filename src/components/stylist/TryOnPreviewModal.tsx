@@ -101,7 +101,7 @@ export const TryOnPreviewModal: React.FC<TryOnPreviewModalProps> = ({
                     Silhouette Fit Simulation
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-[#1B382B]/10 text-[#1B382B] font-medium">
-                    <Check className="w-3 h-3" /> {outfit.matchScore || 98}% Fit Match
+                    <Check className="w-3 h-3" /> Demonstration preview
                   </span>
                 </div>
 

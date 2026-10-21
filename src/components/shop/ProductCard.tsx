@@ -91,7 +91,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             className={`w-8 h-8 rounded-full flex items-center justify-center transition-all pointer-events-auto shadow-xs cursor-pointer ${
               isSaved
                 ? 'bg-[#9C6A61] text-white'
-                : 'bg-white/90 text-[#242326] hover:bg-white hover:text-[#9C6A61]'
+                : 'bg-white/90 text-[#242326] hover:bg-white hover:text-[#91635a]'
             }`}
             title={isSaved ? 'Remove from saved' : 'Save product'}
           >
@@ -119,13 +119,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <span className="text-[11px] font-medium text-[#5C585E] truncate">
               {product.retailer}
             </span>
-            <span className="text-[9px] font-semibold text-[#B49361] uppercase tracking-wider shrink-0 bg-[#FAF7F2] px-1.5 py-0.5 rounded">
+            <span className="text-[9px] font-semibold text-[#866a40] uppercase tracking-wider shrink-0 bg-[#FAF7F2] px-1.5 py-0.5 rounded">
               Demo Listing
             </span>
           </div>
 
           {/* Product Name */}
-          <h3 className="font-serif text-xs sm:text-sm font-semibold text-[#242326] line-clamp-2 leading-snug group-hover:text-[#9C6A61] transition-colors">
+          <h3 className="font-serif text-xs sm:text-sm font-semibold text-[#242326] line-clamp-2 leading-snug group-hover:text-[#91635a] transition-colors">
             {product.name}
           </h3>
 
@@ -148,7 +148,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             )}
           </div>
 
-          <span className="text-[10px] font-semibold text-[#9C6A61] group-hover:underline">
+          <span className="text-[10px] font-semibold text-[#91635a] group-hover:underline">
             View Details
           </span>
         </div>

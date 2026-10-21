@@ -69,3 +69,7 @@ This does not make the revision commercially launch-ready. Live models, FASHN, v
 Gold-on-cream contrast remains an open accessibility finding. Beauty prices are still easy to read as product totals. There is no reschedule button. Refresh still does not restore the current tab.
 
 Do not start subscriptions, payments, or a live provider in the next phase. The next useful work is a design decision on the contrast finding and the remaining demonstration labels, or an explicitly approved live-provider test. Neither should be done by deploying this revision.
+
+## Update, 21 October 2026 — labels
+
+Registration, Home, and Shop no longer report axe color-contrast violations after the text colours above were darkened. Beauty totals and the stylist match badge are labelled as demonstration content. Membership switches say that no payment was taken. This still does not make the revision commercially launch-ready. Contrast on screens that were not scanned, family budget figures, and the commercial blockers are unchanged.

@@ -22,7 +22,7 @@ export const CategoryCardsCarousel: React.FC<CategoryCardsCarouselProps> = ({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
+          <Sparkles className="w-3.5 h-3.5 text-[#866a40]" />
           <h2 className="text-xs font-bold uppercase tracking-wider text-[#242326]">
             Curated Categories
           </h2>
@@ -30,7 +30,7 @@ export const CategoryCardsCarousel: React.FC<CategoryCardsCarouselProps> = ({
         {selectedCategory !== 'All' && (
           <button
             onClick={() => onSelectCategory('All')}
-            className="text-xs font-medium text-[#9C6A61] hover:underline cursor-pointer"
+            className="text-xs font-medium text-[#91635a] hover:underline cursor-pointer"
           >
             Show All
           </button>

@@ -17,12 +17,12 @@ export const ShopTheLookBanner: React.FC<ShopTheLookBannerProps> = ({ context, o
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#FAF7F2] to-[#F2EAE1] border border-[#B49361]/35 p-4 sm:p-5 shadow-xs">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#B49361]/15 text-[#B49361] flex items-center justify-center shrink-0 mt-0.5">
+          <div className="w-10 h-10 rounded-xl bg-[#B49361]/15 text-[#866a40] flex items-center justify-center shrink-0 mt-0.5">
             <ShoppingBag className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#9C6A61] flex items-center gap-1">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#91635a] flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
                 Shop The Look Mode
               </span>

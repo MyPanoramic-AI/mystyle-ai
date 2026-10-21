@@ -35,7 +35,7 @@ export const InspirationGallery: React.FC<InspirationGalleryProps> = ({ onStyleS
       {/* Section Header */}
       <div className="flex items-end justify-between mb-4">
         <div>
-          <span className="text-xs font-semibold tracking-wider uppercase text-[#9C6A61] block mb-1">
+          <span className="text-xs font-semibold tracking-wider uppercase text-[#91635a] block mb-1">
             Weekly Lookbook
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-[#242326]">
@@ -116,7 +116,7 @@ export const InspirationGallery: React.FC<InspirationGalleryProps> = ({ onStyleS
 
             {/* Stylist Note */}
             <div className="p-4 rounded-xl bg-white border border-[#242326]/8 shadow-2xs">
-              <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[#9C6A61]">
+              <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[#91635a]">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Stylist's Note</span>
               </div>

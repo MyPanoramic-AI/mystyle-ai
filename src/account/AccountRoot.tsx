@@ -305,7 +305,7 @@ function Status({ title, body, children }: { title: string; body: string; childr
   return (
     <main className="min-h-screen bg-[#F6F2EC] text-[#242326] flex items-center justify-center px-4">
       <section className="max-w-md w-full rounded-3xl bg-white border border-[#242326]/10 shadow-sm p-8">
-        <p className="font-serif text-2xl">MyStyle <span className="text-[10px] uppercase tracking-widest text-[#B49361] font-sans">AI</span></p>
+        <p className="font-serif text-2xl">MyStyle <span className="text-[10px] uppercase tracking-widest text-[#866a40] font-sans">AI</span></p>
         <h1 className="mt-6 font-serif text-3xl">{title}</h1>
         <p className="mt-3 text-sm text-[#5C585E] leading-relaxed">{body}</p>
         {children ? <div className="mt-6 flex flex-col gap-3">{children}</div> : null}
@@ -334,7 +334,7 @@ function AuthScreen({
   return (
     <main className="min-h-screen bg-[#F6F2EC] text-[#242326] px-4 py-10">
       <section className="max-w-md mx-auto rounded-3xl bg-white border border-[#242326]/10 shadow-sm p-8">
-        <p className="font-serif text-2xl">MyStyle <span className="text-[10px] uppercase tracking-widest text-[#B49361] font-sans">AI</span></p>
+        <p className="font-serif text-2xl">MyStyle <span className="text-[10px] uppercase tracking-widest text-[#866a40] font-sans">AI</span></p>
         <h1 className="mt-6 font-serif text-3xl">{panel === 'register' ? 'Create your account' : 'Welcome back'}</h1>
         <p className="mt-3 text-sm text-[#5C585E] leading-relaxed">
           An adult account saves your style profile on this computer&apos;s local service. Email verification and password recovery are not available yet.
@@ -361,7 +361,7 @@ function AuthScreen({
               <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} type="password" autoComplete="new-password" className="mt-1.5 w-full px-4 py-3 rounded-xl bg-[#F6F2EC]/60 border border-[#242326]/15 text-sm" />
             </label>
           ) : null}
-          {error ? <p className="text-sm text-[#9C6A61]" role="alert">{error}</p> : null}
+          {error ? <p className="text-sm text-[#91635a]" role="alert">{error}</p> : null}
           <Button type="submit" variant="primary" fullWidth disabled={busy}>{busy ? 'Please wait…' : panel === 'register' ? 'Create account' : 'Sign in'}</Button>
         </form>
         <button type="button" className="mt-4 text-sm text-[#5C585E] underline" onClick={() => setPanel(panel === 'register' ? 'login' : 'register')}>
@@ -405,7 +405,7 @@ function ImportReview({
           <Choice checked={selection.shopping} onChange={() => toggle('shopping')} label="Budget, priorities, and retailers" />
           <Choice checked={selection.measurements} onChange={() => toggle('measurements')} label="Optional measurements, including height" />
         </div>
-        {error ? <p className="mt-4 text-sm text-[#9C6A61]" role="alert">{error}</p> : null}
+        {error ? <p className="mt-4 text-sm text-[#91635a]" role="alert">{error}</p> : null}
         <div className="mt-6 flex flex-col gap-3">
           <Button variant="primary" disabled={busy} onClick={() => void onImport(selection)}>{busy ? 'Saving…' : 'Import selected preferences'}</Button>
           <Button variant="secondary" disabled={busy} onClick={onSkip}>Continue without importing</Button>

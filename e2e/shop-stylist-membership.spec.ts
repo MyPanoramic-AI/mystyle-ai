@@ -73,7 +73,7 @@ test('membership stays a labelled demonstration without a payment success', asyn
   await register(page, `qa-member-${Date.now()}@example.com`);
   await skipToApp(page);
   await page.getByRole('button', { name: 'Explore All Membership Plans' }).click();
-  await expect(page.getByRole('button', { name: /Select / }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /Preview / }).first()).toBeVisible();
   await expect(page.getByText(/payment successful|card charged|purchase complete/i)).toHaveCount(0);
   await page.getByRole('button', { name: 'My Membership' }).click();
   await expect(page.getByText('Transparent Prototype Guarantee')).toBeVisible();

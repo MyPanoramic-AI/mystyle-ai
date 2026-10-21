@@ -26,7 +26,7 @@ export const BeautySection: React.FC<BeautySectionProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
         <div>
-          <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
+          <span className="text-xs font-semibold tracking-wider uppercase text-[#866a40] block mb-1">
             Complete The Look
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-[#242326]">
@@ -40,9 +40,9 @@ export const BeautySection: React.FC<BeautySectionProps> = ({
           {onOpenBeautyStudio && (
             <button
               onClick={onOpenBeautyStudio}
-              className="px-3.5 py-1.5 text-xs font-semibold text-[#9C6A61] bg-[#FAF7F2] hover:bg-[#E5CDBE]/40 border border-[#9C6A61]/20 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-1.5 text-xs font-semibold text-[#91635a] bg-[#FAF7F2] hover:bg-[#E5CDBE]/40 border border-[#9C6A61]/20 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
+              <Sparkles className="w-3.5 h-3.5 text-[#866a40]" />
               <span>Open AI Beauty Studio</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
@@ -96,12 +96,12 @@ export const BeautySection: React.FC<BeautySectionProps> = ({
                 <p className="text-xs text-[#5C585E] leading-relaxed mb-2">
                   {item.subtitle}
                 </p>
-                <span className="text-[11px] font-medium text-[#B49361] block">
+                <span className="text-[11px] font-medium text-[#866a40] block">
                   {item.tagline}
                 </span>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[#242326]/6 flex items-center justify-between text-xs font-semibold text-[#9C6A61]">
+              <div className="mt-4 pt-3 border-t border-[#242326]/6 flex items-center justify-between text-xs font-semibold text-[#91635a]">
                 <span>Explore Beauty Pairings</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -130,7 +130,7 @@ export const BeautySection: React.FC<BeautySectionProps> = ({
             </div>
 
             <div className="p-4 rounded-xl bg-white border border-[#242326]/8 shadow-2xs">
-              <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[#9C6A61]">
+              <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[#91635a]">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Beauty Engine Guidance</span>
               </div>

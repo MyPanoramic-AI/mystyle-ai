@@ -117,7 +117,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {/* Category, Aesthetic & Retailer Bar */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#9C6A61] bg-[#FAF7F2] px-2.5 py-1 rounded-md">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#91635a] bg-[#FAF7F2] px-2.5 py-1 rounded-md">
                     {product.category}
                   </span>
                   <span className="text-[10px] text-[#5C585E]">
@@ -130,7 +130,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   onClick={handleToggleSave}
                   className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
                     isSaved
-                      ? 'bg-[#FAF7F2] border-[#9C6A61] text-[#9C6A61]'
+                      ? 'bg-[#FAF7F2] border-[#9C6A61] text-[#91635a]'
                       : 'border-[#242326]/12 text-[#5C585E] hover:text-[#242326]'
                   }`}
                 >
@@ -155,7 +155,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       <span className="text-xs text-[#5C585E] line-through">
                         R{product.demoOriginalPriceZar}
                       </span>
-                      <span className="text-xs font-semibold text-[#9C6A61]">
+                      <span className="text-xs font-semibold text-[#91635a]">
                         Save {product.demoDiscountPercent}% (Demo Saving)
                       </span>
                     </div>
@@ -164,7 +164,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 <button
                   onClick={() => setShowPriceComparison(true)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9C6A61] hover:text-[#7d5048] hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#91635a] hover:text-[#7d5048] hover:underline cursor-pointer"
                 >
                   <Scale className="w-3.5 h-3.5" />
                   <span>Compare {product.offers.length} Stores</span>
@@ -224,7 +224,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {/* Styling Suggestions Box */}
               {product.stylingSuggestions.length > 0 && (
                 <div className="p-4 rounded-2xl bg-[#F6F2EC]/60 border border-[#242326]/8 space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#9C6A61]">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#91635a]">
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>How to Style This Piece</span>
                   </div>
@@ -257,7 +257,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <Button
                   variant="secondary"
                   size="md"
-                  icon={<Scale className="w-4 h-4 text-[#B49361]" />}
+                  icon={<Scale className="w-4 h-4 text-[#866a40]" />}
                   onClick={() => setShowPriceComparison(true)}
                 >
                   Compare Prices
@@ -289,12 +289,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       {showRetailerNotice && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-[#242326]/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-left space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#B49361]/15 text-[#B49361] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#B49361]/15 text-[#866a40] flex items-center justify-center">
               <Info className="w-6 h-6" />
             </div>
             <div>
               <h3 className="font-serif text-lg font-semibold text-[#242326]">
-                Retailer Purchase Links
+                No retailer checkout yet
               </h3>
               <p className="text-xs text-[#5C585E] mt-2 leading-relaxed">
                 Direct merchant checkout and live store redirection will become available once real retailer API integrations are connected in Phase 2.

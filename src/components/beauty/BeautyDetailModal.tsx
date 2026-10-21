@@ -217,7 +217,7 @@ export const BeautyDetailModal: React.FC<BeautyDetailModalProps> = ({
               {/* Curated Products List */}
               <div className="pt-2">
                 <h5 className="text-xs font-mono tracking-wider uppercase text-[#5C585E] mb-2">
-                  Curated Retail Products ({completeLook.curatedProducts.length})
+                  Curated demonstration products ({completeLook.curatedProducts.length})
                 </h5>
                 <div className="space-y-2">
                   {completeLook.curatedProducts.map((prod) => (
@@ -238,7 +238,7 @@ export const BeautyDetailModal: React.FC<BeautyDetailModalProps> = ({
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="text-xs font-bold text-[#242326] block">R{prod.priceZar.toLocaleString()}</span>
+                        <span className="text-xs font-bold text-[#242326] block">Demo R{prod.priceZar.toLocaleString()}</span>
                         {onAddToBag && (
                           <button
                             onClick={() => onAddToBag(prod)}

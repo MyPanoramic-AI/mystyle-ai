@@ -33,7 +33,7 @@ export const DigitalWardrobeCard: React.FC<DigitalWardrobeCardProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="max-w-xl space-y-3">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono tracking-widest text-[#B49361] uppercase font-semibold">
+              <span className="text-[10px] font-mono tracking-widest text-[#866a40] uppercase font-semibold">
                 Smart Wardrobe Architecture
               </span>
               <span className="text-[10px] bg-white/10 text-white/90 px-2 py-0.5 rounded font-medium">
@@ -52,15 +52,15 @@ export const DigitalWardrobeCard: React.FC<DigitalWardrobeCardProps> = ({
             {/* Micro Stats */}
             <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
               <div className="flex items-center gap-1.5 text-white/90">
-                <Layers className="w-3.5 h-3.5 text-[#B49361]" />
+                <Layers className="w-3.5 h-3.5 text-[#866a40]" />
                 <span>{pieceCount} Digitised Pieces</span>
               </div>
               <div className="flex items-center gap-1.5 text-white/90">
-                <Sparkles className="w-3.5 h-3.5 text-[#9C6A61]" />
+                <Sparkles className="w-3.5 h-3.5 text-[#91635a]" />
                 <span>{outfitCount} Created Outfits</span>
               </div>
               <div className="flex items-center gap-1.5 text-white/90">
-                <TrendingUp className="w-3.5 h-3.5 text-[#B49361]" />
+                <TrendingUp className="w-3.5 h-3.5 text-[#866a40]" />
                 <span>{accountCounts ? 'Gap suggestions are a demonstration' : 'Gap Intelligence Active'}</span>
               </div>
             </div>

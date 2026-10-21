@@ -31,7 +31,7 @@ export const StyleInspirationSection: React.FC<StyleInspirationSectionProps> = (
       {/* Header */}
       <div className="flex items-end justify-between mb-4">
         <div>
-          <span className="text-xs font-semibold tracking-wider uppercase text-[#9C6A61] block mb-1">
+          <span className="text-xs font-semibold tracking-wider uppercase text-[#91635a] block mb-1">
             Curated For You
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-[#242326]">
@@ -41,7 +41,7 @@ export const StyleInspirationSection: React.FC<StyleInspirationSectionProps> = (
         {onDiscoverStyles ? (
           <button
             onClick={onDiscoverStyles}
-            className="text-xs font-semibold text-[#9C6A61] hover:text-[#242326] transition-colors inline-flex items-center gap-1 cursor-pointer"
+            className="text-xs font-semibold text-[#91635a] hover:text-[#242326] transition-colors inline-flex items-center gap-1 cursor-pointer"
           >
             <span>Discover All Styles</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -105,7 +105,7 @@ export const StyleInspirationSection: React.FC<StyleInspirationSectionProps> = (
                 <button
                   type="button"
                   onClick={() => onExploreLook(item)}
-                  className="w-full py-2 px-3 text-xs font-semibold text-[#9C6A61] hover:text-white bg-[#F6F2EC] hover:bg-[#9C6A61] rounded-xl transition-all cursor-pointer flex items-center justify-between shadow-2xs group/btn"
+                  className="w-full py-2 px-3 text-xs font-semibold text-[#91635a] hover:text-white bg-[#F6F2EC] hover:bg-[#9C6A61] rounded-xl transition-all cursor-pointer flex items-center justify-between shadow-2xs group/btn"
                 >
                   <span>Explore Look</span>
                   <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1" />
@@ -136,7 +136,7 @@ export const StyleInspirationSection: React.FC<StyleInspirationSectionProps> = (
             </div>
 
             <div className="p-4 rounded-xl bg-white border border-[#242326]/8 shadow-2xs">
-              <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[#9C6A61]">
+              <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[#91635a]">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Stylist Guidance</span>
               </div>

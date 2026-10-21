@@ -42,7 +42,7 @@ export const FamilyStylingCard: React.FC<FamilyStylingCardProps> = ({ onOpenFami
       {/* Content */}
       <div className="relative z-10 p-6 sm:p-8 max-w-xl">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#B49361] bg-[#B49361]/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#866a40] bg-[#B49361]/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
             <Users className="w-3 h-3" />
             Family Styling Hub
           </span>
@@ -86,7 +86,7 @@ export const FamilyStylingCard: React.FC<FamilyStylingCardProps> = ({ onOpenFami
           </Button>
 
           <div className="flex items-center gap-1.5 text-[11px] text-white/60">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#B49361]" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#866a40]" />
             <span>{usesAccount ? 'Saved with your account' : 'Private device sandbox'}</span>
           </div>
         </div>

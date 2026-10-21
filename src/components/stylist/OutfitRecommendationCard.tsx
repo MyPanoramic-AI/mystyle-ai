@@ -62,7 +62,7 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
               {outfit.occasion}
             </span>
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#1B382B]/80 backdrop-blur-md text-[#E5CDBE] border border-[#E5CDBE]/30">
-              <Sparkles className="w-3 h-3 text-[#B49361]" /> {outfit.conceptOnly ? 'Style suggestion' : `${outfit.matchScore || 98}% Style Match`}
+              <Sparkles className="w-3 h-3 text-[#B49361]" /> {outfit.conceptOnly ? 'Style suggestion' : 'Demonstration suggestion'}
             </span>
           </div>
 

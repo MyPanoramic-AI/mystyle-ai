@@ -24,8 +24,8 @@ export const VirtualTryOnCard: React.FC<VirtualTryOnCardProps> = ({ onNavigate }
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61]" />
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-[#9C6A61]">
-                  Neural Fitting Room Preview
+                <span className="text-[11px] font-semibold tracking-wider uppercase text-[#91635a]">
+                  Fitting room · not active
                 </span>
               </div>
 

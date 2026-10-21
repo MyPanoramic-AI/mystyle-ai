@@ -219,9 +219,9 @@ export const CreditsOverviewView: React.FC<CreditsOverviewViewProps> = ({
 
               <div>
                 <div className="py-2 border-t border-[#242326]/8 mb-3 flex items-center justify-between">
-                  <span className="text-xs text-[#5C585E]">Total Price</span>
+                  <span className="text-xs text-[#5C585E]">Demonstration price</span>
                   <span className="font-serif text-base font-bold text-[#242326]">
-                    R{pack.priceZar}
+                    Demo R{pack.priceZar}
                   </span>
                 </div>
 
@@ -234,7 +234,7 @@ export const CreditsOverviewView: React.FC<CreditsOverviewViewProps> = ({
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Purchase Top-Up</span>
+                  <span>Preview top-up</span>
                 </button>
               </div>
             </div>

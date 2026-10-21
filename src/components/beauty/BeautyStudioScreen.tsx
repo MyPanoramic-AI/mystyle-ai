@@ -753,7 +753,7 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
 
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-xs font-bold text-[#242326]">
-                        R{prod.priceZar.toLocaleString()}
+                        Demo R{prod.priceZar.toLocaleString()}
                       </span>
                       <button
                         onClick={() => handleRemoveFromBag(prod.id)}
@@ -768,15 +768,15 @@ export const BeautyStudioScreen: React.FC<BeautyStudioScreenProps> = ({
 
                 <div className="p-4 bg-[#F6F2EC]/50 flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-[#5C585E]">Estimated Total (ZAR):</span>
-                    <div className="text-base font-bold text-[#242326]">R{bagTotalZar.toLocaleString()}</div>
+                    <span className="text-xs text-[#5C585E]">Demonstration estimate:</span>
+                    <div className="text-base font-bold text-[#242326]">Demo R{bagTotalZar.toLocaleString()}</div>
                   </div>
                   <button
                     onClick={handleSendBagToShop}
                     className="px-4 py-2 bg-[#9C6A61] text-white text-xs font-medium rounded-xl hover:bg-[#8A5B53] cursor-pointer shadow-xs flex items-center gap-1.5"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Price Compare in Smart Shopping</span>
+                    <span>Open demonstration shop</span>
                   </button>
                 </div>
               </div>

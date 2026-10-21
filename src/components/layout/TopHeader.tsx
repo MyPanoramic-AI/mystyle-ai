@@ -39,8 +39,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           onClick={() => onNavigate('home')}
           className="flex items-center gap-2 text-left group focus-visible:outline-none shrink-0"
         >
-          <span className="font-serif text-2xl font-bold tracking-tight text-[#242326] group-hover:text-[#9C6A61] transition-colors whitespace-nowrap">
-            MyStyle <span className="font-sans text-xs uppercase tracking-widest text-[#B49361] font-semibold ml-0.5">AI</span>
+          <span className="font-serif text-2xl font-bold tracking-tight text-[#242326] group-hover:text-[#91635a] transition-colors whitespace-nowrap">
+            MyStyle <span className="font-sans text-xs uppercase tracking-widest text-[#866a40] font-semibold ml-0.5">AI</span>
           </span>
         </button>
 
@@ -114,7 +114,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             title="View AI Credits & Membership"
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/80 hover:bg-white text-[11px] font-semibold text-[#242326] border border-[#B49361]/30 hover:border-[#B49361] transition-all shadow-xs cursor-pointer active:scale-95"
           >
-            <Sparkles className="w-3 h-3 text-[#B49361]" />
+            <Sparkles className="w-3 h-3 text-[#866a40]" />
             <span>{credits.remainingCredits} Credits</span>
           </button>
 

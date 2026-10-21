@@ -41,7 +41,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onNavigate }) 
               <div
                 className={`w-10 h-7 rounded-xl flex items-center justify-center transition-all ${
                   isActive
-                    ? 'text-[#9C6A61] scale-105'
+                    ? 'text-[#91635a] scale-105'
                     : 'text-[#5C585E] group-hover:text-[#242326]'
                 }`}
               >
@@ -54,7 +54,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onNavigate }) 
               <span
                 className={`text-[10px] tracking-tight leading-none mt-0.5 transition-colors whitespace-nowrap ${
                   isActive
-                    ? 'font-semibold text-[#9C6A61]'
+                    ? 'font-semibold text-[#91635a]'
                     : 'font-normal text-[#5C585E] group-hover:text-[#242326]'
                 }`}
               >

@@ -15,7 +15,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ userName, onStartOnboard
     <section className="mb-4 sm:mb-5 pt-0.5 sm:pt-1">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <span className="text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
+          <span className="text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#866a40] block mb-1">
             Personal Styling Companion
           </span>
           <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-[#242326] leading-[1.2]">
@@ -29,7 +29,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ userName, onStartOnboard
         {onStartOnboarding && (
           <button
             onClick={onStartOnboarding}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#9C6A61] bg-white border border-[#242326]/10 rounded-xl hover:bg-[#E5CDBE]/20 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#91635a] bg-white border border-[#242326]/10 rounded-xl hover:bg-[#E5CDBE]/20 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
           >
             <span>Update Style Quiz</span>
           </button>

@@ -115,8 +115,8 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                   <X className="w-4 h-4" />
                 </button>
               )}
-              <span className="text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200">
-                Ready For Fitting Simulation
+              <span className="text-xs px-3 py-1 rounded-full bg-[#FAF7F2] text-[#242326] font-semibold border border-[#242326]/10">
+                Generation is not active
               </span>
             </div>
           </div>

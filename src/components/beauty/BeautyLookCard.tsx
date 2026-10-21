@@ -108,9 +108,9 @@ export const BeautyLookCard: React.FC<BeautyLookCardProps> = ({
         {/* Footer actions */}
         <div className="mt-5 pt-4 border-t border-[#242326]/6 flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs text-[#5C585E]">
-            Products total:{' '}
+            Demonstration estimate:{' '}
             <span className="font-semibold text-[#242326]">
-              R{totalPriceZar.toLocaleString()}
+              Demo R{totalPriceZar.toLocaleString()}
             </span>
           </div>
 

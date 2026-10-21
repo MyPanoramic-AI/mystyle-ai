@@ -17,11 +17,11 @@ export const AIInvitationCard: React.FC<AIInvitationCardProps> = ({ onFindLook }
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E5CDBE]/40 via-white to-[#F6F2EC] border border-[#242326]/10 p-6 sm:p-8 lg:p-10 shadow-xs">
         <div className="max-w-2xl mx-auto text-center flex flex-col items-center">
           {/* Subtle icon container */}
-          <div className="w-12 h-12 rounded-2xl bg-[#9C6A61]/10 text-[#9C6A61] flex items-center justify-center mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#9C6A61]/10 text-[#91635a] flex items-center justify-center mb-4">
             <MessageCircle className="w-6 h-6 stroke-[1.8]" />
           </div>
 
-          <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] mb-2">
+          <span className="text-xs font-semibold tracking-wider uppercase text-[#866a40] mb-2">
             Personal Styling Consultation
           </span>
 

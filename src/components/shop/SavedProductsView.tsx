@@ -43,7 +43,7 @@ export const SavedProductsView: React.FC<SavedProductsViewProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Heart className="w-4 h-4 text-[#9C6A61] fill-current" />
+            <Heart className="w-4 h-4 text-[#91635a] fill-current" />
             <h2 className="font-serif text-xl sm:text-2xl font-semibold text-[#242326]">
               Your Saved Products
             </h2>
@@ -61,7 +61,7 @@ export const SavedProductsView: React.FC<SavedProductsViewProps> = ({
       {/* Empty State */}
       {savedProducts.length === 0 ? (
         <div className="text-center py-16 px-4 bg-white rounded-3xl border border-[#242326]/10 space-y-4">
-          <div className="w-16 h-16 rounded-full bg-[#FAF7F2] text-[#9C6A61] flex items-center justify-center mx-auto shadow-xs">
+          <div className="w-16 h-16 rounded-full bg-[#FAF7F2] text-[#91635a] flex items-center justify-center mx-auto shadow-xs">
             <Heart className="w-8 h-8" />
           </div>
           <div className="max-w-md mx-auto">

@@ -85,7 +85,7 @@ export const ShopFiltersDrawer: React.FC<ShopFiltersDrawerProps> = ({
         {/* Drawer Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#242326]/8 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#FAF7F2] text-[#9C6A61] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-[#FAF7F2] text-[#91635a] flex items-center justify-center">
               <SlidersHorizontal className="w-4 h-4" />
             </div>
             <div>
@@ -101,7 +101,7 @@ export const ShopFiltersDrawer: React.FC<ShopFiltersDrawerProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onResetFilters}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#9C6A61] hover:text-[#7d5048] px-2 py-1 rounded-lg hover:bg-[#FAF7F2] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[#91635a] hover:text-[#7d5048] px-2 py-1 rounded-lg hover:bg-[#FAF7F2] transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
@@ -177,12 +177,12 @@ export const ShopFiltersDrawer: React.FC<ShopFiltersDrawerProps> = ({
                     onClick={() => handleToggleRetailer(retailer)}
                     className={`px-3 py-2 rounded-xl text-xs font-medium border flex items-center justify-between transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#FAF7F2] text-[#9C6A61] border-[#9C6A61] font-semibold'
+                        ? 'bg-[#FAF7F2] text-[#91635a] border-[#9C6A61] font-semibold'
                         : 'bg-white text-[#242326] border-[#242326]/12 hover:border-[#242326]/30'
                     }`}
                   >
                     <span>{retailer}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-[#9C6A61]" />}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-[#91635a]" />}
                   </button>
                 );
               })}
@@ -195,7 +195,7 @@ export const ShopFiltersDrawer: React.FC<ShopFiltersDrawerProps> = ({
               <label className="text-xs font-bold uppercase tracking-wider text-[#242326]">
                 Demo Price Range (ZAR)
               </label>
-              <span className="text-xs font-semibold text-[#9C6A61]">
+              <span className="text-xs font-semibold text-[#91635a]">
                 R{filters.minPrice} — R{filters.maxPrice}
               </span>
             </div>
@@ -263,7 +263,7 @@ export const ShopFiltersDrawer: React.FC<ShopFiltersDrawerProps> = ({
                     onClick={() => handleToggleColour(col)}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#FAF7F2] text-[#9C6A61] border-[#9C6A61] font-semibold'
+                        ? 'bg-[#FAF7F2] text-[#91635a] border-[#9C6A61] font-semibold'
                         : 'bg-white text-[#242326] border-[#242326]/15 hover:border-[#242326]/30'
                     }`}
                   >
@@ -365,7 +365,7 @@ export const ShopFiltersDrawer: React.FC<ShopFiltersDrawerProps> = ({
           {/* 8. Demo Sale Toggle */}
           <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#242326]/8">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#B49361]" />
+              <Sparkles className="w-4 h-4 text-[#866a40]" />
               <div>
                 <span className="text-xs font-semibold text-[#242326]">
                   Demonstration Sale Items Only
@@ -381,7 +381,7 @@ export const ShopFiltersDrawer: React.FC<ShopFiltersDrawerProps> = ({
               onChange={(e) =>
                 onChangeFilters({ ...filters, onlyDemoSale: e.target.checked })
               }
-              className="w-5 h-5 rounded text-[#9C6A61] focus:ring-[#9C6A61] accent-[#9C6A61] cursor-pointer"
+              className="w-5 h-5 rounded text-[#91635a] focus:ring-[#9C6A61] accent-[#9C6A61] cursor-pointer"
             />
           </div>
         </div>

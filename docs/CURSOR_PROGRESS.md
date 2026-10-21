@@ -354,4 +354,10 @@ Onboarding progress now comes from one eight-step list. Header text and the labe
 
 `npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. The JavaScript chunk is 910.21 kB, gzip 217.76 kB, up from 909.60 kB. It was not split. The onboarding unit test passed 1. `test:api` 21, `test:account` 5, `test:ai` 16, `test:shopping` 15, and `test:tryon` 16 passed. The unique Node count is 74. The 21 browser tests are additional. The application is still not commercially launch-ready.
 
+## 2026-10-21 — Contrast and demonstration wording
+
+**Status:** Gold and rose text on registration, Home, and Shop was darkened so small text on cream meets a 4.5:1 contrast ratio. Backgrounds and gold accents were left in place. A follow-up axe scan of those three screens reported no violations. It is not a full WCAG claim.
+
+Beauty totals say "Demonstration estimate". The invented style-match percentage is now "Demonstration suggestion". Shop, membership, and try-on lines that implied a live price, a real discount, a finished fitting, or a payment were rewritten. `npm run test:e2e` passed 21. `npm run lint`, both strict TypeScript checks, `npm run build`, and the API suites passed. The JavaScript chunk is 910.24 kB. No push and no Render deploy. Live providers stayed off.
+
 

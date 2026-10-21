@@ -45,12 +45,12 @@ export const PriceComparisonModal: React.FC<PriceComparisonModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-start justify-between p-6 border-b border-[#242326]/8 bg-[#FAF7F2]/60">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#B49361]/15 text-[#B49361] flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-10 h-10 rounded-2xl bg-[#B49361]/15 text-[#866a40] flex items-center justify-center shrink-0 mt-0.5">
               <Scale className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[#9C6A61]">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#91635a]">
                   Price Comparison Engine
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-semibold">
@@ -78,7 +78,7 @@ export const PriceComparisonModal: React.FC<PriceComparisonModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-5">
           {/* Disclaimer Banner */}
           <div className="p-3.5 rounded-2xl bg-[#F6F2EC] border border-[#242326]/10 flex items-start gap-2.5 text-xs text-[#5C585E]">
-            <Info className="w-4 h-4 text-[#B49361] shrink-0 mt-0.5" />
+            <Info className="w-4 h-4 text-[#866a40] shrink-0 mt-0.5" />
             <div>
               <span className="font-semibold text-[#242326]">
                 Prototype Demonstration Data:
@@ -90,7 +90,7 @@ export const PriceComparisonModal: React.FC<PriceComparisonModalProps> = ({
           {/* Comparison Offers List */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#242326] flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-[#9C6A61]" />
+              <Building2 className="w-3.5 h-3.5 text-[#91635a]" />
               Simulated Retailer Offers ({product.offers.length})
             </h3>
 
@@ -137,7 +137,7 @@ export const PriceComparisonModal: React.FC<PriceComparisonModalProps> = ({
 
                       <div className="flex items-center gap-3 text-xs text-[#5C585E]">
                         <span className="flex items-center gap-1">
-                          <Truck className="w-3.5 h-3.5 text-[#9C6A61]" />
+                          <Truck className="w-3.5 h-3.5 text-[#91635a]" />
                           {offer.deliveryEstimate}
                         </span>
                       </div>
@@ -176,7 +176,7 @@ export const PriceComparisonModal: React.FC<PriceComparisonModalProps> = ({
                           `Simulated checkout for ${offer.retailer}.\nIn Phase 2, this will redirect to the authentic retailer checkout link.`
                         )
                       }
-                      className="text-xs font-semibold text-[#9C6A61] hover:underline cursor-pointer"
+                      className="text-xs font-semibold text-[#91635a] hover:underline cursor-pointer"
                     >
                       Demo View →
                     </button>

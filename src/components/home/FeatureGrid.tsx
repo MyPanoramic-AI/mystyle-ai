@@ -44,7 +44,7 @@ export const FeatureGrid: React.FC<FeatureGridProps> = ({ onNavigate }) => {
     <section className="mb-10 sm:mb-12">
       {/* Section Header */}
       <div className="mb-4">
-        <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
+        <span className="text-xs font-semibold tracking-wider uppercase text-[#866a40] block mb-1">
           Intelligent Fashion Suite
         </span>
         <h2 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-[#242326]">
@@ -77,9 +77,9 @@ export const FeatureGrid: React.FC<FeatureGridProps> = ({ onNavigate }) => {
                   <div
                     className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
                       item.accent === 'rose'
-                        ? 'bg-[#E5CDBE]/40 text-[#9C6A61]'
+                        ? 'bg-[#E5CDBE]/40 text-[#91635a]'
                         : item.accent === 'gold'
-                        ? 'bg-[#B49361]/15 text-[#B49361]'
+                        ? 'bg-[#B49361]/15 text-[#866a40]'
                         : 'bg-[#242326]/10 text-[#242326]'
                     }`}
                   >
@@ -88,17 +88,17 @@ export const FeatureGrid: React.FC<FeatureGridProps> = ({ onNavigate }) => {
 
                   <span className="text-[11px] font-medium text-[#5C585E] flex items-center gap-1">
                     {isDirectNav ? (
-                      <span className="text-[#9C6A61] font-semibold">Explore</span>
+                      <span className="text-[#91635a] font-semibold">Explore</span>
                     ) : (
                       <>
-                        <Clock className="w-3 h-3 text-[#B49361]" />
+                        <Clock className="w-3 h-3 text-[#866a40]" />
                         <span>Roadmap</span>
                       </>
                     )}
                   </span>
                 </div>
 
-                <h3 className="font-serif text-lg font-semibold text-[#242326] group-hover:text-[#9C6A61] transition-colors">
+                <h3 className="font-serif text-lg font-semibold text-[#242326] group-hover:text-[#91635a] transition-colors">
                   {item.title}
                 </h3>
 
@@ -112,7 +112,7 @@ export const FeatureGrid: React.FC<FeatureGridProps> = ({ onNavigate }) => {
                 <span className="group-hover:translate-x-0.5 transition-transform">
                   {isDirectNav ? 'Open Feature' : 'Learn More'}
                 </span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#9C6A61] group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-3.5 h-3.5 text-[#91635a] group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
           );

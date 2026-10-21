@@ -50,7 +50,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({ onOpenMembership
                 {currentPlan.name}
               </span>
               <span className="text-[10px] bg-white/10 text-white/90 px-2 py-0.5 rounded font-medium">
-                {membership.billingCycle === 'monthly' ? 'Monthly' : 'Annual (17% Saved)'}
+                {membership.billingCycle === 'monthly' ? 'Monthly · demonstration' : 'Annual · demonstration'}
               </span>
               <span className="text-[10px] bg-[#B49361]/20 text-[#D4AF37] px-2 py-0.5 rounded font-medium">
                 {credits.remainingCredits} AI Credits
@@ -62,7 +62,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({ onOpenMembership
             </h2>
 
             <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-              Transparent, pay-as-you-go image generation and editorial memberships. Keep full control over your privacy, data downloads, and styling preferences.
+              Demonstration credits and plan labels. Image generation and payments are not active.
             </p>
 
             {/* Quick Credit Meter */}

@@ -114,7 +114,7 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
               <span className="text-[#E5CDBE]/70 block mb-0.5">Payment Method</span>
               <span className="font-semibold text-white text-sm flex items-center gap-1">
                 <CreditCard className="w-3.5 h-3.5 text-[#B49361]" />
-                {isFree ? 'No card required' : membership.paymentMethod}
+                {isFree ? 'No card required' : 'Demonstration · no card charged'}
               </span>
             </div>
           </div>
@@ -126,7 +126,7 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
               className="px-5 py-2.5 rounded-xl bg-[#B49361] hover:bg-[#a08152] text-white text-xs font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer"
             >
               <Crown className="w-3.5 h-3.5" />
-              <span>{isFree ? 'Upgrade to Signature' : 'Explore All Tier Options'}</span>
+              <span>{isFree ? 'Preview Signature' : 'Explore All Tier Options'}</span>
             </button>
 
             <button

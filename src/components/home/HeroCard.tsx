@@ -39,7 +39,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({ onAskStylist }) => {
             <div>
               <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#B49361]" />
-                <span className="text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#B49361]">
+                <span className="text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#866a40]">
                   Personalised Just For You
                 </span>
               </div>

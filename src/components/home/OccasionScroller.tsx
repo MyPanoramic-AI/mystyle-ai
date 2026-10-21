@@ -28,7 +28,7 @@ export const OccasionScroller: React.FC<OccasionScrollerProps> = ({ onSelectOcca
       {/* Section Header */}
       <div className="flex items-end justify-between mb-4">
         <div>
-          <span className="text-xs font-semibold tracking-wider uppercase text-[#9C6A61] block mb-1">
+          <span className="text-xs font-semibold tracking-wider uppercase text-[#91635a] block mb-1">
             Curated Occasions
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-[#242326]">

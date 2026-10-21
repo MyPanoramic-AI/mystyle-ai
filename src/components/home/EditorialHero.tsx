@@ -48,7 +48,7 @@ export const EditorialHero: React.FC<EditorialHeroProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#B49361]" />
-                <span className="text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#B49361]">
+                <span className="text-[11px] sm:text-xs font-semibold tracking-wider uppercase text-[#866a40]">
                   {heroContent.tagline}
                 </span>
               </div>
@@ -78,7 +78,7 @@ export const EditorialHero: React.FC<EditorialHeroProps> = ({
                     variant="secondary"
                     size="md"
                     onClick={onDiscoverStyles}
-                    icon={<Compass className="w-4 h-4 text-[#9C6A61]" />}
+                    icon={<Compass className="w-4 h-4 text-[#91635a]" />}
                     className="justify-center px-4"
                   >
                     <span>Discover Styles</span>
