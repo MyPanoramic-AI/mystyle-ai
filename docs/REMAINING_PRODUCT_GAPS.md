@@ -20,6 +20,8 @@ Date: 21 October 2026. Ordered by impact for a staging RC vs commercial launch.
 | --- | --- |
 | Profile photograph private media wiring | Onboarding photos lost on refresh; not in export as owned media |
 | AI credits unused by stylist coordinator | Ledger and stylist cost controls are separate |
+| Dual membership UI | Server Free/test credits coexist with browser `membershipService` demo plans/credits |
+| Shop wishlist account wiring | Client wishlist uses localStorage; `/api/saved-products` exists but is unused by `accountApi` |
 | Outfit reschedule UX | Delete-and-recreate only |
 | Inner-tab restore | Only shell navigation persisted |
 
@@ -27,6 +29,8 @@ Date: 21 October 2026. Ordered by impact for a staging RC vs commercial launch.
 
 | Gap | Impact |
 | --- | --- |
+| In-session password / email change | Only public reset + register email; no signed-in change endpoints |
+| Login session hygiene | New login does not revoke other sessions |
 | Further code-splitting (Shop/Stylist/Home) | Main chunk still 639.48 kB |
 | Editorial JPEG sizes (605–989 kB) | Bandwidth |
 | Gold/cream contrast on unscanned screens | A11y follow-up |

@@ -23,7 +23,8 @@ Intended path: Registration → Email verification → Onboarding → Home → S
 | Wardrobe / looks / plans | SQLite | Owner-scoped |
 | Beauty / family | SQLite | Owner-scoped; demo seeds not imported |
 | Stylist conversations | SQLite | Mock replies; not live provider text |
-| Membership credits | SQLite ledger | **Not debiting** stylist mock messages |
+| Membership credits | SQLite ledger | **Not debiting** stylist mock messages; UI still has separate browser demo plan/credits |
+| Shop wishlist | localStorage (`savedProductsService`) | `/api/saved-products` not called from client |
 | Shop / Discover / Try On consumer | In-app demo data | Must stay labelled |
 | Onboarding photographs | React state / object URLs | Not mapped to `media_assets` |
 
