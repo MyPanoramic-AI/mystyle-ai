@@ -83,3 +83,9 @@ This is still not a commercial subscription. Prices and credit allowances are pr
 ## Update, 21 October 2026 — privacy controls
 
 Authenticated export, consent history, photograph delete, and account deletion with password confirmation are available for isolated test accounts. Retention dry-run works. Automatic destructive cleanup remains disabled. The privacy notice is still a draft placeholder. This does not make the product POPIA compliant or commercially launch-ready.
+
+## Update, 21 October 2026 — production infrastructure (local only)
+
+Architecture, Render persistence, backup/restore, environment profiles, health/ready split, release and rollback docs, and infrastructure tests were prepared **without** pushing, deploying, or changing the live Render service. The Free Render plan remains a **production blocker** for durable SQLite and private media (no persistent disk). Secure staging/production config now fails closed when HTTPS origin, admin token, or non-localhost origins are missing. Live AI and payments stay refused on those profiles. See `PRODUCTION_ARCHITECTURE.md`, `RENDER_DEPLOYMENT_ASSESSMENT.md`, and `INFRASTRUCTURE_TEST_REPORT.md`.
+
+The application is still **not** commercially launch-ready and must not be treated as production-ready until a paid disk (or approved alternative storage), staging cutover, and operator backup drills are completed.

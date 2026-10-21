@@ -10,7 +10,7 @@ If the API is not running, the app explains that and offers a labelled demonstra
 
 ## Flow
 
-1. The app calls `GET /api/health` and `GET /api/auth/session`.
+1. The app calls `GET /api/ready` (database readiness) and `GET /api/auth/session`. Liveness remains at `GET /api/health`.
 2. A 401 shows registration and login. The session token is not stored in `localStorage`.
 3. Registration and login use the existing API. The CSRF token from the response is kept in memory.
 4. The app then loads `/api/profile` and `/api/preferences`.

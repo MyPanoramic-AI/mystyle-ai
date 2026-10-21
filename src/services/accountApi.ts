@@ -22,7 +22,8 @@ export interface SessionResponse extends AuthResult {
 }
 
 export interface AccountApi {
-  health(): Promise<{ ok: boolean; database: string }>;
+  health(): Promise<{ ok: boolean; status?: string; database?: string }>;
+  ready(): Promise<{ ok: boolean; status: string; database: string }>;
   session(): Promise<SessionResponse>;
   register(email: string, password: string): Promise<AuthResult>;
   login(email: string, password: string): Promise<AuthResult>;
@@ -264,6 +265,7 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
 
   return {
     health: () => request('/api/health'),
+    ready: () => request('/api/ready'),
     session: async () => remember(await request<SessionResponse>('/api/auth/session')),
     register: async (email, password) => remember(await request<AuthResult>('/api/auth/register', { method: 'POST', body: { email, password } })),
     login: async (email, password) => remember(await request<AuthResult>('/api/auth/login', { method: 'POST', body: { email, password } })),

@@ -21,7 +21,7 @@ test('migrations create the account tables and do not reapply', () => {
   }
 });
 
-test('the API refuses a public bind address', () => {
+test('the API refuses a public bind address outside hosted profiles', () => {
   assert.throws(() => loadConfig({ API_HOST: '0.0.0.0' }), /127\.0\.0\.1/);
 });
 
@@ -36,7 +36,7 @@ test('a database failure returns 503 without a stack trace', async () => {
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', () => resolve()));
   try {
-    const response = await fetch(`http://127.0.0.1:${(server.address() as { port: number }).port}/api/health`);
+    const response = await fetch(`http://127.0.0.1:${(server.address() as { port: number }).port}/api/ready`);
     const text = await response.text();
     assert.equal(response.status, 503);
     assert.equal(text.includes('secret'), false);
@@ -46,25 +46,44 @@ test('a database failure returns 503 without a stack trace', async () => {
   }
 });
 
-test('health reports the local bind without a filesystem path', async () => {
+test('health is live without database proof and ready reports database status', async () => {
   const api = await startApi();
   try {
-    const response = await fetch(`${api.base}/api/health`);
-    const body = await response.json() as { ok: boolean; bind: string; database: string };
-    assert.equal(response.status, 200);
-    assert.equal(body.ok, true);
-    assert.equal(body.bind, '127.0.0.1');
-    assert.equal(body.database, 'up');
+    const live = await fetch(`${api.base}/api/health`);
+    const liveBody = await live.json() as { ok: boolean; status: string };
+    assert.equal(live.status, 200);
+    assert.equal(liveBody.ok, true);
+    assert.equal(liveBody.status, 'live');
+    assert.equal('bind' in liveBody, false);
+
+    const ready = await fetch(`${api.base}/api/ready`);
+    const readyBody = await ready.json() as { ok: boolean; status: string; database: string };
+    assert.equal(ready.status, 200);
+    assert.equal(readyBody.ok, true);
+    assert.equal(readyBody.status, 'ready');
+    assert.equal(readyBody.database, 'up');
   } finally {
     await api.close();
   }
 });
 
-test('a test data directory stays off the development database unless Render is set', () => {
+test('a test data directory can isolate storage and Render may mount an absolute disk path', () => {
   const isolated = path.join(tmpdir(), 'mystyle-qa-config');
   const local = loadConfig({ API_DATA_DIR: isolated, API_PORT: '4341' });
   assert.equal(local.databasePath, path.join(isolated, 'mystyle.sqlite'));
   assert.equal(local.databasePath.includes(`${path.sep}private${path.sep}`), false);
-  const hosted = loadConfig({ RENDER: 'true', API_HOST: '0.0.0.0', API_DATA_DIR: isolated });
-  assert.equal(hosted.databasePath.endsWith(`${path.sep}private${path.sep}mystyle.sqlite`), true);
+
+  const mounted = path.join(tmpdir(), 'mystyle-render-disk');
+  const hosted = loadConfig({
+    RENDER: 'true',
+    API_HOST: '0.0.0.0',
+    API_DATA_DIR: mounted,
+    RENDER_EXTERNAL_URL: 'https://example.onrender.com',
+    API_ALLOWED_ORIGINS: 'https://example.onrender.com',
+    API_ADMIN_TOKEN: 'test-admin-token-20chars',
+  });
+  assert.equal(hosted.databasePath, path.join(mounted, 'mystyle.sqlite'));
+  assert.equal(hosted.secureCookie, true);
+  assert.equal(hosted.trustProxy, true);
+  assert.equal(hosted.appEnv, 'production');
 });

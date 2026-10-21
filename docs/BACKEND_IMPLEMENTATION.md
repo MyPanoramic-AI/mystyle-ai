@@ -36,7 +36,8 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 
 | Method and path | Auth | Result |
 | --- | --- | --- |
-| `GET /api/health` | No | Bind host and database status |
+| `GET /api/health` | No | Liveness (`status: live`) |
+| `GET /api/ready` | No | Readiness and database `up` / `unavailable` |
 | `POST /api/auth/register` | No | Creates an account and sets the session cookie |
 | `POST /api/auth/login` | No | Sets the session cookie |
 | `POST /api/auth/logout` | Session and CSRF | Deletes the session |
@@ -73,4 +74,4 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 
 ## Startup check
 
-`GET /api/health` returns `ok`, the bind host, and `database: up`. A database error returns 503 and the words `database: unavailable`.
+`GET /api/health` returns liveness only (`ok`, `status: live`) and does not prove database readiness. `GET /api/ready` returns `database: up` when SQLite answers, or 503 with `database: unavailable` without filesystem paths.

@@ -28,7 +28,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'npx tsx server/api/src/index.ts',
-      url: `http://127.0.0.1:${apiPort}/api/health`,
+      url: `http://127.0.0.1:${apiPort}/api/ready`,
       reuseExistingServer: false,
       timeout: 30_000,
       env: {

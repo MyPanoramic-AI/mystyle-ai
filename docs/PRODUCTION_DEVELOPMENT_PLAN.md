@@ -369,9 +369,11 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 ## Phase 10 — Privacy, security, performance, and end-to-end testing
 
-**Status:** PRIVACY CONTROLS FOUNDATION. Consent history, authenticated export, account deletion, media delete, and retention dry-run exist. Destructive cleanup stays disabled. The draft privacy notice is not legally approved. Live AI and payments remain off.
+**Status:** PRIVACY CONTROLS FOUNDATION + INFRASTRUCTURE PREP (local). Consent history, authenticated export, account deletion, media delete, and retention dry-run exist. Destructive cleanup stays disabled. The draft privacy notice is not legally approved. Live AI and payments remain off.
 
-**Status:** IN PROGRESS as of 20 October 2026. An isolated browser pass and the regression suites ran. Export, deletion, retention, and a visual review of every screen are still open. See `END_TO_END_TEST_REPORT.md`.
+**Infrastructure (21 October 2026):** Production architecture, Render persistence assessment, environment profiles, SQLite backup/restore, health/ready split, observability plan, and deployment/rollback runbooks are documented and tested locally. **Not done:** paid Render disk, staging service, GitHub push, live cutover. Free-plan ephemeral storage remains a production blocker. See `PRODUCTION_ARCHITECTURE.md` and `RENDER_DEPLOYMENT_ASSESSMENT.md`.
+
+**Status:** IN PROGRESS as of 21 October 2026. Browser journeys and regression suites pass locally. Commercial launch hosting is still blocked. See `END_TO_END_TEST_REPORT.md` and `INFRASTRUCTURE_TEST_REPORT.md`.
 
 **Objectives**
 

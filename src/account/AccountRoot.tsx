@@ -99,8 +99,8 @@ export function AccountRoot() {
     setPhase('loading');
     setFormError(null);
     try {
-      const health = await accountApi.health();
-      if (!health.ok || health.database !== 'up') throw new AccountApiError('unavailable', 'The account service is unavailable.', 503);
+      const ready = await accountApi.ready();
+      if (!ready.ok || ready.database !== 'up') throw new AccountApiError('unavailable', 'The account service is unavailable.', 503);
       const session = await accountApi.session();
       await loadSignedIn(session.userId, gen);
     } catch (error) {

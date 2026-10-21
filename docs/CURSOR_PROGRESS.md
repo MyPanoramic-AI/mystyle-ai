@@ -372,4 +372,12 @@ Beauty totals say "Demonstration estimate". The invented style-match percentage 
 
 `npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. The JavaScript chunk is 921.19 kB. `test:api` 34 passed, including 5 privacy tests. Unique Node count is 87 with account, AI, shopping, try-on, and onboarding. Chrome `npm run test:e2e` passed 23. The application is not commercially launch-ready and is not POPIA certified.
 
+## 2026-10-21 — Production infrastructure readiness (no deploy)
+
+**Status:** Documented and tested locally. Live Render service unchanged. No push. No disk purchase. Free Render plan remains a production blocker for durable SQLite and private media.
+
+Added environment profiles with fail-closed staging/production rules, SQLite `backup()` API tooling with verify/restore, `/api/health` liveness vs `/api/ready` readiness, structured logging with field redaction, and runbooks under `docs/PRODUCTION_ARCHITECTURE.md`, `RENDER_DEPLOYMENT_ASSESSMENT.md`, `ENVIRONMENT_CONFIGURATION.md`, `DATABASE_BACKUP_AND_RESTORE.md`, `DEPLOYMENT_RUNBOOK.md`, `ROLLBACK_AND_RECOVERY.md`, `OBSERVABILITY_PLAN.md`, and `INFRASTRUCTURE_TEST_REPORT.md`. The account UI now probes `/api/ready` before treating the API as available.
+
+`npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. JS chunk 921.21 kB gzip 220.06 kB. `test:api` 45 passed (includes infrastructure). `test:account` 5, `test:ai` 16, `test:shopping` 15, `test:tryon` 16. Unique Node count 97. Chrome `test:e2e` 23 passed. Not commercially launch-ready.
+
 

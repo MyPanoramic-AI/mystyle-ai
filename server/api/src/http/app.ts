@@ -67,6 +67,7 @@ function securityHeaders(res: Response, page: boolean): void {
 export function createApp(deps: AppDeps): express.Express {
   const app = express();
   app.disable('x-powered-by');
+  if (deps.config.trustProxy) app.set('trust proxy', 1);
   app.use(express.json({ limit: '12mb' }));
   app.use((req, res, next) => {
     securityHeaders(res, !req.path.startsWith('/api'));
@@ -132,12 +133,18 @@ export function createApp(deps: AppDeps): express.Express {
     }
   };
 
+  // Liveness: process is up. Does not prove database or storage readiness.
   app.get('/api/health', route((_req, res) => {
+    res.json({ ok: true, status: 'live' });
+  }));
+
+  // Readiness: database must answer a trivial query. No paths, counts, or secrets.
+  app.get('/api/ready', route((_req, res) => {
     try {
       pingDatabase(deps.db);
-      res.json({ ok: true, bind: deps.config.host, database: 'up' });
+      res.json({ ok: true, status: 'ready', database: 'up' });
     } catch {
-      res.status(503).json({ ok: false, database: 'unavailable' });
+      res.status(503).json({ ok: false, status: 'not_ready', database: 'unavailable' });
     }
   }));
 

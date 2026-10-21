@@ -149,7 +149,7 @@ No customer photograph was uploaded. No external AI credential was used for a li
 
 ## QA isolation, 20 October 2026
 
-The browser suite starts its own API with an absolute `API_DATA_DIR` under the system temporary directory. A relative `API_DATA_DIR` is rejected. When `RENDER=true`, `API_DATA_DIR` is ignored and the server keeps `server/api/private`, so a test variable cannot move a Render database. The Playwright process forces `AI_PROVIDER=mock`, `AI_ALLOW_LIVE=false`, and `AI_MAX_BUDGET_USD=0`. It copies the parent environment first and then sets those values. The existing listeners on ports 3000 and 4331 were not used.
+The browser suite starts its own API with an absolute `API_DATA_DIR` under the system temporary directory. A relative `API_DATA_DIR` is rejected. An absolute `API_DATA_DIR` is honoured on Render as well so a persistent disk mount path (for example `/var/data`) can be configured; operators must not point production at a disposable path. The Playwright process forces `AI_PROVIDER=mock`, `AI_ALLOW_LIVE=false`, and `AI_MAX_BUDGET_USD=0`. It copies the parent environment first and then sets those values. The existing listeners on ports 3000 and 4331 were not used.
 
 In Chrome, a second account did not see the first account's wardrobe piece, family profile name, or saved beauty look. That is narrower than the API isolation tests, which also passed in this session for profiles, media, wardrobe, family, beauty, and stylist conversations. Browser checks for a wrong password, duplicate registration, a missing API, and an expired session were not run.
 
@@ -166,3 +166,7 @@ The Playwright config sets a local admin token only for the isolated test API. I
 ## Privacy controls, 21 October 2026
 
 Optional consent history defaults to withdrawn. Export and deletion require the current password in addition to the session and CSRF token. Export archives live under a private exports directory, expire, and are not public. Deletion removes personal tables and media files, revokes sessions, and anonymises the email. Credit ledger, provider costs, AI usage, audit, and consent history may remain on a tombstone user id until retention is approved. Destructive retention cleanup stays off unless `API_RETENTION_CLEANUP_ENABLED=true`. Browser demonstration localStorage is separate; clearing it does not delete the server account. These controls are technical safeguards, not a POPIA compliance claim.
+
+## Production infrastructure hardening, 21 October 2026
+
+Staging and production profiles require an `https://` public origin, Secure cookies, an admin token of at least 20 characters, and non-localhost allowed origins. `AI_ALLOW_LIVE=true` and `PAYMENTS_ENABLED=true` are refused on those profiles in this revision. Production also refuses retention cleanup without `API_RETENTION_CLEANUP_ACK=i-understand-destructive-cleanup`. Structured logs redact sensitive field names. `/api/health` is liveness only; `/api/ready` checks the database without returning filesystem paths. SQLite backups use the `node:sqlite` backup API with checksum manifests; automatic prune is disabled. The Free Render filesystem remains ephemeral — durable private data on that plan is still unsafe. Nothing was pushed or deployed in this pass.
