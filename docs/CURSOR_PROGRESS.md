@@ -360,4 +360,10 @@ Onboarding progress now comes from one eight-step list. Header text and the labe
 
 Beauty totals say "Demonstration estimate". The invented style-match percentage is now "Demonstration suggestion". Shop, membership, and try-on lines that implied a live price, a real discount, a finished fitting, or a payment were rewritten. `npm run test:e2e` passed 21. `npm run lint`, both strict TypeScript checks, `npm run build`, and the API suites passed. The JavaScript chunk is 910.24 kB. No push and no Render deploy. Live providers stayed off.
 
+## 2026-10-21 — Membership ledger and entitlements
+
+**Status:** The API stores versioned FREE, PERSONAL, and FAMILY definitions, a free entitlement for a new account, and an integer credit ledger with reservation, settlement, release, refund, and expiry. Customers cannot assign a paid plan or grant credits. Preview remains a browser demonstration. No payment provider is connected. OpenAI, Gemini, FASHN, and retailer calls stayed off. Nothing was pushed and nothing was deployed.
+
+`npm run lint`, `npx tsc --noEmit --strict`, `npx tsc -p server/api/tsconfig.json --noEmit --strict`, and `npm run build` exited 0. The JavaScript chunk is 912.08 kB, gzip 218.27 kB. `test:api` 29 passed, including 8 membership tests. `test:account` 5, `test:ai` 16, `test:shopping` 15, and `test:tryon` 16 passed. The onboarding unit test passed 1. The unique Node count is 82. `test:membership` is the same 8 tests already inside `test:api` and is not added again. Chrome `npm run test:e2e` passed 22. The first attempt failed one accessibility scan while files were still being saved; the rerun passed. Registration, Home, and Shop still reported no axe violations. The application is not commercially launch-ready.
+
 

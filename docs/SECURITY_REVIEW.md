@@ -154,3 +154,11 @@ The browser suite starts its own API with an absolute `API_DATA_DIR` under the s
 In Chrome, a second account did not see the first account's wardrobe piece, family profile name, or saved beauty look. That is narrower than the API isolation tests, which also passed in this session for profiles, media, wardrobe, family, beauty, and stylist conversations. Browser checks for a wrong password, duplicate registration, a missing API, and an expired session were not run.
 
 The production client bundle was scanned for common provider-key prefixes and variable names. None were present. Cookie `Secure` is still limited to Render mode, and local development remains HTTP. Email verification, password recovery, export, and retention are unchanged and still required before a public deployment.
+
+## Membership accounting, 21 October 2026
+
+Customer sessions cannot assign a plan or grant credits. `POST /api/entitlements` and `POST /api/credits/allocate` return 403. Operator routes require `Authorization: Bearer` matching `API_ADMIN_TOKEN`. A missing token returns 503. A wrong token returns 401. A customer cookie is not treated as an operator credential. Assignment, allocation, adjustment, and refund write an audit event. The audit payload records the account id, plan, status, and amount. It does not record a card number, because no card is collected.
+
+Credit amounts are integers. A hold that would make `SUM(delta)` negative is rejected. The same idempotency key does not post a second delta. A second settlement of a consumed operation is a duplicate. An unknown operation stays held until an operator sets `confirmNotBillable`. One account's credit read does not return another account's rows.
+
+The Playwright config sets a local admin token only for the isolated test API. It is not a production credential. The free entitlement created at registration cannot start a live model call. Preview still writes browser demonstration state and does not call the assignment route. Raw payment details are not stored. Provider credentials remain server-side and were not used.

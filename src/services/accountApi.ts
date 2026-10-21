@@ -66,6 +66,51 @@ export interface AccountApi {
   deleteBeautyLook(id: string): Promise<void>;
   linkBeautyLook(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
   unlinkBeautyLook(id: string, linkId: string): Promise<Record<string, unknown>>;
+  membershipPlans(): Promise<MembershipPlansResponse>;
+  membershipEntitlement(): Promise<MembershipEntitlementResponse>;
+  membershipCredits(): Promise<MembershipCreditsResponse>;
+  membershipHistory(): Promise<MembershipCreditsResponse>;
+  membershipUsage(): Promise<{ operations: unknown[]; note: string }>;
+}
+
+export interface MembershipPlanDefinition {
+  planCode: string;
+  displayName: string;
+  indicativeMonthlyZar: number | null;
+  priceStatus: string;
+  allowanceStatus: string;
+  proposedMonthlyCredits: number;
+  priceNote: string;
+  allowanceNote: string;
+}
+
+export interface MembershipPlansResponse {
+  paymentsEnabled: boolean;
+  plans: MembershipPlanDefinition[];
+}
+
+export interface MembershipEntitlementResponse {
+  paid: boolean;
+  current: {
+    planCode: string;
+    status: string;
+    featureKeys: string[];
+    source: string;
+  } | null;
+}
+
+export interface MembershipCreditEntry {
+  entryType: string;
+  delta: number;
+  reason: string;
+  createdAt: string;
+}
+
+export interface MembershipCreditsResponse {
+  balance: number;
+  unit: string;
+  label?: string;
+  entries: MembershipCreditEntry[];
 }
 
 export interface WardrobeRecord {
@@ -250,6 +295,11 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     deleteBeautyLook: (id) => request(`/api/beauty-looks/${id}`, { method: 'DELETE', csrf: true }),
     linkBeautyLook: (id, body) => request(`/api/beauty-looks/${id}/links`, { method: 'POST', body, csrf: true }),
     unlinkBeautyLook: (id, linkId) => request(`/api/beauty-looks/${id}/links/${linkId}`, { method: 'DELETE', csrf: true }),
+    membershipPlans: () => request('/api/plans'),
+    membershipEntitlement: () => request('/api/entitlements'),
+    membershipCredits: () => request('/api/credits'),
+    membershipHistory: () => request('/api/credits/history'),
+    membershipUsage: () => request('/api/usage/summary'),
   };
 }
 

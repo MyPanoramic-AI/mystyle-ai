@@ -3,6 +3,7 @@ import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
 import { assertPassword, hashPassword, verifyPassword } from '../auth/password.js';
 import { createSession } from '../auth/sessions.js';
+import { grantFreeEntitlement } from './membership.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -44,6 +45,7 @@ export function registerAccount(db: Sql, emailRaw: unknown, passwordRaw: unknown
       `INSERT INTO audit_events (id, event_type, actor_user_id, resource_type, resource_id, metadata_json, created_at)
        VALUES (?, 'register', ?, 'user', ?, '{}', ?)`,
     ).run(randomUUID(), userId, userId, stamp);
+    grantFreeEntitlement(db, userId, now);
     db.exec('COMMIT');
     return { userId, token: session.token, csrfToken: session.csrfToken };
   } catch (error) {

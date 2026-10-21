@@ -18,8 +18,9 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 - Stores a family profile and family event plan for the signed-in adult. A dependent record cannot sign in or be an editor. Photographs and dates of birth are refused. See `FAMILY_STYLING_INTEGRATION.md`.
 - Stores optional beauty preferences and saved beauty inspiration for the signed-in adult. Photographs and health details are refused. External beauty generation stays disconnected. See `BEAUTY_STUDIO_INTEGRATION.md`.
 - Accepts JPEG, PNG, and WebP uploads, returns them only to the owner, and deletes the file.
-- Returns empty entitlements and a zero credit balance. Nothing in this process can purchase or grant paid credits.
-- Reports integration boundaries as `not_connected` for stylist, try-on, shopping, beauty, billing, and credits.
+- Gives a new account a free entitlement and a zero credit balance. The free row is not a paid subscription and does not start a live model call.
+- Records test credits, reservations, and provider-cost rows when an operator bearer token is configured. Customers cannot grant credits or assign Personal or Family.
+- Reports billing and credits as `not_connected`. No payment provider is called. Stylist, try-on, shopping, and beauty stay disconnected from this ledger.
 
 ## What it does not do
 
@@ -50,10 +51,18 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 | `GET` and `POST /api/looks`, `GET /api/looks/:id` | Session; POST also CSRF | Looks made from the owner's wardrobe |
 | `GET` and `POST /api/saved-products`, `DELETE /api/saved-products/:id` | Session; writes also CSRF | Product references without prices |
 | `POST /api/media`, `GET` and `DELETE /api/media/:id`, `POST /api/media/cleanup` | Session; writes also CSRF | Private images |
-| `GET /api/entitlements` | Session | Always an empty list in this phase |
-| `GET /api/credits` | Session | Balance from the ledger, which stays empty |
-| `GET /api/integrations` | Session | All boundaries `not_connected` |
+| `GET /api/plans` | Session | Provisional FREE, PERSONAL, and FAMILY definitions. `paymentsEnabled` is false |
+| `GET /api/entitlements` | Session | The account's current entitlement. `paid` is false |
+| `POST /api/entitlements` | Session and CSRF | 403. A customer cannot assign a plan |
+| `GET /api/credits` and `GET /api/credits/history` | Session | Integer test-credit balance and ledger rows for that account |
+| `POST /api/credits/allocate` | Session and CSRF | 403. A customer cannot grant credits |
+| `GET /api/usage/summary` | Session | That account's provider-cost rows. Amounts stay null when the provider did not report a cost |
+| `GET /api/integrations` | Session | Billing and credits remain `not_connected` |
 | `GET /api/admin/audit` | Admin bearer | 503 when the admin token is unset |
+| `GET /api/admin/accounts`, `GET /api/admin/usage`, `GET /api/admin/credits/reservations`, `GET /api/admin/credits/reconcile` | Admin bearer | Operator reads. No customer session is accepted as admin |
+| `POST /api/admin/entitlements` | Admin bearer | Test assignment. Not a payment |
+| `POST /api/admin/credits/allocate`, `reserve`, `settle`, `release`, `adjust`, `refund`, `expire`, `mock` | Admin bearer | Ledger mutations. Mock operations do not call a provider |
+| `POST /api/admin/billing/run` and `POST /api/admin/billing/policy` | Admin bearer | Period run and policy flags. Paid allocation stays off unless a test sets it |
 
 ## Startup check
 

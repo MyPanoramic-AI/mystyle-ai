@@ -51,6 +51,7 @@ test('signed-in screens stay within the viewport and can be captured', async ({ 
 
 test('automated accessibility scan of the signed-in home and registration form', async ({ page }, testInfo) => {
   await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
   const registration = await new AxeBuilder({ page }).analyze();
   await register(page, `qa-a11y-${Date.now()}@example.com`);
   await skipToApp(page);

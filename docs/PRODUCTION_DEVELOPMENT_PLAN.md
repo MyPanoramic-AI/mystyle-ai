@@ -332,7 +332,7 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 ## Phase 9 — Subscription infrastructure, credits, and administration
 
-**Status:** NOT STARTED
+**Status:** ACCOUNTING FOUNDATION ONLY. Plan definitions, server entitlements, the integer ledger, reservations, and operator routes exist. Payment capture has not started. Provisional prices and proposed allowances are not approved commercial terms.
 
 **Objectives**
 

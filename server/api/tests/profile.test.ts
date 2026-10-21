@@ -62,7 +62,7 @@ test('a customer can save profile, measurements, and preferences', async () => {
   }
 });
 
-test('credits and entitlements are not granted by the API', async () => {
+test('a new account receives a free entitlement and no credits', async () => {
   const api = await startApi();
   try {
     const created = await register(api.base, 'ada@example.com');
@@ -70,8 +70,14 @@ test('credits and entitlements are not granted by the API', async () => {
     const credits = await fetch(`${api.base}/api/credits`, { headers });
     const entitlements = await fetch(`${api.base}/api/entitlements`, { headers });
     const integrations = await fetch(`${api.base}/api/integrations`, { headers });
-    assert.deepEqual(await credits.json(), { balance: 0, entries: [] });
-    assert.deepEqual(await entitlements.json(), { entitlements: [] });
+    const creditBody = await credits.json() as { balance: number; entries: unknown[]; unit: string };
+    const entitlementBody = await entitlements.json() as { paid: boolean; current: { planCode: string; status: string } };
+    assert.equal(creditBody.balance, 0);
+    assert.deepEqual(creditBody.entries, []);
+    assert.equal(creditBody.unit, 'test_credit');
+    assert.equal(entitlementBody.paid, false);
+    assert.equal(entitlementBody.current.planCode, 'FREE');
+    assert.equal(entitlementBody.current.status, 'active');
     const boundary = await integrations.json() as { tryOn: { status: string }; billing: { status: string } };
     assert.equal(boundary.tryOn.status, 'not_connected');
     assert.equal(boundary.billing.status, 'not_connected');

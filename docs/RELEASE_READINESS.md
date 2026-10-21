@@ -73,3 +73,9 @@ Do not start subscriptions, payments, or a live provider in the next phase. The 
 ## Update, 21 October 2026 — labels
 
 Registration, Home, and Shop no longer report axe color-contrast violations after the text colours above were darkened. Beauty totals and the stylist match badge are labelled as demonstration content. Membership switches say that no payment was taken. This still does not make the revision commercially launch-ready. Contrast on screens that were not scanned, family budget figures, and the commercial blockers are unchanged.
+
+## Update, 21 October 2026 — membership accounting
+
+The API now stores a free entitlement and an integer test-credit ledger. Chrome showed the signed-in account as Free, with test credits, and a Preview click did not change that entitlement or take a payment. A second account did not see the first account's test credits. Operator-only reservation, settlement, and failure were checked through the isolated API. No payment provider, OpenAI, Gemini, FASHN, or retailer call was made.
+
+This is still not a commercial subscription. Prices and credit allowances are provisional and unapproved. Paid allocation is off. The application is not launch-ready.

@@ -1,8 +1,8 @@
 # Database schema
 
-Date: 16 October 2026. Source of truth: `server/api/migrations/001_initial.sql`. The runner records applied files in `schema_migrations` and skips them on the next start.
+Date: 21 October 2026. Source of truth: `server/api/migrations/`, from `001_initial.sql` through `008_membership_accounting.sql`. The runner records applied files in `schema_migrations` and skips them on the next start.
 
-The file database uses foreign keys and WAL. Tests use an in-memory database, which does not use WAL.
+The file database uses foreign keys, WAL, and a five-second busy timeout. Tests use an in-memory database, which does not use WAL. Migration `008_membership_accounting.sql` extends the entitlement and ledger tables and adds the membership tables below.
 
 ## Tables
 
@@ -25,9 +25,15 @@ The file database uses foreign keys and WAL. Tests use an in-memory database, wh
 | `beauty_looks` | Owner, category, title, description, style, colour, occasion, planned budget in cents, source label, source key, inspiration image address, notes, and parts. Added in `007_beauty_studio.sql` |
 | `beauty_outfit_links` | Beauty look id plus an outfit id or outfit-plan id owned by the same account |
 | `saved_products` | Owner, retailer source, external product id, saved time. No price is stored |
-| `subscription_entitlements` | Present and empty. No route inserts a paid plan |
-| `credit_ledger` | Present. No route inserts a credit |
-| `audit_events` | Register and login events with empty metadata |
+| `subscription_entitlements` | Account, plan code, version, status, window, feature keys, and source. Registration inserts `FREE` / `active` / `account.basic`. A customer cannot insert a paid plan |
+| `credit_ledger` | Integer delta, entry type, operation id, idempotency key, reason, and resulting balance. The balance is the sum of deltas |
+| `plan_definitions` | Versioned FREE, PERSONAL, and FAMILY rows. Prices are provisional. Proposed allowances are unapproved |
+| `credit_reservations` | Hold, consume, release, or unknown status for one operation |
+| `credit_idempotency` | First response for an account, scope, and key |
+| `provider_costs` | Provider, model, operation type, credits, usage units, currency, reported cost, estimated cost, cost status, and request status. Mock rows leave the cost amounts null |
+| `allocation_periods` | One grant per account and period key |
+| `billing_policies` | Rollover, expiry, and the paid-allocation flag. Defaults are undecided and paid allocation off |
+| `audit_events` | Register, login, and membership operator actions |
 
 ## Differences from the earlier proposal
 

@@ -65,7 +65,7 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
             ) : (
               <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Active Subscription
+                Browser demonstration
               </span>
             )}
           </div>
@@ -86,7 +86,7 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
               </span>
               {!isFree && (
                 <span className="text-xs text-[#E5CDBE]/70 block">
-                  per month · {membership.billingCycle === 'monthly' ? 'Billed monthly' : 'Billed annually'}
+                  per month · Demonstration price, not billed
                 </span>
               )}
             </div>
@@ -95,10 +95,10 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 mt-4 border-t border-white/10 text-xs">
             <div className="p-3 rounded-2xl bg-white/5 backdrop-blur-xs border border-white/10">
-              <span className="text-[#E5CDBE]/70 block mb-0.5">Monthly Credit Allowance</span>
+              <span className="text-[#E5CDBE]/70 block mb-0.5">Demonstration allowance</span>
               <span className="font-semibold text-white text-sm flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
-                {currentPlan.monthlyCredits} AI Credits / mo
+                {currentPlan.monthlyCredits} demonstration credits
               </span>
             </div>
 

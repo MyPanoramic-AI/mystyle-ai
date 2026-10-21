@@ -14,6 +14,27 @@ import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, del
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
+import {
+  adjustCredits,
+  allocateCredits,
+  assignEntitlement,
+  expireCredits,
+  listAccountEntitlements,
+  listPlans as listPublishedPlans,
+  listReservations,
+  prepareAuthorizedOperation,
+  readCredits,
+  readEntitlement,
+  readUsage,
+  reconcile,
+  refundConsumed,
+  releaseById,
+  reserveCredits,
+  runMonthlyAllocations,
+  setBillingPolicy,
+  settleOperation,
+  usageTotals,
+} from '../domain/membership.js';
 import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
 import { createConversation, deleteConversation, listConversations, readConversation, recommendationsFor, sendMessage, stylistAvailability, usageFor } from '../ai/service.js';
 
@@ -81,6 +102,19 @@ export function createApp(deps: AppDeps): express.Express {
 
   function issue(res: Response, token: string): void {
     res.setHeader('Set-Cookie', sessionCookie(token, Math.floor(deps.config.sessionMs / 1000), deps.config.secureCookie));
+  }
+
+  function requireAdmin(req: Request): void {
+    if (!deps.config.adminToken) throw new ApiError('admin_unavailable', 'The operator route is disabled.', 503);
+    const presented = (req.header('authorization') ?? '').replace(/^Bearer /, '');
+    if (!presented || !safeEqual(presented, deps.config.adminToken)) throw new ApiError('unauthorised', 'The operator route was not accepted.', 401);
+  }
+
+  function text(value: unknown): string {
+    if (typeof value !== 'string' || value.trim().length === 0 || value.length > 120) {
+      throw new ApiError('invalid_body', 'The request was not accepted.', 400);
+    }
+    return value.trim();
   }
 
   const route = (handler: (req: Request, res: Response) => unknown) => (req: Request, res: Response, next: NextFunction) => {
@@ -248,18 +282,35 @@ export function createApp(deps: AppDeps): express.Express {
     res.json({ removed: cleanupExpiredMedia(deps.db, deps.config.mediaDir, deps.now()) });
   }));
 
+  app.get('/api/plans', route((req, res) => {
+    requireUser(req);
+    res.json({ plans: listPublishedPlans(deps.db), paymentsEnabled: false });
+  }));
   app.get('/api/entitlements', route((req, res) => {
     const userId = requireUser(req).userId;
+    const current = readEntitlement(deps.db, userId, deps.now());
     const rows = deps.db.prepare(
-      'SELECT id, plan_code AS planCode, status, effective_from AS effectiveFrom, effective_to AS effectiveTo FROM subscription_entitlements WHERE user_id = ?',
+      'SELECT id, plan_code AS planCode, status, effective_from AS effectiveFrom, effective_to AS effectiveTo, source FROM subscription_entitlements WHERE user_id = ?',
     ).all(userId);
-    res.json({ entitlements: rows });
+    res.json({ entitlements: rows, current: current.entitlement, paid: false });
+  }));
+  app.post('/api/entitlements', route((req, res) => {
+    requireUser(req);
+    res.status(403).json({ code: 'paid_plan_forbidden', message: 'A customer cannot assign a plan.' });
   }));
   app.get('/api/credits', route((req, res) => {
-    const userId = requireUser(req).userId;
-    const row = deps.db.prepare('SELECT COALESCE(SUM(delta), 0) AS balance FROM credit_ledger WHERE user_id = ?').get(userId) as { balance: number };
-    const entries = deps.db.prepare('SELECT id, delta, reason, created_at AS createdAt FROM credit_ledger WHERE user_id = ? ORDER BY created_at').all(userId);
-    res.json({ balance: Number(row.balance), entries });
+    res.json(readCredits(deps.db, requireUser(req).userId));
+  }));
+  app.get('/api/credits/history', route((req, res) => {
+    const credits = readCredits(deps.db, requireUser(req).userId);
+    res.json({ entries: credits.entries, balance: credits.balance, unit: credits.unit });
+  }));
+  app.post('/api/credits/allocate', route((req, res) => {
+    requireUser(req);
+    res.status(403).json({ code: 'credit_grant_forbidden', message: 'A customer cannot grant credits.' });
+  }));
+  app.get('/api/usage/summary', route((req, res) => {
+    res.json(readUsage(deps.db, requireUser(req).userId));
   }));
 
   app.get('/api/integrations', route((req, res) => {
@@ -302,10 +353,123 @@ export function createApp(deps: AppDeps): express.Express {
     });
   }));
 
+  app.get('/api/admin/accounts', route((req, res) => {
+    requireAdmin(req);
+    res.json({ accounts: listAccountEntitlements(deps.db) });
+  }));
+  app.post('/api/admin/entitlements', route((req, res) => {
+    requireAdmin(req);
+    res.json(assignEntitlement(deps.db, {
+      userId: text(req.body?.userId),
+      planCode: text(req.body?.planCode),
+      status: text(req.body?.status),
+      effectiveTo: typeof req.body?.effectiveTo === 'string' ? req.body.effectiveTo : null,
+      actor: 'admin',
+    }, deps.now()));
+  }));
+  app.post('/api/admin/credits/allocate', route((req, res) => {
+    requireAdmin(req);
+    res.json(allocateCredits(deps.db, {
+      userId: text(req.body?.userId),
+      amount: req.body?.amount,
+      periodKey: text(req.body?.periodKey),
+      idempotencyKey: text(req.body?.idempotencyKey),
+      reason: text(req.body?.reason ?? 'Test allocation'),
+    }, deps.now()));
+  }));
+  app.post('/api/admin/credits/reserve', route((req, res) => {
+    requireAdmin(req);
+    res.json(reserveCredits(deps.db, {
+      userId: text(req.body?.userId),
+      amount: req.body?.amount,
+      idempotencyKey: text(req.body?.idempotencyKey),
+      operationType: text(req.body?.operationType ?? 'text'),
+      featureKey: text(req.body?.featureKey ?? 'account.basic'),
+      provider: 'mock',
+      reason: text(req.body?.reason ?? 'Test reservation'),
+    }, deps.now()));
+  }));
+  app.post('/api/admin/credits/settle', route((req, res) => {
+    requireAdmin(req);
+    res.json(settleOperation(deps.db, {
+      userId: text(req.body?.userId),
+      operationId: text(req.body?.operationId),
+      outcome: text(req.body?.outcome),
+    }, deps.now()));
+  }));
+  app.post('/api/admin/credits/release', route((req, res) => {
+    requireAdmin(req);
+    res.json(releaseById(deps.db, text(req.body?.userId), text(req.body?.operationId), req.body?.confirmNotBillable === true, deps.now()));
+  }));
+  app.post('/api/admin/credits/adjust', route((req, res) => {
+    requireAdmin(req);
+    res.json(adjustCredits(deps.db, {
+      userId: text(req.body?.userId),
+      amount: req.body?.amount,
+      idempotencyKey: text(req.body?.idempotencyKey),
+      reason: text(req.body?.reason ?? 'Test adjustment'),
+    }, deps.now()));
+  }));
+  app.post('/api/admin/credits/refund', route((req, res) => {
+    requireAdmin(req);
+    res.json(refundConsumed(deps.db, {
+      userId: text(req.body?.userId),
+      operationId: text(req.body?.operationId),
+      idempotencyKey: text(req.body?.idempotencyKey),
+      reason: text(req.body?.reason ?? 'Test refund'),
+    }, deps.now()));
+  }));
+  app.post('/api/admin/credits/expire', route((req, res) => {
+    requireAdmin(req);
+    res.json(expireCredits(deps.db, deps.now()));
+  }));
+  app.get('/api/admin/credits/reservations', route((req, res) => {
+    requireAdmin(req);
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    res.json({ reservations: listReservations(deps.db, status) });
+  }));
+  app.get('/api/admin/credits/reconcile', route((req, res) => {
+    requireAdmin(req);
+    res.json(reconcile(deps.db, text(req.query.userId)));
+  }));
+  app.get('/api/admin/usage', route((req, res) => {
+    requireAdmin(req);
+    res.json({ totals: usageTotals(deps.db) });
+  }));
+  app.post('/api/admin/billing/run', route((req, res) => {
+    requireAdmin(req);
+    res.json(runMonthlyAllocations(deps.db, deps.now()));
+  }));
+  app.post('/api/admin/billing/policy', route((req, res) => {
+    requireAdmin(req);
+    res.json(setBillingPolicy(deps.db, {
+      rolloverPolicy: typeof req.body?.rolloverPolicy === 'string' ? req.body.rolloverPolicy : undefined,
+      expiryPolicy: typeof req.body?.expiryPolicy === 'string' ? req.body.expiryPolicy : undefined,
+      paidAllocationEnabled: typeof req.body?.paidAllocationEnabled === 'boolean' ? req.body.paidAllocationEnabled : undefined,
+    }));
+  }));
+  app.post('/api/admin/credits/mock', route((req, res) => {
+    requireAdmin(req);
+    const userId = text(req.body?.userId);
+    const idempotencyKey = text(req.body?.idempotencyKey);
+    const reserved = prepareAuthorizedOperation(deps.db, {
+      userId,
+      featureKey: text(req.body?.featureKey ?? 'account.basic'),
+      credits: req.body?.credits,
+      operationType: req.body?.operationType === 'image' ? 'image' : 'text',
+      provider: 'mock',
+      idempotencyKey,
+    }, deps.now());
+    if (reserved.duplicate || !reserved.operationId) {
+      res.json({ reserved, settled: null });
+      return;
+    }
+    const settled = settleOperation(deps.db, { userId, operationId: reserved.operationId, outcome: text(req.body?.outcome) }, deps.now());
+    res.json({ reserved, settled });
+  }));
+
   app.get('/api/admin/audit', route((req, res) => {
-    if (!deps.config.adminToken) throw new ApiError('admin_unavailable', 'The audit route is disabled.', 503);
-    const presented = (req.header('authorization') ?? '').replace(/^Bearer /, '');
-    if (!presented || !safeEqual(presented, deps.config.adminToken)) throw new ApiError('unauthorised', 'The audit route was not accepted.', 401);
+    requireAdmin(req);
     const events = deps.db.prepare(
       'SELECT id, event_type AS eventType, actor_user_id AS actorUserId, resource_type AS resourceType, resource_id AS resourceId, created_at AS createdAt FROM audit_events ORDER BY created_at DESC LIMIT 50',
     ).all();

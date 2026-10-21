@@ -41,6 +41,7 @@ export default defineConfig({
         AI_ALLOW_LIVE: 'false',
         AI_MAX_BUDGET_USD: '0',
         API_AUTH_RATE_LIMIT: '500',
+        API_ADMIN_TOKEN: 'mystyle-e2e-admin-token',
         RENDER: '',
       },
     },
