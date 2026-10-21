@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { onboardingStepLabel } from './onboardingSteps';
 import { ShoppingPreferences, BudgetTier } from '../../types';
 import { SOUTH_AFRICAN_RETAILERS } from '../../data/mockData';
 import { Button } from '../common/Button';
@@ -71,7 +72,7 @@ export const Step6ShoppingPreferences: React.FC<Step6ShoppingPreferencesProps> =
         {/* Header */}
         <div className="mb-6">
           <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
-            Step 5 of 6 · Smart Shopping
+            {onboardingStepLabel(6)}
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-[#242326]">
             Shopping Preferences

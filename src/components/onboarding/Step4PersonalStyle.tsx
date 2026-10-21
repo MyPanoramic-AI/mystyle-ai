@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { onboardingStepLabel } from './onboardingSteps';
 import { STYLE_CATEGORIES } from '../../data/mockData';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 import { Button } from '../common/Button';
@@ -41,7 +42,7 @@ export const Step4PersonalStyle: React.FC<Step4PersonalStyleProps> = ({
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
-              Step 3 of 6 · Personal Style
+              {onboardingStepLabel(4)}
             </span>
             <span className="text-xs text-[#5C585E]">
               {selectedStyles.length} selected

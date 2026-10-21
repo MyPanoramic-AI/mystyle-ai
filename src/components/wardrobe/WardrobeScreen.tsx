@@ -348,6 +348,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsAddItemOpen(true)}
+              aria-label="Add Clothing Piece"
               className="px-3.5 py-2 bg-[#9C6A61] hover:bg-[#8A5B53] text-white text-xs font-medium rounded-xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -358,7 +359,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 pt-1">
+        <div className="w-full max-w-6xl mx-auto min-w-0 px-4 sm:px-6 flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 pt-1">
           {[
             { id: 'pieces', label: `Wardrobe (${items.length})` },
             { id: 'studio', label: 'Outfit Studio' },

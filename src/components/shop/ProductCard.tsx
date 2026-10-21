@@ -125,9 +125,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
 
           {/* Product Name */}
-          <h4 className="font-serif text-xs sm:text-sm font-semibold text-[#242326] line-clamp-2 leading-snug group-hover:text-[#9C6A61] transition-colors">
+          <h3 className="font-serif text-xs sm:text-sm font-semibold text-[#242326] line-clamp-2 leading-snug group-hover:text-[#9C6A61] transition-colors">
             {product.name}
-          </h4>
+          </h3>
 
           {/* Colour and style tag */}
           <p className="text-[10px] text-[#5C585E] mt-1 line-clamp-1">

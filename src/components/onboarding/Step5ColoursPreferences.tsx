@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { onboardingStepLabel } from './onboardingSteps';
 import { ColourPreferences, FitPreference, ExperimentationLevel } from '../../types';
 import { SWATCH_COLORS, AVOID_COLORS_LIST } from '../../data/mockData';
 import { Button } from '../common/Button';
@@ -73,7 +74,7 @@ export const Step5ColoursPreferences: React.FC<Step5ColoursPreferencesProps> = (
         {/* Header */}
         <div className="mb-6">
           <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
-            Step 4 of 6 · Palette & Fit
+            {onboardingStepLabel(5)}
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-[#242326]">
             Colours & Preferences

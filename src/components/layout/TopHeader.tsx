@@ -121,12 +121,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           {/* User profile avatar trigger */}
           <button
             onClick={() => onNavigate('profile')}
-            aria-label={`Open profile for ${userAvatarName}`}
             className="flex items-center gap-2 p-1 rounded-full hover:bg-[#E5CDBE]/30 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9C6A61]"
           >
             <div className="w-9 h-9 rounded-full overflow-hidden bg-[#E5CDBE] text-[#242326] border border-[#B49361]/30 flex items-center justify-center font-serif text-sm font-semibold shadow-xs">
               {userAvatarPhoto ? (
-                <img src={userAvatarPhoto} alt={userAvatarName} className="w-full h-full object-cover" />
+                <img src={userAvatarPhoto} alt="" className="w-full h-full object-cover" />
               ) : (
                 userAvatarName.charAt(0)
               )}
@@ -134,6 +133,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             <span className="hidden lg:inline text-xs font-medium text-[#242326]">
               {userAvatarName}
             </span>
+            <span className="sr-only">Open profile</span>
           </button>
         </div>
       </div>

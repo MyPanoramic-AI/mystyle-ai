@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { onboardingStepLabel } from './onboardingSteps';
 import { PersonalDetails } from '../../types';
 import { Button } from '../common/Button';
 import { ArrowLeft, ArrowRight, User } from 'lucide-react';
@@ -48,7 +49,7 @@ export const Step2PersonalDetails: React.FC<Step2PersonalDetailsProps> = ({
         {/* Header */}
         <div className="mb-6">
           <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
-            Step 1 of 6 · Personal Details
+            {onboardingStepLabel(2)}
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-[#242326]">
             Tell me about yourself

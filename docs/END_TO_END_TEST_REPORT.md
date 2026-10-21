@@ -78,3 +78,43 @@ The API isolation, media, wardrobe, family, beauty, and stylist tests passed in 
 - No screen was reviewed visually for clipping, overlap, or modal fit. The overflow check is numeric and covers the signed-in home shell only.
 - Keyboard order, contrast, and touch-target size were not measured.
 - Live model quality, FASHN generation, and retailer availability were not tested and must stay off.
+
+## 21 October 2026 — remaining journeys
+
+The same isolated Chrome setup was used: Vite at `http://127.0.0.1:4173`, API at `http://127.0.0.1:4341`, a temporary SQLite directory, `AI_PROVIDER=mock`, `AI_ALLOW_LIVE=false`, and `AI_MAX_BUDGET_USD=0`. The test server set `API_AUTH_RATE_LIMIT=500` because the suite creates more than the production limit of 20 accounts. Production code still defaults to 20. Ports 3000 and 4331 were not used. No OpenAI, Gemini, FASHN, retailer, email, or payment call was made. Accounts were fictional adults. The only uploaded image was a one-pixel PNG fixture.
+
+The final `npx playwright test` on this date passed 21, failed 0, and blocked 0. Duration was 1.7 minutes. The original 7 tests are still in the suite and passed again.
+
+| File | Executed | Passed | Failed | Blocked |
+| --- | ---: | ---: | ---: | ---: |
+| `e2e/customer-journeys.spec.ts` | 7 | 7 | 0 | 0 |
+| `e2e/auth-failures.spec.ts` | 3 | 3 | 0 | 0 |
+| `e2e/profile.spec.ts` | 1 | 1 | 0 | 0 |
+| `e2e/wardrobe.spec.ts` | 1 | 1 | 0 | 0 |
+| `e2e/discover-beauty-family.spec.ts` | 3 | 3 | 0 | 0 |
+| `e2e/shop-stylist-membership.spec.ts` | 4 | 4 | 0 | 0 |
+| `e2e/visual-accessibility.spec.ts` | 2 | 2 | 0 | 0 |
+
+Steps that a passing test deliberately did not click are marked NOT RUN or BLOCKED in the journey matrix. A passing file is not a claim that every control on that screen was used.
+
+### Automated regression on 21 October 2026
+
+All of these exited 0 after the final source edits.
+
+| Command | Result | Count |
+| --- | --- | ---: |
+| `npm run lint` | Pass | `tsc --noEmit` |
+| `npx tsc --noEmit --strict` | Pass | Frontend project |
+| `npx tsc --noEmit --strict -p server/api/tsconfig.json` | Pass | API project |
+| `npx tsx --test src/components/onboarding/onboardingSteps.test.ts` | Pass | 1 |
+| `npm run test:api` | Pass | 21 |
+| `npm run test:account` | Pass | 5 |
+| `npm run test:ai` | Pass | 16 |
+| `npm run test:shopping` | Pass | 15 |
+| `npm run test:tryon` | Pass | 16 |
+| `npm run build` | Pass, with the chunk warning | One JavaScript chunk, 910.21 kB |
+| `npm run test:e2e` | Pass | 21 |
+
+`test:api` already includes wardrobe, family, and beauty. Those files were not launched again. The unique Node test count is 74: 21 + 5 + 16 + 15 + 16 + 1 onboarding test. The 21 browser tests are separate. The combined executed total is 95.
+
+`npm run build` produced `dist/assets/index-wyfctrJL.js` at 910.21 kB, gzip 217.76 kB, and `index-ev64iZek.css` at 89.19 kB. On 20 October the JavaScript chunk was 909.60 kB, gzip 217.55 kB. The increase is the small source added in this pass. Route-level splitting was not added. The client has no URL router, and splitting the tab tree would change how screens load. Editorial JPEGs remain about 605 kB to 989 kB. The build did not print the earlier `__dirname` warning.

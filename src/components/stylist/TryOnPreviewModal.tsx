@@ -125,7 +125,7 @@ export const TryOnPreviewModal: React.FC<TryOnPreviewModalProps> = ({
               {/* Garment details card */}
               <div className="bg-white/90 backdrop-blur-xs rounded-xl p-3 border border-[#242326]/10 shadow-xs space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#5C585E]">Estimated Total (ZAR):</span>
+                  <span className="text-[#5C585E]">Demo estimate (ZAR):</span>
                   <span className="font-serif font-bold text-[#242326] text-sm">
                     R{outfit.totalEstimatedZar.toLocaleString()}
                   </span>
@@ -154,11 +154,11 @@ export const TryOnPreviewModal: React.FC<TryOnPreviewModalProps> = ({
                     <div className="text-[11px] text-[#5C585E] flex items-center gap-2">
                       <span className="text-[#9C6A61] font-medium">{piece.retailer}</span>
                       <span>·</span>
-                      <span className="text-emerald-700">In Stock</span>
+                      <span className="text-emerald-700">Demonstration</span>
                     </div>
                   </div>
                   <span className="font-semibold text-[#242326] shrink-0">
-                    R{piece.priceZar.toLocaleString()}
+                    Demo R{piece.priceZar.toLocaleString()}
                   </span>
                 </div>
               ))}

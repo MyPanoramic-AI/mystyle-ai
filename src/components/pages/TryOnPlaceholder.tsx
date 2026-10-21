@@ -185,7 +185,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               size="sm"
               onClick={() =>
                 alert(
-                  'Neural fitting model simulation:\nIn Phase 2, this will synthesize high-fidelity garment drape onto your silhouette.'
+                  'Real try-on generation is not active. This button does not create or send a photograph.'
                 )
               }
             >

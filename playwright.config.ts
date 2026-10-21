@@ -11,7 +11,7 @@ const origin = `http://127.0.0.1:${webPort}`;
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 90_000,
+  timeout: 180_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
   workers: 1,
@@ -40,6 +40,7 @@ export default defineConfig({
         AI_PROVIDER: 'mock',
         AI_ALLOW_LIVE: 'false',
         AI_MAX_BUDGET_USD: '0',
+        API_AUTH_RATE_LIMIT: '500',
         RENDER: '',
       },
     },

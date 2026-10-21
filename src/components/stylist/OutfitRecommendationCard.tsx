@@ -109,7 +109,7 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
           <div className="flex items-center justify-between text-xs font-semibold text-[#242326]">
             <span>Included Garments ({outfit.pieces.length} items)</span>
             <span className="text-[#9C6A61]">
-              {outfit.conceptOnly ? 'Not a shop listing' : `Est. Total: R${outfit.totalEstimatedZar.toLocaleString()}`}
+              {outfit.conceptOnly ? 'Not a shop listing' : `Demo est. R${outfit.totalEstimatedZar.toLocaleString()}`}
             </span>
           </div>
 
@@ -130,14 +130,14 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
                       <>
                         <span className="font-semibold text-[#9C6A61]">{piece.retailer}</span>
                         <span className="mx-1">·</span>
-                        <span className="text-emerald-700">In Stock</span>
+                        <span className="text-emerald-700">Demonstration</span>
                       </>
                     )}
                   </p>
                 </div>
                 {outfit.conceptOnly ? null : (
                   <span className="font-bold text-[#242326] shrink-0">
-                    R{piece.priceZar.toLocaleString()}
+                    Demo R{piece.priceZar.toLocaleString()}
                   </span>
                 )}
               </div>

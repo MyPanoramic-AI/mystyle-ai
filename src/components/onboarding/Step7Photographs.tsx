@@ -4,6 +4,7 @@
  */
 
 import React, { useRef } from 'react';
+import { onboardingStepLabel } from './onboardingSteps';
 import { TemporaryPhotos } from '../../types';
 import { Button } from '../common/Button';
 import {
@@ -63,7 +64,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
         {/* Header */}
         <div className="mb-6">
           <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
-            Step 6 of 6 · Styling Photographs
+            {onboardingStepLabel(7)}
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-[#242326]">
             Upload Your Fitting Photos

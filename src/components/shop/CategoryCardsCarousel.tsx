@@ -23,9 +23,9 @@ export const CategoryCardsCarousel: React.FC<CategoryCardsCarouselProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-[#242326]">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[#242326]">
             Curated Categories
-          </h3>
+          </h2>
         </div>
         {selectedCategory !== 'All' && (
           <button
@@ -38,7 +38,7 @@ export const CategoryCardsCarousel: React.FC<CategoryCardsCarouselProps> = ({
       </div>
 
       {/* Horizontal scrolling carousel on mobile, responsive grid on desktop */}
-      <div className="flex overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2.5 scrollbar-none">
+      <div className="flex min-w-0 max-w-full overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2.5 scrollbar-none">
         {/* 'All' category button */}
         <button
           onClick={() => onSelectCategory('All')}

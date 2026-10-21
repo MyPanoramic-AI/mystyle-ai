@@ -346,4 +346,12 @@ Two confirmed defects were corrected and retested. The header overflowed at 768p
 
 `npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. The build still warns about one 909.60 kB JavaScript chunk. It no longer warns about `__dirname`. `test:api` 21 passed, including the new temporary-database config test. `test:account` 5, `test:ai` 16, `test:shopping` 15, and `test:tryon` 16 passed. Wardrobe, family, and beauty were not launched again because `test:api` already includes them. The unique automated count is 73. The 7 browser tests are additional. The production bundle did not contain the scanned provider-key prefixes. No push and no Render deploy. The application is not commercially launch-ready.
 
+## 2026-10-21 — Remaining browser journeys
+
+**Status:** The outstanding customer journeys were executed in Chrome against the same isolated API on port 4341 and Vite on port 4173. The final Playwright run was 21 passed, 0 failed, and 0 blocked. The original 7 tests passed again. Live OpenAI, Gemini, FASHN, retailer, email, and payment calls stayed off. Nothing was pushed and nothing was deployed.
+
+Onboarding progress now comes from one eight-step list. Header text and the labels inside steps 2 to 7 all say "of 8". A signed-in outfit save no longer sends demonstration wardrobe ids that the account does not own. The stylist header and the shop tab row no longer widen a 320px page. Stylist suggestion cards say "Demonstration" and "Demo est." instead of "In Stock". Shop heading order and the profile button name were corrected after the axe scan. Contrast of the existing gold labels was recorded and left unchanged.
+
+`npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. The JavaScript chunk is 910.21 kB, gzip 217.76 kB, up from 909.60 kB. It was not split. The onboarding unit test passed 1. `test:api` 21, `test:account` 5, `test:ai` 16, `test:shopping` 15, and `test:tryon` 16 passed. The unique Node count is 74. The 21 browser tests are additional. The application is still not commercially launch-ready.
+
 

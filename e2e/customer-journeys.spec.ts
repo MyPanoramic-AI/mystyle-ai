@@ -54,7 +54,10 @@ test('onboarding can be walked and then skipped without importing demonstration 
   await register(page, `qa-onboard-${Date.now()}@example.com`);
   await page.getByRole('button', { name: "Let's Get Started" }).click();
   for (const step of [2, 3, 4, 5, 6, 7]) {
-    await expect(page.getByText(`${step} of 8`)).toBeVisible();
+    await expect(page.getByText(`${step} of 8`, { exact: true })).toBeVisible();
+    await expect(page.getByText(/of 6/)).toHaveCount(0);
+    if (step === 2) await expect(page.getByText('Step 2 of 8 · Personal Details')).toBeVisible();
+    if (step === 7) await expect(page.getByText('Step 7 of 8 · Styling Photographs')).toBeVisible();
     await page.getByRole('button', { name: 'Skip', exact: true }).click();
   }
   await expect(page.getByText('8 of 8')).toBeVisible();

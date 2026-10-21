@@ -53,3 +53,56 @@ The same build copies editorial JPEG assets of about 605 kB to 989 kB each. Thos
 An earlier Vite warning about `__dirname` came from the ESM `vite.config.ts` using a CommonJS variable. The config now takes its directory from `fileURLToPath(import.meta.url)`. This build did not print that warning.
 
 Duplicate API calls and frontend memory growth were not profiled. Initial load timing was not measured beyond the build size.
+
+## 21 October 2026
+
+### Screens that were opened
+
+Discover, Saved Looks, Membership, Outfit Studio, and the Event Planner were opened in addition to the screens from 20 October. Primary navigation and the bottom navigation were visible at 375px on the captured screens. Desktop navigation is visible at 1440px. Refresh still returns to Home or to unfinished onboarding. That remains K2. A router was not added.
+
+### Overflow
+
+The visual test measured `scrollWidth` against the viewport at 320, 375, 390, 768, 1024, and 1440 on onboarding, home, profile, stylist, shop, try-on, wardrobe, family, beauty, and membership, plus the wardrobe add dialog at 375. The final measurement was 0 on each.
+
+Before that, the stylist header was 52px wider than a 320px viewport, and the shop catalogue row was 46px wider. The stylist title block can now shrink, the "Personal Stylist" badge is hidden below the `sm` breakpoint, and the calibration line truncates. The shop tabs wrap, and the category scroller is constrained to the page width. Both corrections were included in the passing measurement.
+
+### Screenshots
+
+Full-page screenshots were written to `test-results/visual/`, which is gitignored. Captures exist at 375 and 1440 for onboarding, home, profile, stylist, shop, try-on, wardrobe, family, beauty, and membership, plus a 375 viewport shot of the wardrobe add dialog. Widths 320, 390, 768, and 1024 were measured for overflow and were not captured as images.
+
+What the images showed:
+
+- Onboarding at both widths shows "1 of 8", the welcome card, Let's Get Started, and the skip link. Text is inside the card.
+- Profile at 375 stacks the section cards. Edit actions are on the cards. The bottom navigation is visible.
+- The stylist at 375 shows the demonstration banner, the consent-off notice, and a suggestion card labelled Demonstration with demo prices. The quick-inquiry chips continue in a horizontal scroller, so the next chip peeks at the right edge. That did not widen the page.
+- Wardrobe at 375 shows Add, a horizontal tab scroller, the empty state, and the bottom navigation clear of that empty state. The add dialog shows the title, file control, and fields. The dialog shot is the viewport, so fields below the fold are not in the image.
+- Shop, home, family, beauty, and membership at 375 stack their cards. Shop cards keep the Demo Listing label. Beauty cards still show a products total in rand. Membership plan cards show prices. The guarantee sentence is on My Membership, which the membership test opened separately.
+- At 1440 the onboarding card is centered, and the stylist header shows Personal Stylist, Explore Inspiration, and New Session.
+- Full-page captures paint the sticky header and the fixed bottom navigation over the content that was scrolling underneath them. That repetition is from the capture, not a second copy of the page in the layout. No new overlap defect was confirmed from it.
+- The suggestion card's price line is tight beside the garment heading at 375. It remains readable. It was not restyled.
+- No broken image icon was identified in the captured screens. Editorial photographs rendered on onboarding, the stylist card, shop, home, family, and beauty.
+
+### Shop, try-on, and stylist language
+
+Shop filters change the result count. Product details say "Demo price". Saved products stay on the wishlist as Demo Listing.
+
+Try On still says generation is not active. Take Photo and Choose from Gallery open a dialog that says the upload waits for Phase 2. Simulate Fit is hidden until a photograph is active, so that button was not clicked. Its alert text, if it is reached later, now says real generation is not active and that the button does not create or send a photograph.
+
+The local stylist greeting card no longer says "In Stock". It says "Demonstration" and "Demo est. R…". It still shows a style-match percentage. That percentage was not removed.
+
+### Accessibility
+
+`@axe-core/playwright` scanned the registration form, the signed-in home screen, and Shop. The scan is not a WCAG conformance claim. Keyboard order, contrast ratios measured by hand, and touch-target pixel sizes were not measured.
+
+After the corrections, the scan reports only `color-contrast`, impact serious: 1 node on registration, 16 on home, and 35 on shop. The examples are gold labels such as `#B49361` and `#9C6A61` on the cream background, including the word "AI", "Demo Listing", and "Demo Mode". Those colours are the existing editorial palette. They were not recolored.
+
+Two other violations were present on the first scan and were corrected:
+
+- The profile button's accessible name did not contain its visible initial and name. The overriding label was removed. The visible initial and name stay in the name, with visually hidden text "Open profile". The image alternative is empty when a photograph is shown, so it does not add a second name.
+- Shop skipped from an `h1` to an `h3`, and product titles were `h4`. The category title is now an `h2` and the product title is an `h3`. The classes that set their size were not changed. The follow-up scan no longer reports `heading-order` or `label-content-name-mismatch` on these three pages.
+
+The product-detail close control and the small-screen wardrobe add control now have explicit accessible names.
+
+### Performance
+
+The 21 October production JavaScript chunk is 910.21 kB, gzip 217.76 kB. The 20 October chunk was 909.60 kB, gzip 217.55 kB. No route split was added. There is still one client bundle because navigation is tab state in `App`, not URL routes. Splitting it would change loading. The chunk warning remains. Editorial JPEGs of about 605 kB to 989 kB are still the larger download.

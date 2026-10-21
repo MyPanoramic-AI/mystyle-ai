@@ -144,17 +144,20 @@ export const OutfitBuilderStudio: React.FC<OutfitBuilderStudioProps> = ({
     }
   };
 
+  const ownedSlot = (id?: string) => (id && wardrobeItems.some((item) => item.id === id) ? id : undefined);
+
   const handleSave = () => {
     if (!outfitTitle.trim() || selectedPieces.length === 0) return;
 
+    const accessoryId = ownedSlot(selectedAccessoryId);
     const slots: WardrobeOutfitSlotMap = {
-      topId: selectedTopId,
-      bottomId: selectedBottomId,
-      dressId: selectedDressId,
-      outerwearId: selectedOuterwearId,
-      shoesId: selectedShoesId,
-      bagId: selectedBagId,
-      accessoryIds: selectedAccessoryId ? [selectedAccessoryId] : [],
+      topId: ownedSlot(selectedTopId),
+      bottomId: ownedSlot(selectedBottomId),
+      dressId: ownedSlot(selectedDressId),
+      outerwearId: ownedSlot(selectedOuterwearId),
+      shoesId: ownedSlot(selectedShoesId),
+      bagId: ownedSlot(selectedBagId),
+      accessoryIds: accessoryId ? [accessoryId] : [],
     };
 
     onSaveOutfit({
@@ -173,6 +176,7 @@ export const OutfitBuilderStudio: React.FC<OutfitBuilderStudioProps> = ({
 
   const handleTryOnNow = () => {
     if (selectedPieces.length === 0) return;
+    const accessoryId = ownedSlot(selectedAccessoryId);
     const dummyOutfit: WardrobeOutfit = {
       id: `outfit-${Date.now()}`,
       title: outfitTitle,
@@ -180,13 +184,13 @@ export const OutfitBuilderStudio: React.FC<OutfitBuilderStudioProps> = ({
       occasion: selectedOccasion,
       season: selectedSeason,
       slots: {
-        topId: selectedTopId,
-        bottomId: selectedBottomId,
-        dressId: selectedDressId,
-        outerwearId: selectedOuterwearId,
-        shoesId: selectedShoesId,
-        bagId: selectedBagId,
-        accessoryIds: selectedAccessoryId ? [selectedAccessoryId] : [],
+        topId: ownedSlot(selectedTopId),
+        bottomId: ownedSlot(selectedBottomId),
+        dressId: ownedSlot(selectedDressId),
+        outerwearId: ownedSlot(selectedOuterwearId),
+        shoesId: ownedSlot(selectedShoesId),
+        bagId: ownedSlot(selectedBagId),
+        accessoryIds: accessoryId ? [accessoryId] : [],
       },
       harmonyScore,
       harmonyCritique: 'Personal mix-and-match ensemble',

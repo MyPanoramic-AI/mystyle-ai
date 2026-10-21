@@ -59,3 +59,13 @@ The local test still has the open browser steps in `CUSTOMER_JOURNEY_TEST_MATRIX
 ## Decision
 
 Do not deploy this revision as a public or paid service. Do not enable live OpenAI, Gemini, FASHN, or retailer calls in order to close the remaining QA steps. The next useful step is to finish the untested browser journeys against the same isolated local stack.
+
+## Update, 21 October 2026
+
+The browser journeys that were open on 20 October have now been executed, with the exceptions named in the matrix. Profile editing, wardrobe and outfit planning, Discover, Beauty, Family, authentication failures, the demonstration shop, inactive try-on, and the membership labels passed in Chrome. Account isolation was checked for the profile values and for the wardrobe, family, and beauty names created in the earlier records test.
+
+This does not make the revision commercially launch-ready. Live models, FASHN, verified retailers, email recovery, POPIA documentation, billing, export, retention, HTTPS, and backups are still absent. Membership Select was not clicked, and it must not be treated as a purchase. Credits on that screen are browser demonstration state. The API does not grant an entitlement from it.
+
+Gold-on-cream contrast remains an open accessibility finding. Beauty prices are still easy to read as product totals. There is no reschedule button. Refresh still does not restore the current tab.
+
+Do not start subscriptions, payments, or a live provider in the next phase. The next useful work is a design decision on the contrast finding and the remaining demonstration labels, or an explicitly approved live-provider test. Neither should be done by deploying this revision.

@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { onboardingStepLabel } from './onboardingSteps';
 import { ClothingSizes } from '../../types';
 import { SIZE_OPTIONS } from '../../data/mockData';
 import { Button } from '../common/Button';
@@ -49,7 +50,7 @@ export const Step3ClothingSizes: React.FC<Step3ClothingSizesProps> = ({
         {/* Header */}
         <div className="mb-6">
           <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
-            Step 2 of 6 · Sizes & Fit
+            {onboardingStepLabel(3)}
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-[#242326]">
             Your Clothing Sizes

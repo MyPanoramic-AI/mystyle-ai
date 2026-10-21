@@ -14,6 +14,7 @@ import { Step6ShoppingPreferences } from './Step6ShoppingPreferences';
 import { Step7Photographs } from './Step7Photographs';
 import { Step8Completion } from './Step8Completion';
 import { ArrowLeft, X } from 'lucide-react';
+import { ONBOARDING_STEP_COUNT } from './onboardingSteps';
 
 interface OnboardingFlowProps {
   initialProfile: UserProfile;
@@ -36,7 +37,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
 
-  const totalSteps = 8;
+  const totalSteps = ONBOARDING_STEP_COUNT;
 
   const handlePersonalDetails = (data: PersonalDetails) => {
     setProfile((prev) => ({ ...prev, personal: data }));
