@@ -87,7 +87,7 @@ test('membership stays a labelled demonstration without a payment success', asyn
   await expect(page.getByText('Browser demonstration')).toBeVisible();
   await expect(page.getByRole('button', { name: 'AI Credits', exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Home' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Home' }).first().click();
   await page.getByRole('button', { name: 'Explore All Membership Plans' }).click();
   await expect(page.getByText('Account plan: Free')).toBeVisible();
   await expect(page.getByText('Test credits: 0')).toBeVisible();
@@ -123,7 +123,7 @@ test('membership credits stay on the signed-in account', async ({ page }) => {
   });
   expect(allocated.ok()).toBeTruthy();
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Home' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Home' }).first().click();
   await page.getByRole('button', { name: 'Explore All Membership Plans' }).click();
   await expect(page.getByText('Test credits: 6')).toBeVisible();
   const reserved = await page.request.post(`${api}/api/admin/credits/reserve`, {
@@ -151,7 +151,7 @@ test('membership credits stay on the signed-in account', async ({ page }) => {
   expect(failure.status).toBe('released');
   expect(failure.balance).toBe(4);
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Home' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Home' }).first().click();
   await page.getByRole('button', { name: 'Explore All Membership Plans' }).click();
   await expect(page.getByText('Test credits: 4')).toBeVisible();
   await expect(page.getByText('Account plan: Free')).toBeVisible();

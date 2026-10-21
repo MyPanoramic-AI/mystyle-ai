@@ -69,6 +69,7 @@ test('a wardrobe piece can be uploaded, edited, planned, and deleted', async ({ 
   await expect(page.getByText('Outfit removed')).toBeVisible();
 
   await page.reload();
+  await page.getByRole('button', { name: 'Home' }).first().click();
   await page.getByRole('button', { name: /Browse All/ }).click();
   await expect(page.getByText('QA edited shirt')).toHaveCount(0);
   await page.getByRole('button', { name: /Saved Looks \(/ }).click();

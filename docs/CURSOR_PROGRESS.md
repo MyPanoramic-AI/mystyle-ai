@@ -388,4 +388,34 @@ Migration `010_email_account_security.sql` adds verification state and hashed to
 
 `npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. JS chunk ≈ 925.66 kB. `test:api` 54 passed (includes 9 email-security tests). `test:account` 5, `test:ai` 16, `test:shopping` 15, `test:tryon` 16. Unique Node count **106**. Chrome `test:e2e` **25** passed. Not commercially launch-ready; live email remains outstanding.
 
+## 2026-10-21 — Final product integration / staging RC prep
+
+**Status:** Complete locally. Targeted fixes only. No push, no deploy, no paid services.
+
+Deliverables: `FINAL_FEATURE_INVENTORY.md`, `PRODUCT_INTEGRATION_AUDIT.md`, `FINAL_CUSTOMER_JOURNEY_REPORT.md`, `STAGING_RELEASE_CANDIDATE_CHECKLIST.md`, `REMAINING_PRODUCT_GAPS.md`. Navigation restore via `sessionStorage`; lazy-loaded Discover/Family/Wardrobe/Beauty/Membership. Photo slots remain pending private media.
+
+### Measurements
+
+| Item | Before (email phase) | After (this phase) |
+| --- | --- | --- |
+| Main JS chunk | ≈ 925.66 kB | **639.48 kB** (gzip **169.47 kB**) |
+| Hub lazy chunks | — | Discover 41.6, Family 50.6, Wardrobe 79.7, Beauty 38.9, Membership 80.1 kB |
+
+### Regression
+
+| Command | Result |
+| --- | --- |
+| `npm run lint` | Exit 0 |
+| `npx tsc --noEmit --strict` (app + api) | Exit 0 |
+| `npm run build` | Exit 0 |
+| `test:api` | 54 passed |
+| `test:account` | 5 passed |
+| `test:ai` | 16 passed |
+| `test:shopping` | 15 passed |
+| `test:tryon` | 16 passed |
+| Unique Node count | **106** |
+| `npm run test:e2e` | **26** passed (includes `navigation-restore`) |
+
+Axe primary-module counts (not a WCAG claim): registration 0; home 1; stylist 3; shop 1; try-on 3; profile 4; wardrobe 2; family 2; beauty 2; membership 2; discover 2. Overflows array empty at 320–1440. Staging RC is documentation-ready; commercial launch remains blocked.
+
 

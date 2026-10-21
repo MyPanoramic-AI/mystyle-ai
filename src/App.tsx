@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import type { ReadyAccount } from './account/AccountRoot';
 import {
   NavigationTab,
@@ -25,11 +25,6 @@ import { ShopPreloadedContext } from './components/pages/ShopPlaceholder';
 import { ShopScreen } from './components/shop/ShopScreen';
 import { ProfileDashboard } from './components/profile/ProfileDashboard';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
-import { DiscoverScreen } from './components/discover/DiscoverScreen';
-import { FamilyStylingScreen } from './components/family/FamilyStylingScreen';
-import { WardrobeScreen } from './components/wardrobe/WardrobeScreen';
-import { BeautyStudioScreen } from './components/beauty/BeautyStudioScreen';
-import { MembershipHubScreen } from './components/membership/MembershipHubScreen';
 import {
   BeautyCategory,
   BeautyProductItem,
@@ -38,9 +33,46 @@ import {
   MembershipSubpageTab,
 } from './types';
 
+const DiscoverScreen = lazy(() => import('./components/discover/DiscoverScreen').then((module) => ({ default: module.DiscoverScreen })));
+const FamilyStylingScreen = lazy(() => import('./components/family/FamilyStylingScreen').then((module) => ({ default: module.FamilyStylingScreen })));
+const WardrobeScreen = lazy(() => import('./components/wardrobe/WardrobeScreen').then((module) => ({ default: module.WardrobeScreen })));
+const BeautyStudioScreen = lazy(() => import('./components/beauty/BeautyStudioScreen').then((module) => ({ default: module.BeautyStudioScreen })));
+const MembershipHubScreen = lazy(() => import('./components/membership/MembershipHubScreen').then((module) => ({ default: module.MembershipHubScreen })));
+
+function SubpageFallback() {
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-16 text-sm text-[#5C585E]" role="status" aria-live="polite">
+      Loading this section…
+    </div>
+  );
+}
+
+type AppSubpage = 'discover' | 'family' | 'beauty' | 'wardrobe' | 'membership' | null;
+
+const NAV_TABS: NavigationTab[] = ['home', 'stylist', 'try-on', 'shop', 'profile'];
+const NAV_SUBPAGES: AppSubpage[] = ['discover', 'family', 'beauty', 'wardrobe', 'membership'];
+
+function navigationStorageKey(account: ReadyAccount): string {
+  return `mystyle_nav_v1_${account.mode}_${account.email ?? 'anonymous'}`;
+}
+
+function readStoredNavigation(account: ReadyAccount): { tab: NavigationTab; subpage: AppSubpage } {
+  try {
+    const raw = window.sessionStorage.getItem(navigationStorageKey(account));
+    if (!raw) return { tab: 'home', subpage: null };
+    const parsed = JSON.parse(raw) as { tab?: string; subpage?: string | null };
+    const tab = NAV_TABS.includes(parsed.tab as NavigationTab) ? (parsed.tab as NavigationTab) : 'home';
+    const subpage = NAV_SUBPAGES.includes(parsed.subpage as AppSubpage) ? (parsed.subpage as AppSubpage) : null;
+    return { tab, subpage };
+  } catch {
+    return { tab: 'home', subpage: null };
+  }
+}
+
 export default function App({ account }: { account: ReadyAccount }) {
-  const [currentTab, setCurrentTab] = useState<NavigationTab>('home');
-  const [activeSubpage, setActiveSubpage] = useState<'discover' | 'family' | 'beauty' | 'wardrobe' | 'membership' | null>(null);
+  const initialNav = readStoredNavigation(account);
+  const [currentTab, setCurrentTab] = useState<NavigationTab>(initialNav.tab);
+  const [activeSubpage, setActiveSubpage] = useState<AppSubpage>(initialNav.subpage);
   const [discoverInitialCollectionId, setDiscoverInitialCollectionId] = useState<string | undefined>(undefined);
   const [discoverInitialLookId, setDiscoverInitialLookId] = useState<string | undefined>(undefined);
   const [familyInitialTab, setFamilyInitialTab] = useState<'planner' | 'members' | 'shopping' | 'saved'>('planner');
@@ -78,6 +110,18 @@ export default function App({ account }: { account: ReadyAccount }) {
       cancelled = true;
     };
   }, [account.wardrobe]);
+
+  useEffect(() => {
+    if (isOnboardingActive) return;
+    try {
+      window.sessionStorage.setItem(
+        navigationStorageKey(account),
+        JSON.stringify({ tab: currentTab, subpage: activeSubpage }),
+      );
+    } catch {
+      // Ignore quota or private-mode failures; navigation still works in memory.
+    }
+  }, [account, currentTab, activeSubpage, isOnboardingActive]);
 
   const handleUpdateProfile = async (newProfile: UserProfile) => {
     const saved = await account.saveProfile(newProfile);
@@ -377,6 +421,7 @@ export default function App({ account }: { account: ReadyAccount }) {
           <button type="button" className="text-xs font-semibold uppercase tracking-wider text-[#9C6A61]" onClick={account.leaveDemo}>Leave demonstration</button>
         </div>
       ) : null}
+      <Suspense fallback={<SubpageFallback />}>
       {/* 1. Internal Discover Page */}
       {activeSubpage === 'discover' && (
         <DiscoverScreen
@@ -453,6 +498,7 @@ export default function App({ account }: { account: ReadyAccount }) {
           }}
         />
       )}
+      </Suspense>
 
       {/* 3. Primary Tabs (when not on a subpage) */}
       {!activeSubpage && currentTab === 'home' && (

@@ -17,6 +17,7 @@ test('discover inspiration can be saved once and then removed', async ({ page })
   await expect(page.getByText('Modern Office Muse')).toHaveCount(1);
   await page.getByRole('button', { name: 'Remove look' }).click();
   await page.reload();
+  await page.getByRole('button', { name: 'Home' }).first().click();
   await page.getByRole('button', { name: 'Discover Styles' }).first().click();
   await page.getByRole('button', { name: 'Saved Looks' }).click();
   await expect(page.getByText('Modern Office Muse')).toHaveCount(0);
@@ -57,6 +58,7 @@ test('beauty looks can be saved, linked to an owned outfit, and deleted', async 
   page.once('dialog', async (dialog) => { await dialog.accept(); });
   await savedLook.getByRole('button', { name: 'Remove', exact: true }).click();
   await page.reload();
+  await page.getByRole('button', { name: 'Home' }).first().click();
   await page.getByRole('button', { name: 'Open AI Beauty Studio' }).click();
   await page.getByRole('button', { name: /Saved \(/ }).click();
   await expect(page.getByText('QA wedding guest')).toHaveCount(0);
@@ -109,6 +111,7 @@ test('family profiles and an event stay consistent for one adult account', async
   await page.getByRole('button', { name: 'Save Plan' }).click();
   await expect(page.getByText('Event plan saved.')).toBeVisible();
   await page.reload();
+  await page.getByRole('button', { name: 'Home' }).first().click();
   await page.getByRole('button', { name: 'Coordinate Family Outfits' }).click();
   await page.getByRole('button', { name: 'Occasion Planner' }).click();
   await expect(page.getByText(/Navy, Crisp White & Camel/)).toBeVisible();

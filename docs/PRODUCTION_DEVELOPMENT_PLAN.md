@@ -377,6 +377,8 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 **Status:** IN PROGRESS as of 21 October 2026. Browser journeys and regression suites pass locally. Commercial launch hosting and live email are still blocked. See `END_TO_END_TEST_REPORT.md`, `INFRASTRUCTURE_TEST_REPORT.md`, and `ACCOUNT_SECURITY_TEST_REPORT.md`.
 
+**Release candidate prep (21 October 2026):** Inventory and staging checklist published (`FINAL_FEATURE_INVENTORY.md`, `STAGING_RELEASE_CANDIDATE_CHECKLIST.md`). Targeted fixes: navigation restore, hub code-splitting (main JS **639.48 kB**). Unique Node **106**, e2e **26**. Not a commercial launch. Recommended next milestone: approved paid staging disk + secrets + controlled push, or private onboarding photograph media — not live AI/payments.
+
 **Objectives**
 
 - Close the gaps in `SECURITY_REVIEW.md` for the paths that are actually live.
@@ -500,3 +502,7 @@ Accounts are connected, and the stylist coordinator is in `server/api` with a mo
 ## Update, 20 October 2026 — QA
 
 Playwright now runs the React app and API in Chrome against a temporary database. Seven browser tests passed. They cover registration and sign-in, invalid registration, an onboarding skip walk, shop and try-on labelling, a mock stylist conversation, one wardrobe/family/beauty persistence and isolation path, and horizontal overflow at six widths. Discover, profile editing, outfit planning, and several negative paths were not clicked. The header overflow at 768px and empty image sources were corrected. The client chunk is still 909.60 kB. Do not start the live stylist test until the remaining browser steps are either executed or explicitly accepted as out of scope, and do not enable a paid provider while closing them.
+
+## Update, 21 October 2026 — staging RC prep
+
+Product integration audit, feature inventory, journey report, staging checklist, and remaining gaps are in `docs/`. Navigation restore and hub lazy-loading are in place. Regression: unique Node 106, Chrome e2e 26. Main JS 639.48 kB. Do not push while Render auto-deploy is on. Do not enable live email, AI, FASHN, retailers, or payments without explicit approval.

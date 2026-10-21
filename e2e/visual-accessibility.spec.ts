@@ -49,19 +49,52 @@ test('signed-in screens stay within the viewport and can be captured', async ({ 
   expect(overflows).toEqual([]);
 });
 
-test('automated accessibility scan of the signed-in home and registration form', async ({ page }, testInfo) => {
+test('automated accessibility scan of primary modules', async ({ page }, testInfo) => {
+  test.setTimeout(300_000);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
   const registration = await new AxeBuilder({ page }).analyze();
   await register(page, `qa-a11y-${Date.now()}@example.com`);
   await skipToApp(page);
-  const home = await new AxeBuilder({ page }).analyze();
-  await page.getByRole('button', { name: 'Shop' }).first().click();
-  const shop = await new AxeBuilder({ page }).analyze();
+
+  async function scan(name: string, open: () => Promise<void>) {
+    await open();
+    const result = await new AxeBuilder({ page }).analyze();
+    return { name, violations: result.violations.map(compact), count: result.violations.length };
+  }
+
+  const modules = [
+    await scan('home', async () => { await page.getByRole('button', { name: 'Home' }).first().click(); }),
+    await scan('stylist', async () => { await page.getByRole('button', { name: 'My Stylist' }).first().click(); }),
+    await scan('shop', async () => { await page.getByRole('button', { name: 'Shop' }).first().click(); }),
+    await scan('try-on', async () => { await page.getByRole('button', { name: 'Try On' }).first().click(); }),
+    await scan('profile', async () => { await page.getByRole('button', { name: 'My Profile' }).first().click(); }),
+    await scan('wardrobe', async () => {
+      await page.getByRole('button', { name: 'Home' }).first().click();
+      await page.getByRole('button', { name: /Browse All/ }).click();
+    }),
+    await scan('family', async () => {
+      await page.getByRole('button', { name: 'Home' }).first().click();
+      await page.getByRole('button', { name: 'Coordinate Family Outfits' }).click();
+    }),
+    await scan('beauty', async () => {
+      await page.getByRole('button', { name: 'Home' }).first().click();
+      await page.getByRole('button', { name: 'Open AI Beauty Studio' }).click();
+    }),
+    await scan('membership', async () => {
+      await page.getByRole('button', { name: 'Home' }).first().click();
+      await page.getByRole('button', { name: 'Explore All Membership Plans' }).click();
+    }),
+    await scan('discover', async () => {
+      await page.getByRole('button', { name: 'Home' }).first().click();
+      await page.getByRole('button', { name: 'Discover Styles' }).first().click();
+    }),
+  ];
+
   const summary = {
     registration: registration.violations.map(compact),
-    home: home.violations.map(compact),
-    shop: shop.violations.map(compact),
+    modules,
+    totals: Object.fromEntries(modules.map((item) => [item.name, item.count])),
   };
   mkdirSync(shotDir, { recursive: true });
   writeFileSync(path.join(shotDir, 'axe-summary.json'), JSON.stringify(summary, null, 2));
@@ -71,10 +104,10 @@ test('automated accessibility scan of the signed-in home and registration form',
   });
   testInfo.annotations.push({
     type: 'axe',
-    description: `registration ${summary.registration.length}, home ${summary.home.length}, shop ${summary.shop.length} violation groups`,
+    description: `registration ${summary.registration.length}; modules ${modules.map((item) => `${item.name}:${item.count}`).join(', ')}`,
   });
   expect(registration.violations).toBeDefined();
-  expect(home.violations).toBeDefined();
+  expect(modules.length).toBeGreaterThanOrEqual(9);
 });
 
 function compact(violation: { id: string; impact?: string | null; help: string; nodes: { target: unknown; html: string }[] }) {

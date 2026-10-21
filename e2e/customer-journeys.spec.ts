@@ -137,6 +137,7 @@ test('a wardrobe piece, family profile, and beauty look persist for one account 
   await expect(page.getByText('Look saved successfully.')).toBeVisible();
 
   await page.reload();
+  await page.getByRole('button', { name: 'Home' }).first().click();
   await page.getByRole('button', { name: 'Open AI Beauty Studio' }).click();
   await page.getByRole('button', { name: /Saved \(/ }).click();
   await expect(page.getByText('QA wedding guest')).toBeVisible();

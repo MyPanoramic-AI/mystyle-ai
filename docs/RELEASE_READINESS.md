@@ -93,3 +93,10 @@ The application is still **not** commercially launch-ready and must not be treat
 ## Update, 21 October 2026 — email verification and password recovery
 
 Local capture-based email verification and password reset are implemented and tested in Chrome. Live transactional email is **not** enabled. Existing accounts remain unverified until customers complete verification after a real mailer is approved. This still does not make the product launch-ready.
+
+## Update, 21 October 2026 — staging release candidate preparation
+
+Feature inventory, integration audit, journey report, staging checklist, and remaining gaps are documented. Navigation restore and lazy-loaded hubs reduce the main JS chunk (~926 kB → **639.48 kB** gzip **169.47 kB**). Broader axe scans record violation counts without claiming WCAG conformance. Full regression: unique Node **106**, Chrome e2e **26** passed.
+
+**Staging RC:** may proceed only after paid disk + secrets + frozen commit and an approved push plan.  
+**Commercial launch:** still blocked (live email, AI, retailers, payments, legal, image rights, persistence). See `STAGING_RELEASE_CANDIDATE_CHECKLIST.md` and `REMAINING_PRODUCT_GAPS.md`.

@@ -30,15 +30,14 @@ Date: 20 October 2026. Corrected items stay listed so the retest is traceable. O
 ### K2 — Refresh does not restore the current section
 
 - Severity: medium for deep links. It is not data loss.
-- Tabs are component state. A reload returns to Home, or to onboarding if that flow is unfinished. The session cookie still restores the account, and saved records are visible after the section is opened again.
-- A URL router was not introduced. That would be a navigation change beyond a targeted defect fix.
+- **Updated 21 October 2026 (Prompt 15):** primary tab and hub subpage (discover/family/wardrobe/beauty/membership) restore from `sessionStorage`. Inner tabs (e.g. Beauty category) still reset. Not a full URL router.
+- Retest: `e2e/navigation-restore.spec.ts`.
 
 ### K3 — Large client download
 
 - Severity: low for local testing. It matters before a public launch.
-- The production JavaScript chunk is 909.60 kB, and individual editorial JPEGs are about 605 kB to 989 kB.
-- The bundle was not split and the images were not recompressed.
-- On 21 October the chunk measured 910.21 kB. It is still one file. See K3 in the later section.
+- Editorial JPEGs remain about 605 kB to 989 kB.
+- **Updated 21 October 2026 (Prompt 15):** Discover, Family, Wardrobe, Beauty, and Membership are lazy-loaded. Main JS chunk measured **639.48 kB** gzip **169.47 kB** (was ≈ **926 kB** before the split). Further splitting and image compression remain open.
 
 ### K4 — Browser coverage is incomplete
 
@@ -54,10 +53,10 @@ These are not new defects from this run. They remain launch blockers and are lis
 - Live OpenAI and Gemini quality are untested. Live calls stay disabled.
 - Live FASHN quality is untested. No photograph was sent.
 - There is no verified retailer feed. Shop copy identifies demonstration data.
-- Account recovery and email verification are not implemented.
-- Personal photograph onboarding is not part of the connected save path exercised here.
-- POPIA and privacy documentation, image licensing, subscription billing, account export, and retention are incomplete.
-- Production HTTPS, cookie `Secure`, backups, and a public security review are still required.
+- Account recovery and email verification exist with **local capture only**; live email is pending.
+- Personal photograph onboarding is still not part of the private media save path.
+- POPIA certification, image licensing, subscription billing, and approved legal notices remain incomplete (technical export/deletion/consent exist).
+- Production HTTPS, cookie `Secure`, and backups are designed; Free Render persistence and live email remain blockers.
 
 ## Corrected on 21 October 2026
 

@@ -174,3 +174,7 @@ Staging and production profiles require an `https://` public origin, Secure cook
 ## Email verification and password recovery, 21 October 2026
 
 Verification and reset tokens are random, hashed at rest, single-use, and expiring. Password reset responses do not reveal whether an email is registered. Successful reset deletes all sessions for that user. Tokens are not written to `localStorage` and are stripped from the URL after handling. The development mailbox is loopback-only and refused on staging/production. No live transactional provider is configured. Existing accounts are not auto-verified. Optional `API_REQUIRE_EMAIL_VERIFIED` can gate export and deletion after an approved rollout.
+
+## Release-candidate security note, 21 October 2026
+
+No new public surfaces were added in the RC prep pass. Lazy-loaded hubs do not change authz. Navigation restore uses `sessionStorage` for tab ids only (no tokens). Staging must keep `EMAIL_CAPTURE_ENABLED` false, labs private, and live AI/payments off. Photograph onboarding still does not upload to private media—treat as pending, not as secured customer photographs.
