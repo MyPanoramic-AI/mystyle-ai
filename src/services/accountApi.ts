@@ -14,10 +14,12 @@ export class AccountApiError extends Error {
 export interface AuthResult {
   userId: string;
   csrfToken: string;
+  emailVerified?: boolean;
 }
 
 export interface SessionResponse extends AuthResult {
   email: string;
+  emailVerified: boolean;
   expiresAt: string;
 }
 
@@ -28,6 +30,13 @@ export interface AccountApi {
   register(email: string, password: string): Promise<AuthResult>;
   login(email: string, password: string): Promise<AuthResult>;
   logout(): Promise<void>;
+  emailStatus(): Promise<{ email: string; emailVerified: boolean; verifiedAt: string | null }>;
+  requestEmailVerification(): Promise<{ ok: boolean; sent: boolean; message: string }>;
+  confirmEmailVerification(token: string): Promise<{ ok: boolean; emailVerified: boolean }>;
+  requestPasswordReset(email: string): Promise<{ ok: boolean; message: string }>;
+  confirmPasswordReset(token: string, password: string): Promise<{ ok: boolean; message: string }>;
+  devMailbox(): Promise<{ messages: { id: string; kind: string; recipient: string; subject: string; createdAt: string }[] }>;
+  devMailboxAction(id: string): Promise<{ id: string; kind: string; path: string }>;
   getProfile(): Promise<Record<string, unknown>>;
   saveProfile(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   getPreferences(): Promise<Record<string, unknown>>;
@@ -273,6 +282,17 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
       await request('/api/auth/logout', { method: 'POST', csrf: true });
       csrfToken = null;
     },
+    emailStatus: () => request('/api/auth/email-status'),
+    requestEmailVerification: () => request('/api/auth/verify-email/request', { method: 'POST', csrf: true }),
+    confirmEmailVerification: (token) => request('/api/auth/verify-email/confirm', { method: 'POST', body: { token } }),
+    requestPasswordReset: (email) => request('/api/auth/password-reset/request', { method: 'POST', body: { email } }),
+    confirmPasswordReset: async (token, password) => {
+      const result = await request<{ ok: boolean; message: string }>('/api/auth/password-reset/confirm', { method: 'POST', body: { token, password } });
+      csrfToken = null;
+      return result;
+    },
+    devMailbox: () => request('/api/dev/mailbox'),
+    devMailboxAction: (id) => request(`/api/dev/mailbox/${id}/action`),
     getProfile: () => request('/api/profile'),
     saveProfile: (body) => request('/api/profile', { method: 'PUT', body, csrf: true }),
     getPreferences: () => request('/api/preferences'),

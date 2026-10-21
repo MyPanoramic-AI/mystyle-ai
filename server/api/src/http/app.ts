@@ -8,6 +8,16 @@ import type { Sql } from '../db.js';
 import { RateLimiter } from '../auth/rateLimit.js';
 import { clearSessionCookie, destroySession, findSession, readCookie, requireCsrf, sessionCookie, SESSION_COOKIE, safeEqual, type SessionRecord } from '../auth/sessions.js';
 import { loginAccount, registerAccount } from '../domain/accounts.js';
+import {
+  assertEmailVerifiedForSensitive,
+  completePasswordReset,
+  confirmEmailVerification,
+  issueEmailVerification,
+  readEmailStatus,
+  requestPasswordReset,
+} from '../domain/emailSecurity.js';
+import { createCaptureMailer, createDisabledMailer, listCapturedEmails, readCapturedAction } from '../email/localCapture.js';
+import type { Mailer } from '../email/types.js';
 import { getPreferences, getProfile, updatePreferences, updateProfile } from '../domain/profiles.js';
 import { createFamilyEvent, createFamilyMember, deleteFamilyEvent, deleteFamilyMember, getFamilyEvent, getFamilyMember, listFamily, listFamilyEvents, updateFamilyEvent, updateFamilyMember } from '../domain/family.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
@@ -49,6 +59,7 @@ export interface AppDeps {
   rateLimiter: RateLimiter;
   aiConfig?: AiConfig;
   aiFetch?: typeof fetch;
+  mailer?: Mailer;
 }
 
 function securityHeaders(res: Response, page: boolean): void {
@@ -68,6 +79,14 @@ export function createApp(deps: AppDeps): express.Express {
   const app = express();
   app.disable('x-powered-by');
   if (deps.config.trustProxy) app.set('trust proxy', 1);
+  const mailer = deps.mailer
+    ?? (deps.config.emailCaptureEnabled ? createCaptureMailer(deps.db, deps.now) : createDisabledMailer());
+  const emailSecurity = {
+    appPublicUrl: deps.config.appPublicUrl,
+    verificationTokenMs: deps.config.verificationTokenMs,
+    resetTokenMs: deps.config.resetTokenMs,
+    requireVerifiedForSensitive: deps.config.requireVerifiedForSensitive,
+  };
   app.use(express.json({ limit: '12mb' }));
   app.use((req, res, next) => {
     securityHeaders(res, !req.path.startsWith('/api'));
@@ -148,18 +167,31 @@ export function createApp(deps: AppDeps): express.Express {
     }
   }));
 
-  app.post('/api/auth/register', route((req, res) => {
+  app.post('/api/auth/register', route(async (req, res) => {
     limitAuth(req);
     const created = registerAccount(deps.db, req.body?.email, req.body?.password, deps.now(), deps.config.sessionMs);
     issue(res, created.token);
-    res.status(201).json({ userId: created.userId, csrfToken: created.csrfToken });
+    try {
+      await issueEmailVerification({
+        db: deps.db,
+        mailer,
+        userId: created.userId,
+        config: emailSecurity,
+        now: deps.now(),
+        reason: 'register',
+      });
+    } catch {
+      // Registration succeeds even if the verification message cannot be queued locally.
+    }
+    res.status(201).json({ userId: created.userId, csrfToken: created.csrfToken, emailVerified: false });
   }));
 
   app.post('/api/auth/login', route((req, res) => {
     limitAuth(req);
     const session = loginAccount(deps.db, req.body?.email, req.body?.password, deps.now(), deps.config.sessionMs);
     issue(res, session.token);
-    res.json({ userId: session.userId, csrfToken: session.csrfToken });
+    const status = readEmailStatus(deps.db, session.userId);
+    res.json({ userId: session.userId, csrfToken: session.csrfToken, emailVerified: status.emailVerified });
   }));
 
   app.post('/api/auth/logout', route((req, res) => {
@@ -172,8 +204,106 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/auth/session', route((req, res) => {
     const session = current(req);
     if (!session) throw new ApiError('unauthorised', 'Sign in is required.', 401);
-    res.json({ userId: session.userId, email: session.email, csrfToken: session.csrfToken, expiresAt: session.expiresAt });
+    res.json({
+      userId: session.userId,
+      email: session.email,
+      emailVerified: session.emailVerified,
+      csrfToken: session.csrfToken,
+      expiresAt: session.expiresAt,
+    });
   }));
+
+  app.get('/api/auth/email-status', route((req, res) => {
+    const session = requireUser(req);
+    res.json(readEmailStatus(deps.db, session.userId));
+  }));
+
+  app.post('/api/auth/verify-email/request', route(async (req, res) => {
+    limitAuth(req);
+    const session = requireUser(req);
+    const result = await issueEmailVerification({
+      db: deps.db,
+      mailer,
+      userId: session.userId,
+      config: emailSecurity,
+      now: deps.now(),
+      reason: 'resend',
+    });
+    res.json({
+      ok: true,
+      sent: result.sent,
+      message: result.sent
+        ? 'If verification is still needed, a message was prepared for your email address.'
+        : 'This email address is already verified.',
+    });
+  }));
+
+  app.post('/api/auth/verify-email/confirm', route((req, res) => {
+    limitAuth(req);
+    const result = confirmEmailVerification(deps.db, req.body?.token, deps.now());
+    res.json({ ok: true, emailVerified: result.emailVerified });
+  }));
+
+  app.post('/api/auth/password-reset/request', route(async (req, res) => {
+    limitAuth(req);
+    await requestPasswordReset({
+      db: deps.db,
+      mailer,
+      emailRaw: req.body?.email,
+      config: emailSecurity,
+      now: deps.now(),
+    });
+    res.json({
+      ok: true,
+      message: 'If an account exists for that email, password reset instructions have been prepared.',
+    });
+  }));
+
+  app.post('/api/auth/password-reset/confirm', route(async (req, res) => {
+    limitAuth(req);
+    await completePasswordReset({
+      db: deps.db,
+      mailer,
+      tokenRaw: req.body?.token,
+      passwordRaw: req.body?.password,
+      config: emailSecurity,
+      now: deps.now(),
+    });
+    res.setHeader('Set-Cookie', clearSessionCookie(deps.config.secureCookie));
+    res.json({
+      ok: true,
+      message: 'Your password was changed. Sign in with your new password.',
+    });
+  }));
+
+  if (deps.config.emailCaptureEnabled && (deps.config.appEnv === 'development' || deps.config.appEnv === 'test')) {
+    function requireLoopback(req: Request): void {
+      const address = req.socket.remoteAddress ?? '';
+      if (address !== '127.0.0.1' && address !== '::1' && address !== '::ffff:127.0.0.1') {
+        throw new ApiError('forbidden', 'The local mailbox is only available on this machine.', 403);
+      }
+    }
+
+    app.get('/api/dev/mailbox', route((req, res) => {
+      requireLoopback(req);
+      res.json({
+        messages: listCapturedEmails(deps.db).map((item) => ({
+          id: item.id,
+          kind: item.kind,
+          recipient: item.recipient,
+          subject: item.subject,
+          createdAt: item.createdAt,
+        })),
+      });
+    }));
+
+    app.get('/api/dev/mailbox/:id/action', route((req, res) => {
+      requireLoopback(req);
+      const action = readCapturedAction(deps.db, String(req.params.id));
+      if (!action) throw new ApiError('not_found', 'That captured message was not found.', 404);
+      res.json({ id: action.id, kind: action.kind, path: action.actionPath });
+    }));
+  }
 
   app.get('/api/profile', route((req, res) => {
     res.json(getProfile(deps.db, requireUser(req).userId));
@@ -357,6 +487,7 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.post('/api/privacy/export', route((req, res) => {
     const session = requireUser(req);
+    assertEmailVerifiedForSensitive(deps.db, session.userId, deps.config.requireVerifiedForSensitive);
     res.status(201).json(createDataExport(deps.db, {
       userId: session.userId,
       password: req.body?.password,
@@ -382,13 +513,16 @@ export function createApp(deps: AppDeps): express.Express {
     res.json(deletionStatus(deps.db, requireUser(req).userId));
   }));
   app.post('/api/privacy/deletion/start', route((req, res) => {
-    res.status(201).json(startDeletionRequest(deps.db, requireUser(req).userId, deps.now()));
+    const session = requireUser(req);
+    assertEmailVerifiedForSensitive(deps.db, session.userId, deps.config.requireVerifiedForSensitive);
+    res.status(201).json(startDeletionRequest(deps.db, session.userId, deps.now()));
   }));
   app.post('/api/privacy/deletion/cancel', route((req, res) => {
     res.json(cancelDeletionRequest(deps.db, requireUser(req).userId, deps.now()));
   }));
   app.post('/api/privacy/deletion/confirm', route((req, res) => {
     const session = requireUser(req);
+    assertEmailVerifiedForSensitive(deps.db, session.userId, deps.config.requireVerifiedForSensitive);
     const result = confirmDeletion(deps.db, {
       userId: session.userId,
       password: req.body?.password,

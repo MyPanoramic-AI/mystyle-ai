@@ -28,6 +28,11 @@ export interface ApiConfig {
   allowedOrigins: string[];
   trustProxy: boolean;
   logLevel: 'info' | 'warn' | 'error';
+  appPublicUrl: string;
+  verificationTokenMs: number;
+  resetTokenMs: number;
+  requireVerifiedForSensitive: boolean;
+  emailCaptureEnabled: boolean;
 }
 
 const LOCAL_VITE_ORIGINS = [3000, 3001, 4173].flatMap((port) => [
@@ -91,6 +96,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     paymentsEnabled: env.PAYMENTS_ENABLED === 'true',
   });
 
+  const appPublicUrl = (env.APP_PUBLIC_URL ?? publicOrigin)?.replace(/\/$/, '')
+    || (appEnv === 'development' || appEnv === 'test' ? 'http://127.0.0.1:4173' : '');
+  if ((appEnv === 'staging' || appEnv === 'production') && !appPublicUrl.startsWith('https://')) {
+    throw new Error('Staging/production require APP_PUBLIC_URL or an https public origin for email links.');
+  }
+
+  const emailCaptureEnabled = env.EMAIL_CAPTURE_ENABLED === 'true'
+    || ((appEnv === 'development' || appEnv === 'test') && env.EMAIL_CAPTURE_ENABLED !== 'false');
+  if ((appEnv === 'staging' || appEnv === 'production') && emailCaptureEnabled) {
+    throw new Error('EMAIL_CAPTURE_ENABLED cannot be true in staging or production.');
+  }
+
   return {
     appEnv,
     host: host as ApiConfig['host'],
@@ -114,6 +131,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     allowedOrigins,
     trustProxy: env.API_TRUST_PROXY === 'true' || hosted,
     logLevel: env.API_LOG_LEVEL === 'warn' || env.API_LOG_LEVEL === 'error' ? env.API_LOG_LEVEL : 'info',
+    appPublicUrl,
+    verificationTokenMs: intEnv(env, 'API_VERIFICATION_TOKEN_MINUTES', 60) * 60 * 1000,
+    resetTokenMs: intEnv(env, 'API_RESET_TOKEN_MINUTES', 30) * 60 * 1000,
+    requireVerifiedForSensitive: env.API_REQUIRE_EMAIL_VERIFIED === 'true',
+    emailCaptureEnabled,
   };
 }
 

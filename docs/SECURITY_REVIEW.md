@@ -170,3 +170,7 @@ Optional consent history defaults to withdrawn. Export and deletion require the 
 ## Production infrastructure hardening, 21 October 2026
 
 Staging and production profiles require an `https://` public origin, Secure cookies, an admin token of at least 20 characters, and non-localhost allowed origins. `AI_ALLOW_LIVE=true` and `PAYMENTS_ENABLED=true` are refused on those profiles in this revision. Production also refuses retention cleanup without `API_RETENTION_CLEANUP_ACK=i-understand-destructive-cleanup`. Structured logs redact sensitive field names. `/api/health` is liveness only; `/api/ready` checks the database without returning filesystem paths. SQLite backups use the `node:sqlite` backup API with checksum manifests; automatic prune is disabled. The Free Render filesystem remains ephemeral — durable private data on that plan is still unsafe. Nothing was pushed or deployed in this pass.
+
+## Email verification and password recovery, 21 October 2026
+
+Verification and reset tokens are random, hashed at rest, single-use, and expiring. Password reset responses do not reveal whether an email is registered. Successful reset deletes all sessions for that user. Tokens are not written to `localStorage` and are stripped from the URL after handling. The development mailbox is loopback-only and refused on staging/production. No live transactional provider is configured. Existing accounts are not auto-verified. Optional `API_REQUIRE_EMAIL_VERIFIED` can gate export and deletion after an approved rollout.

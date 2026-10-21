@@ -172,7 +172,7 @@ test('migrations upgrade from an early schema fixture and remain idempotent', ()
     const db = openDatabase(dbPath);
     const early = migrate(db, migrationsDir);
     assert.equal(early[0], '001_initial.sql');
-    assert.ok(early.includes('009_privacy_controls.sql'));
+    assert.ok(early.includes('010_email_account_security.sql'));
     const again = migrate(db, migrationsDir);
     assert.deepEqual(again, []);
     db.close();
@@ -187,12 +187,16 @@ test('migrations upgrade from an early schema fixture and remain idempotent', ()
       prior.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(file, new Date().toISOString());
     }
     const upgraded = migrate(prior, migrationsDir);
-    assert.deepEqual(upgraded, ['006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql']);
+    assert.deepEqual(upgraded, ['006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql', '010_email_account_security.sql']);
     assert.deepEqual(migrate(prior, migrationsDir), []);
     prior.prepare('PRAGMA foreign_key_check').all();
     prior.close();
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    try {
+      rmSync(root, { recursive: true, force: true });
+    } catch {
+      // Windows may briefly lock WAL companions after close.
+    }
   }
 });
 

@@ -373,7 +373,9 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 **Infrastructure (21 October 2026):** Production architecture, Render persistence assessment, environment profiles, SQLite backup/restore, health/ready split, observability plan, and deployment/rollback runbooks are documented and tested locally. **Not done:** paid Render disk, staging service, GitHub push, live cutover. Free-plan ephemeral storage remains a production blocker. See `PRODUCTION_ARCHITECTURE.md` and `RENDER_DEPLOYMENT_ASSESSMENT.md`.
 
-**Status:** IN PROGRESS as of 21 October 2026. Browser journeys and regression suites pass locally. Commercial launch hosting is still blocked. See `END_TO_END_TEST_REPORT.md` and `INFRASTRUCTURE_TEST_REPORT.md`.
+**Account security (21 October 2026):** Email verification and password recovery are implemented with a local capture mailer. Live provider integration is not started. See `EMAIL_VERIFICATION_IMPLEMENTATION.md` and `PASSWORD_RECOVERY_IMPLEMENTATION.md`.
+
+**Status:** IN PROGRESS as of 21 October 2026. Browser journeys and regression suites pass locally. Commercial launch hosting and live email are still blocked. See `END_TO_END_TEST_REPORT.md`, `INFRASTRUCTURE_TEST_REPORT.md`, and `ACCOUNT_SECURITY_TEST_REPORT.md`.
 
 **Objectives**
 

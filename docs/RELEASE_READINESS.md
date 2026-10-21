@@ -89,3 +89,7 @@ Authenticated export, consent history, photograph delete, and account deletion w
 Architecture, Render persistence, backup/restore, environment profiles, health/ready split, release and rollback docs, and infrastructure tests were prepared **without** pushing, deploying, or changing the live Render service. The Free Render plan remains a **production blocker** for durable SQLite and private media (no persistent disk). Secure staging/production config now fails closed when HTTPS origin, admin token, or non-localhost origins are missing. Live AI and payments stay refused on those profiles. See `PRODUCTION_ARCHITECTURE.md`, `RENDER_DEPLOYMENT_ASSESSMENT.md`, and `INFRASTRUCTURE_TEST_REPORT.md`.
 
 The application is still **not** commercially launch-ready and must not be treated as production-ready until a paid disk (or approved alternative storage), staging cutover, and operator backup drills are completed.
+
+## Update, 21 October 2026 — email verification and password recovery
+
+Local capture-based email verification and password reset are implemented and tested in Chrome. Live transactional email is **not** enabled. Existing accounts remain unverified until customers complete verification after a real mailer is approved. This still does not make the product launch-ready.

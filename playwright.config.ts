@@ -33,10 +33,13 @@ export default defineConfig({
       timeout: 30_000,
       env: {
         ...process.env,
+        APP_ENV: 'test',
         API_PORT: apiPort,
         API_HOST: '127.0.0.1',
         API_DATA_DIR: dataDir,
         API_ALLOWED_ORIGINS: `${origin},http://localhost:${webPort}`,
+        APP_PUBLIC_URL: origin,
+        EMAIL_CAPTURE_ENABLED: 'true',
         AI_PROVIDER: 'mock',
         AI_ALLOW_LIVE: 'false',
         AI_MAX_BUDGET_USD: '0',

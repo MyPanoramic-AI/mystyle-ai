@@ -38,6 +38,20 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 | --- | --- | --- |
 | `GET /api/health` | No | Liveness (`status: live`) |
 | `GET /api/ready` | No | Readiness and database `up` / `unavailable` |
+| `GET /api/auth/email-status` | Session | Email and verification flag |
+| `POST /api/auth/verify-email/request` | Session + CSRF | Resend verification (local capture) |
+| `POST /api/auth/verify-email/confirm` | Public | Consume verification token |
+| `POST /api/auth/password-reset/request` | Public | Neutral reset acceptance |
+| `POST /api/auth/password-reset/confirm` | Public | New password; revoke sessions |
+| `GET /api/dev/mailbox` | Loopback non-prod | Captured message metadata |
+| `GET /api/dev/mailbox/:id/action` | Loopback non-prod | Local follow path for tests |
+| `GET /api/auth/email-status` | Session | Email and verification flag |
+| `POST /api/auth/verify-email/request` | Session + CSRF | Resend verification (capture/disabled mailer) |
+| `POST /api/auth/verify-email/confirm` | Public | Consume verification token |
+| `POST /api/auth/password-reset/request` | Public | Neutral reset acceptance |
+| `POST /api/auth/password-reset/confirm` | Public | Set new password; revoke sessions |
+| `GET /api/dev/mailbox` | Loopback, non-production | Captured message metadata |
+| `GET /api/dev/mailbox/:id/action` | Loopback, non-production | Local action path for tests |
 | `POST /api/auth/register` | No | Creates an account and sets the session cookie |
 | `POST /api/auth/login` | No | Sets the session cookie |
 | `POST /api/auth/logout` | Session and CSRF | Deletes the session |

@@ -62,7 +62,7 @@ export async function register(base: string, email: string, password = 'correct-
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  const body = await response.json() as { userId: string; csrfToken: string; code?: string };
+  const body = await response.json() as { userId: string; csrfToken: string; emailVerified?: boolean; code?: string };
   return { response, body, cookie: cookieFrom(response) };
 }
 

@@ -380,4 +380,12 @@ Added environment profiles with fail-closed staging/production rules, SQLite `ba
 
 `npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. JS chunk 921.21 kB gzip 220.06 kB. `test:api` 45 passed (includes infrastructure). `test:account` 5, `test:ai` 16, `test:shopping` 15, `test:tryon` 16. Unique Node count 97. Chrome `test:e2e` 23 passed. Not commercially launch-ready.
 
+## 2026-10-21 — Email verification and password recovery
+
+**Status:** Implemented with local email capture only. No live provider. Nothing pushed or deployed.
+
+Migration `010_email_account_security.sql` adds verification state and hashed token tables. Registration issues a captured verification message. Password reset is enumeration-safe, single-use, and revokes sessions. Auth screens support forgot/reset and deep links via `?action=` query params cleared after use. Dev mailbox is loopback-only.
+
+`npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. JS chunk ≈ 925.66 kB. `test:api` 54 passed (includes 9 email-security tests). `test:account` 5, `test:ai` 16, `test:shopping` 15, `test:tryon` 16. Unique Node count **106**. Chrome `test:e2e` **25** passed. Not commercially launch-ready; live email remains outstanding.
+
 

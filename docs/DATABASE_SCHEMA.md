@@ -1,6 +1,6 @@
 # Database schema
 
-Date: 21 October 2026. Source of truth: `server/api/migrations/`, from `001_initial.sql` through `009_privacy_controls.sql`. The runner records applied files in `schema_migrations` and skips them on the next start.
+Date: 21 October 2026. Source of truth: `server/api/migrations/`, from `001_initial.sql` through `010_email_account_security.sql`. The runner records applied files in `schema_migrations` and skips them on the next start.
 
 The file database uses foreign keys, WAL, and a five-second busy timeout. Tests use an in-memory database, which does not use WAL. Migration `008_membership_accounting.sql` extends the entitlement and ledger tables and adds the membership tables below.
 
@@ -8,7 +8,10 @@ The file database uses foreign keys, WAL, and a five-second busy timeout. Tests 
 
 | Table | Purpose |
 | --- | --- |
-| `users` | Email, scrypt password hash, status, created and updated times, last login |
+| `users` | Email, scrypt password hash, status, `email_verified_at` (null until verified), created and updated times, last login |
+| `email_verification_tokens` | User id, token hash, expiry, consumed/superseded timestamps |
+| `password_reset_tokens` | User id, token hash, expiry, consumed/superseded timestamps |
+| `transactional_email_capture` | Local-only captured outbound messages for development and tests |
 | `sessions` | Session id, user id, SHA-256 token hash, CSRF token, expiry |
 | `customer_profiles` | Display name, style list, sizes, budget, colours, interests, fit, experimentation, country, currency, age range, shopping priorities, favourite retailers, onboarding status, completion status |
 | `profile_measurements` | Optional height, bust, waist, and hip in centimetres. Private. Not inferred from photographs |

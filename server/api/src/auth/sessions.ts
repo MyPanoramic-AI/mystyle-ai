@@ -9,6 +9,7 @@ export interface SessionRecord {
   userId: string;
   email: string;
   status: string;
+  emailVerified: boolean;
   csrfToken: string;
   expiresAt: string;
 }
@@ -60,17 +61,30 @@ export function createSession(db: Sql, userId: string, now: number, sessionMs: n
 export function findSession(db: Sql, token: string | null, now: number): SessionRecord | null {
   if (!token) return null;
   const row = db.prepare(
-    `SELECT s.id, s.user_id AS userId, s.csrf_token AS csrfToken, s.expires_at AS expiresAt, u.email, u.status
+    `SELECT s.id, s.user_id AS userId, s.csrf_token AS csrfToken, s.expires_at AS expiresAt, u.email, u.status,
+            u.email_verified_at AS emailVerifiedAt
      FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`,
-  ).get(hashToken(token)) as SessionRecord | undefined;
+  ).get(hashToken(token)) as (Omit<SessionRecord, 'emailVerified'> & { emailVerifiedAt: string | null }) | undefined;
   if (!row) return null;
   if (Date.parse(row.expiresAt) <= now) return null;
   if (row.status !== 'active') return null;
-  return row;
+  return {
+    id: row.id,
+    userId: row.userId,
+    email: row.email,
+    status: row.status,
+    emailVerified: Boolean(row.emailVerifiedAt),
+    csrfToken: row.csrfToken,
+    expiresAt: row.expiresAt,
+  };
 }
 
 export function destroySession(db: Sql, sessionId: string): void {
   db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
+}
+
+export function destroyAllSessionsForUser(db: Sql, userId: string): void {
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
 }
 
 export function requireCsrf(header: string | undefined, session: SessionRecord): void {

@@ -27,6 +27,8 @@ export interface ReadyAccount {
   mode: 'account' | 'demo';
   profile: UserProfile;
   email: string | null;
+  emailVerified: boolean;
+  requestEmailVerification: () => Promise<void>;
   saveProfile: (profile: UserProfile) => Promise<UserProfile>;
   deferOnboarding: () => Promise<UserProfile>;
   logout: () => Promise<void>;
@@ -42,6 +44,14 @@ export interface ReadyAccount {
   wardrobe: AccountWardrobe | null;
   family: AccountFamily | null;
   beauty: AccountBeauty | null;
+}
+
+function clearSecurityParams(): void {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has('action') && !url.searchParams.has('token')) return;
+  url.searchParams.delete('action');
+  url.searchParams.delete('token');
+  window.history.replaceState({}, '', `${url.pathname}${url.hash}`);
 }
 
 function messageFrom(error: unknown): string {
@@ -62,11 +72,14 @@ export function AccountRoot() {
   const [mode, setMode] = useState<'account' | 'demo'>('account');
   const [profile, setProfile] = useState<UserProfile>(emptyAccountProfile());
   const [email, setEmail] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [aiConsent, setAiConsentState] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [securityNotice, setSecurityNotice] = useState<string | null>(null);
+  const [authBoot, setAuthBoot] = useState<{ panel: 'register' | 'login' | 'forgot' | 'reset' | 'verify'; token?: string; message?: string }>({ panel: 'register' });
   const generation = useRef(0);
 
   async function loadSignedIn(nextUserId: string, gen: number): Promise<void> {
@@ -75,6 +88,7 @@ export function AccountRoot() {
     const nextProfile = profileForAccount(fromApiProfile(rawProfile));
     setUserId(nextUserId || session.userId);
     setEmail(session.email);
+    setEmailVerified(session.emailVerified === true);
     setProfile(nextProfile);
     setAiConsentState(preferences.aiPersonalisationConsent === true);
     await savedLooksService.useAccount({
@@ -101,6 +115,33 @@ export function AccountRoot() {
     try {
       const ready = await accountApi.ready();
       if (!ready.ok || ready.database !== 'up') throw new AccountApiError('unavailable', 'The account service is unavailable.', 503);
+
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
+      const token = params.get('token');
+      if (action === 'verify-email' && token) {
+        try {
+          await accountApi.confirmEmailVerification(token);
+          clearSecurityParams();
+          setSecurityNotice('Your email address is verified.');
+          setEmailVerified(true);
+        } catch (error) {
+          clearSecurityParams();
+          setAuthBoot({ panel: 'verify', message: messageFrom(error) });
+          setPhase('signed-out');
+          return;
+        }
+      } else if (action === 'reset-password' && token) {
+        clearSecurityParams();
+        setAuthBoot({ panel: 'reset', token });
+        setUserId(null);
+        setEmail(null);
+        setEmailVerified(false);
+        setProfile(emptyAccountProfile());
+        setPhase('signed-out');
+        return;
+      }
+
       const session = await accountApi.session();
       await loadSignedIn(session.userId, gen);
     } catch (error) {
@@ -108,6 +149,7 @@ export function AccountRoot() {
       if (error instanceof AccountApiError && error.status === 401) {
         setUserId(null);
         setEmail(null);
+        setEmailVerified(false);
         setProfile(emptyAccountProfile());
         setPhase('signed-out');
         return;
@@ -166,6 +208,7 @@ export function AccountRoot() {
       generation.current += 1;
       setUserId(null);
       setEmail(null);
+      setEmailVerified(false);
       setProfile(emptyAccountProfile());
       setMode('account');
       setFormError('Your session has ended. Sign in again.');
@@ -180,6 +223,11 @@ export function AccountRoot() {
     mode,
     profile,
     email,
+    emailVerified,
+    requestEmailVerification: async () => {
+      const result = await accountApi.requestEmailVerification();
+      setSecurityNotice(result.message);
+    },
     saveProfile: async (next) => {
       if (mode === 'demo') {
         const saved = { ...next, lastUpdated: new Date().toISOString() };
@@ -214,6 +262,7 @@ export function AccountRoot() {
       generation.current += 1;
       setUserId(null);
       setEmail(null);
+      setEmailVerified(false);
       setProfile(emptyAccountProfile());
       setMode('account');
       setPhase('signed-out');
@@ -263,12 +312,61 @@ export function AccountRoot() {
     );
   }
   if (phase === 'signed-out') {
-    return <AuthScreen busy={busy} error={formError} onRegister={register} onLogin={login} onDemo={() => {
-      void savedLooksService.useAccount(null);
-      setMode('demo');
-      setProfile(profileService.getProfile());
-      setPhase('ready');
-    }} />;
+    return (
+      <AuthScreen
+        busy={busy}
+        error={formError}
+        initial={authBoot}
+        notice={securityNotice}
+        onRegister={register}
+        onLogin={login}
+        onForgot={async (forgotEmail) => {
+          setBusy(true);
+          setFormError(null);
+          try {
+            const result = await accountApi.requestPasswordReset(forgotEmail.trim());
+            setSecurityNotice(result.message);
+            setAuthBoot({ panel: 'login', message: result.message });
+          } catch (error) {
+            setFormError(messageFrom(error));
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onReset={async (token, password, confirmation) => {
+          if (password !== confirmation) {
+            setFormError('The passwords do not match.');
+            return;
+          }
+          const validation = registrationError({ email: 'reset@example.com', password, confirmation });
+          if (validation && validation.toLowerCase().includes('password')) {
+            setFormError(validation);
+            return;
+          }
+          if (password.length < 12) {
+            setFormError('Use a password of at least 12 characters.');
+            return;
+          }
+          setBusy(true);
+          setFormError(null);
+          try {
+            const result = await accountApi.confirmPasswordReset(token, password);
+            setSecurityNotice(result.message);
+            setAuthBoot({ panel: 'login', message: result.message });
+          } catch (error) {
+            setFormError(messageFrom(error));
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onDemo={() => {
+          void savedLooksService.useAccount(null);
+          setMode('demo');
+          setProfile(profileService.getProfile());
+          setPhase('ready');
+        }}
+      />
+    );
   }
   if (phase === 'import-review' && preview && userId) {
     return (
@@ -298,7 +396,31 @@ export function AccountRoot() {
       />
     );
   }
-  return <App key={mode === 'demo' ? 'demo' : userId ?? 'account'} account={ready} />;
+  return (
+    <>
+      {mode === 'account' && !emailVerified ? (
+        <div className="bg-[#F6F2EC] border-b border-[#242326]/10 px-4 py-3 text-sm text-[#5C585E]">
+          <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p>Confirm <span className="text-[#242326]">{email}</span> to finish protecting this account. Having an email on file does not prove ownership until it is verified.</p>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void ready.requestEmailVerification().catch((error) => setSecurityNotice(messageFrom(error)));
+              }}
+            >
+              Resend verification
+            </Button>
+          </div>
+          {securityNotice ? <p className="max-w-5xl mx-auto mt-2 text-[#866a40]">{securityNotice}</p> : null}
+        </div>
+      ) : securityNotice ? (
+        <div className="bg-[#F6F2EC] border-b border-[#242326]/10 px-4 py-3 text-sm text-[#866a40]">
+          <p className="max-w-5xl mx-auto">{securityNotice}</p>
+        </div>
+      ) : null}
+      <App key={mode === 'demo' ? 'demo' : userId ?? 'account'} account={ready} />
+    </>
+  );
 }
 
 function Status({ title, body, children }: { title: string; body: string; children?: React.ReactNode }) {
@@ -317,56 +439,107 @@ function Status({ title, body, children }: { title: string; body: string; childr
 function AuthScreen({
   busy,
   error,
+  notice,
+  initial,
   onRegister,
   onLogin,
+  onForgot,
+  onReset,
   onDemo,
 }: {
   busy: boolean;
   error: string | null;
+  notice: string | null;
+  initial: { panel: 'register' | 'login' | 'forgot' | 'reset' | 'verify'; token?: string; message?: string };
   onRegister: (input: { email: string; password: string; confirmation: string }) => Promise<void>;
   onLogin: (input: { email: string; password: string }) => Promise<void>;
+  onForgot: (email: string) => Promise<void>;
+  onReset: (token: string, password: string, confirmation: string) => Promise<void>;
   onDemo: () => void;
 }) {
-  const [panel, setPanel] = useState<'register' | 'login'>('register');
+  const [panel, setPanel] = useState(initial.panel);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const resetToken = initial.token ?? '';
+
+  useEffect(() => {
+    setPanel(initial.panel);
+  }, [initial.panel, initial.token, initial.message]);
+
+  const titles: Record<typeof panel, string> = {
+    register: 'Create your account',
+    login: 'Welcome back',
+    forgot: 'Forgot password',
+    reset: 'Choose a new password',
+    verify: 'Email verification',
+  };
+  const intros: Record<typeof panel, string> = {
+    register: 'An adult account saves your style profile on this computer\'s local service. We will ask you to verify the email address you enter.',
+    login: 'Sign in to continue your wardrobe, family styling, and beauty looks on this account.',
+    forgot: 'Enter the email for your account. For your privacy, the next message is the same whether or not the address is registered.',
+    reset: 'Use a password of at least 12 characters. Previous sign-in sessions will end after a successful reset.',
+    verify: initial.message ?? 'That verification link could not be completed. Request a new message after you sign in.',
+  };
+
   return (
     <main className="min-h-screen bg-[#F6F2EC] text-[#242326] px-4 py-10">
       <section className="max-w-md mx-auto rounded-3xl bg-white border border-[#242326]/10 shadow-sm p-8">
         <p className="font-serif text-2xl">MyStyle <span className="text-[10px] uppercase tracking-widest text-[#866a40] font-sans">AI</span></p>
-        <h1 className="mt-6 font-serif text-3xl">{panel === 'register' ? 'Create your account' : 'Welcome back'}</h1>
-        <p className="mt-3 text-sm text-[#5C585E] leading-relaxed">
-          An adult account saves your style profile on this computer&apos;s local service. Email verification and password recovery are not available yet.
-        </p>
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (panel === 'register') void onRegister({ email, password, confirmation });
-            else void onLogin({ email, password });
-          }}
-        >
-          <label className="block text-xs font-semibold uppercase tracking-wider">
-            Email
-            <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" className="mt-1.5 w-full px-4 py-3 rounded-xl bg-[#F6F2EC]/60 border border-[#242326]/15 text-sm" />
-          </label>
-          <label className="block text-xs font-semibold uppercase tracking-wider">
-            Password
-            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete={panel === 'register' ? 'new-password' : 'current-password'} className="mt-1.5 w-full px-4 py-3 rounded-xl bg-[#F6F2EC]/60 border border-[#242326]/15 text-sm" />
-          </label>
-          {panel === 'register' ? (
-            <label className="block text-xs font-semibold uppercase tracking-wider">
-              Confirm password
-              <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} type="password" autoComplete="new-password" className="mt-1.5 w-full px-4 py-3 rounded-xl bg-[#F6F2EC]/60 border border-[#242326]/15 text-sm" />
-            </label>
-          ) : null}
-          {error ? <p className="text-sm text-[#91635a]" role="alert">{error}</p> : null}
-          <Button type="submit" variant="primary" fullWidth disabled={busy}>{busy ? 'Please wait…' : panel === 'register' ? 'Create account' : 'Sign in'}</Button>
-        </form>
-        <button type="button" className="mt-4 text-sm text-[#5C585E] underline" onClick={() => setPanel(panel === 'register' ? 'login' : 'register')}>
-          {panel === 'register' ? 'I already have an account' : 'Create a new account'}
-        </button>
+        <h1 className="mt-6 font-serif text-3xl">{titles[panel]}</h1>
+        <p className="mt-3 text-sm text-[#5C585E] leading-relaxed">{intros[panel]}</p>
+        {notice || initial.message ? <p className="mt-3 text-sm text-[#866a40]" role="status">{notice ?? initial.message}</p> : null}
+
+        {panel === 'verify' ? (
+          <div className="mt-6 space-y-3">
+            <Button type="button" variant="primary" fullWidth onClick={() => setPanel('login')}>Back to sign in</Button>
+          </div>
+        ) : (
+          <form
+            className="mt-6 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (panel === 'register') void onRegister({ email, password, confirmation });
+              else if (panel === 'login') void onLogin({ email, password });
+              else if (panel === 'forgot') void onForgot(email);
+              else if (panel === 'reset') void onReset(resetToken, password, confirmation);
+            }}
+          >
+            {panel !== 'reset' ? (
+              <label className="block text-xs font-semibold uppercase tracking-wider">
+                Email
+                <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" className="mt-1.5 w-full px-4 py-3 rounded-xl bg-[#F6F2EC]/60 border border-[#242326]/15 text-sm" />
+              </label>
+            ) : null}
+            {panel === 'register' || panel === 'login' || panel === 'reset' ? (
+              <label className="block text-xs font-semibold uppercase tracking-wider">
+                {panel === 'reset' ? 'New password' : 'Password'}
+                <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete={panel === 'login' ? 'current-password' : 'new-password'} className="mt-1.5 w-full px-4 py-3 rounded-xl bg-[#F6F2EC]/60 border border-[#242326]/15 text-sm" />
+              </label>
+            ) : null}
+            {panel === 'register' || panel === 'reset' ? (
+              <label className="block text-xs font-semibold uppercase tracking-wider">
+                Confirm password
+                <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} type="password" autoComplete="new-password" className="mt-1.5 w-full px-4 py-3 rounded-xl bg-[#F6F2EC]/60 border border-[#242326]/15 text-sm" />
+              </label>
+            ) : null}
+            {error ? <p className="text-sm text-[#91635a]" role="alert">{error}</p> : null}
+            <Button type="submit" variant="primary" fullWidth disabled={busy || (panel === 'reset' && !resetToken)}>
+              {busy ? 'Please wait…' : panel === 'register' ? 'Create account' : panel === 'login' ? 'Sign in' : panel === 'forgot' ? 'Send reset instructions' : 'Save new password'}
+            </Button>
+          </form>
+        )}
+
+        {panel === 'login' ? (
+          <button type="button" className="mt-4 text-sm text-[#5C585E] underline" onClick={() => setPanel('forgot')}>Forgot password</button>
+        ) : null}
+        {panel === 'register' || panel === 'login' ? (
+          <button type="button" className="mt-4 block text-sm text-[#5C585E] underline" onClick={() => setPanel(panel === 'register' ? 'login' : 'register')}>
+            {panel === 'register' ? 'I already have an account' : 'Create a new account'}
+          </button>
+        ) : (
+          <button type="button" className="mt-4 block text-sm text-[#5C585E] underline" onClick={() => setPanel('login')}>Back to sign in</button>
+        )}
         <button type="button" className="mt-3 block text-sm text-[#5C585E] underline" onClick={onDemo}>Browse the labelled demonstration instead</button>
       </section>
     </main>

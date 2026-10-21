@@ -6,7 +6,7 @@ Date: 16 October 2026.
 
 Registration requires an email address and a password of 12 to 200 characters. The email is trimmed and lower-cased. The password is hashed with scrypt (`N=16384`, `r=8`, `p=1`) and a random salt. The hash is stored. The password is not logged and is not returned.
 
-A new account is `active` because email delivery is not configured. Email verification is unavailable. Password recovery is unavailable. Do not invent either flow.
+A new account is `active` with `email_verified_at` unset. Email verification and password recovery use hashed, expiring, single-use tokens and a local capture mailer until a live provider is approved. See `EMAIL_VERIFICATION_IMPLEMENTATION.md` and `PASSWORD_RECOVERY_IMPLEMENTATION.md`.
 
 `status` other than `active` cannot sign in. The API returns `account_disabled`.
 
@@ -42,7 +42,11 @@ The React app calls this API through the Vite proxy at `/api`. The browser store
 
 An empty `API_ALLOWED_ORIGINS` allows the local Vite origins on ports 3000, 3001, and 4173 for `127.0.0.1` and `localhost` only. Port 3001 is included because Vite uses it when 3000 is already taken. Any other browser origin, including a LAN address, is still rejected. The API host remains `127.0.0.1` or `localhost`.
 
-Email verification and password recovery remain unavailable. There is no terms checkbox because this repository does not contain account terms or a privacy-policy document.
+Email verification and password recovery are implemented with local capture only. Live transactional delivery is not enabled. There is no terms checkbox because this repository does not contain account terms or a privacy-policy document.
+
+## Update, 21 October 2026 — verification and recovery
+
+`GET /api/auth/session` returns `emailVerified`. Registration issues a captured verification message. Password reset always returns a neutral message, revokes sessions on success, and requires a new sign-in. Tokens never appear in ordinary JSON responses. The loopback mailbox is development/test only.
 
 ## Not connected
 
