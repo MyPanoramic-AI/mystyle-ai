@@ -13,10 +13,10 @@ test('migrations create the account tables and do not reapply', () => {
   const dir = loadConfig().migrationsDir;
   const first = migrate(db, dir);
   const second = migrate(db, dir);
-  assert.deepEqual(first, ['001_initial.sql', '002_profile_details.sql', '003_ai_conversations.sql', '004_ai_usage_duration.sql', '005_wardrobe_planner.sql', '006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql']);
+  assert.deepEqual(first, ['001_initial.sql', '002_profile_details.sql', '003_ai_conversations.sql', '004_ai_usage_duration.sql', '005_wardrobe_planner.sql', '006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql']);
   assert.deepEqual(second, []);
   const names = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((row) => row.name);
-  for (const table of ['users', 'sessions', 'customer_profiles', 'user_preferences', 'media_assets', 'family_relationships', 'family_events', 'family_event_participants', 'wardrobe_items', 'saved_looks', 'saved_products', 'outfit_plans', 'beauty_preferences', 'beauty_looks', 'beauty_outfit_links', 'subscription_entitlements', 'credit_ledger', 'audit_events', 'ai_conversations', 'ai_messages', 'ai_usage', 'schema_migrations', 'plan_definitions', 'credit_reservations', 'credit_idempotency', 'provider_costs', 'allocation_periods', 'billing_policies']) {
+  for (const table of ['users', 'sessions', 'customer_profiles', 'user_preferences', 'media_assets', 'family_relationships', 'family_events', 'family_event_participants', 'wardrobe_items', 'saved_looks', 'saved_products', 'outfit_plans', 'beauty_preferences', 'beauty_looks', 'beauty_outfit_links', 'subscription_entitlements', 'credit_ledger', 'audit_events', 'ai_conversations', 'ai_messages', 'ai_usage', 'schema_migrations', 'plan_definitions', 'credit_reservations', 'credit_idempotency', 'provider_costs', 'allocation_periods', 'billing_policies', 'privacy_notice_versions', 'consent_records', 'data_export_jobs', 'account_deletion_requests', 'retention_policies']) {
     assert.equal(names.includes(table), true, table);
   }
 });

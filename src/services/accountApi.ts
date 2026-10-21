@@ -71,6 +71,26 @@ export interface AccountApi {
   membershipCredits(): Promise<MembershipCreditsResponse>;
   membershipHistory(): Promise<MembershipCreditsResponse>;
   membershipUsage(): Promise<{ operations: unknown[]; note: string }>;
+  privacyNotice(): Promise<Record<string, unknown>>;
+  privacyConsent(): Promise<ConsentStateResponse>;
+  setPrivacyConsent(body: { purpose: string; granted: boolean; captureMethod?: string }): Promise<ConsentStateResponse>;
+  privacyMedia(): Promise<{ items: { id: string; purpose: string; byteSize: number; createdAt: string }[]; externalPhotoAiActive: boolean; note: string }>;
+  requestPrivacyExport(password: string): Promise<{ exportId: string; status: string; downloadPath: string; expiresAt: string }>;
+  privacyExportStatus(id: string): Promise<Record<string, unknown>>;
+  downloadPrivacyExport(id: string): Promise<Blob>;
+  privacyDeletionStatus(): Promise<Record<string, unknown>>;
+  startPrivacyDeletion(): Promise<Record<string, unknown>>;
+  cancelPrivacyDeletion(): Promise<Record<string, unknown>>;
+  confirmPrivacyDeletion(password: string): Promise<Record<string, unknown>>;
+  privacyRetentionPreview(): Promise<Record<string, unknown>>;
+  deleteMedia(id: string): Promise<void>;
+}
+
+export interface ConsentStateResponse {
+  noticeVersion: string;
+  current: { purpose: string; granted: boolean; status: string; updatedAt: string | null }[];
+  history: { purpose: string; status: string; createdAt: string }[];
+  notes: Record<string, string>;
 }
 
 export interface MembershipPlanDefinition {
@@ -300,6 +320,26 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     membershipCredits: () => request('/api/credits'),
     membershipHistory: () => request('/api/credits/history'),
     membershipUsage: () => request('/api/usage/summary'),
+    privacyNotice: () => request('/api/privacy/notice'),
+    privacyConsent: () => request('/api/privacy/consent'),
+    setPrivacyConsent: (body) => request('/api/privacy/consent', { method: 'POST', body, csrf: true }),
+    privacyMedia: () => request('/api/privacy/media'),
+    requestPrivacyExport: (password) => request('/api/privacy/export', { method: 'POST', body: { password }, csrf: true }),
+    privacyExportStatus: (id) => request(`/api/privacy/export/${id}`),
+    downloadPrivacyExport: async (id) => {
+      const response = await fetchImpl(`${baseUrl}/api/privacy/export/${id}/download`, { credentials: 'include' });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { code?: string; message?: string };
+        throw new AccountApiError(payload.code ?? 'request_failed', payload.message ?? 'The export download was not accepted.', response.status);
+      }
+      return response.blob();
+    },
+    privacyDeletionStatus: () => request('/api/privacy/deletion'),
+    startPrivacyDeletion: () => request('/api/privacy/deletion/start', { method: 'POST', csrf: true }),
+    cancelPrivacyDeletion: () => request('/api/privacy/deletion/cancel', { method: 'POST', csrf: true }),
+    confirmPrivacyDeletion: (password) => request('/api/privacy/deletion/confirm', { method: 'POST', body: { password }, csrf: true }),
+    privacyRetentionPreview: () => request('/api/privacy/retention/preview'),
+    deleteMedia: (id) => request(`/api/media/${id}`, { method: 'DELETE', csrf: true }),
   };
 }
 

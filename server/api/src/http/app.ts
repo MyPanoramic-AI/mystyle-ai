@@ -35,6 +35,10 @@ import {
   settleOperation,
   usageTotals,
 } from '../domain/membership.js';
+import { listConsentState, readPrivacyNotice, recordConsent } from '../privacy/consent.js';
+import { cancelDeletionRequest, confirmDeletion, deletionStatus, startDeletionRequest } from '../privacy/deletion.js';
+import { cleanupExpiredExports, createDataExport, downloadExport, readExportJob } from '../privacy/export.js';
+import { listRetentionPolicies, retentionDryRun, runRetentionCleanup } from '../privacy/retention.js';
 import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
 import { createConversation, deleteConversation, listConversations, readConversation, recommendationsFor, sendMessage, stylistAvailability, usageFor } from '../ai/service.js';
 
@@ -311,6 +315,116 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.get('/api/usage/summary', route((req, res) => {
     res.json(readUsage(deps.db, requireUser(req).userId));
+  }));
+
+  app.get('/api/privacy/notice', route((req, res) => {
+    requireUser(req);
+    res.json(readPrivacyNotice(deps.db));
+  }));
+  app.get('/api/privacy/consent', route((req, res) => {
+    res.json(listConsentState(deps.db, requireUser(req).userId));
+  }));
+  app.post('/api/privacy/consent', route((req, res) => {
+    const session = requireUser(req);
+    res.json(recordConsent(deps.db, {
+      userId: session.userId,
+      purpose: text(req.body?.purpose),
+      granted: req.body?.granted === true,
+      captureMethod: text(req.body?.captureMethod ?? 'settings_toggle'),
+      evidence: typeof req.body?.evidence === 'object' && req.body?.evidence && !Array.isArray(req.body.evidence)
+        ? req.body.evidence as Record<string, unknown>
+        : undefined,
+    }, deps.now()));
+  }));
+  app.get('/api/privacy/media', route((req, res) => {
+    const userId = requireUser(req).userId;
+    const items = deps.db.prepare(
+      `SELECT id, purpose, content_type AS contentType, byte_size AS byteSize, created_at AS createdAt, retain_until AS retainUntil
+       FROM media_assets WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC`,
+    ).all(userId);
+    res.json({
+      items,
+      externalPhotoAiActive: false,
+      note: 'Private photographs stay on this account service. External AI image processing is not active.',
+    });
+  }));
+  app.post('/api/privacy/export', route((req, res) => {
+    const session = requireUser(req);
+    res.status(201).json(createDataExport(deps.db, {
+      userId: session.userId,
+      password: req.body?.password,
+      mediaDir: deps.config.mediaDir,
+      exportsDir: deps.config.exportsDir,
+    }, deps.now()));
+  }));
+  app.get('/api/privacy/export/:id', route((req, res) => {
+    res.json(readExportJob(deps.db, requireUser(req).userId, String(req.params.id), deps.now()));
+  }));
+  app.get('/api/privacy/export/:id/download', route((req, res) => {
+    const session = requireUser(req);
+    const file = downloadExport(deps.db, {
+      userId: session.userId,
+      exportId: String(req.params.id),
+      exportsDir: deps.config.exportsDir,
+    }, deps.now());
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
+    res.send(file.bytes);
+  }));
+  app.get('/api/privacy/deletion', route((req, res) => {
+    res.json(deletionStatus(deps.db, requireUser(req).userId));
+  }));
+  app.post('/api/privacy/deletion/start', route((req, res) => {
+    res.status(201).json(startDeletionRequest(deps.db, requireUser(req).userId, deps.now()));
+  }));
+  app.post('/api/privacy/deletion/cancel', route((req, res) => {
+    res.json(cancelDeletionRequest(deps.db, requireUser(req).userId, deps.now()));
+  }));
+  app.post('/api/privacy/deletion/confirm', route((req, res) => {
+    const session = requireUser(req);
+    const result = confirmDeletion(deps.db, {
+      userId: session.userId,
+      password: req.body?.password,
+      mediaDir: deps.config.mediaDir,
+      exportsDir: deps.config.exportsDir,
+    }, deps.now());
+    res.setHeader('Set-Cookie', clearSessionCookie(deps.config.secureCookie));
+    res.json(result);
+  }));
+  app.get('/api/privacy/retention/preview', route((req, res) => {
+    const session = requireUser(req);
+    res.json(retentionDryRun(deps.db, {
+      mediaDir: deps.config.mediaDir,
+      exportsDir: deps.config.exportsDir,
+      now: deps.now(),
+      userId: session.userId,
+    }));
+  }));
+  app.post('/api/admin/retention/dry-run', route((req, res) => {
+    requireAdmin(req);
+    res.json(retentionDryRun(deps.db, {
+      mediaDir: deps.config.mediaDir,
+      exportsDir: deps.config.exportsDir,
+      now: deps.now(),
+    }));
+  }));
+  app.post('/api/admin/retention/cleanup', route((req, res) => {
+    requireAdmin(req);
+    res.json(runRetentionCleanup(deps.db, {
+      mediaDir: deps.config.mediaDir,
+      exportsDir: deps.config.exportsDir,
+      now: deps.now(),
+      enabled: deps.config.retentionCleanupEnabled,
+      allowDestructive: req.body?.confirmDestructive === true,
+    }));
+  }));
+  app.post('/api/admin/exports/expire', route((req, res) => {
+    requireAdmin(req);
+    res.json({ expired: cleanupExpiredExports(deps.db, deps.config.exportsDir, deps.now()) });
+  }));
+  app.get('/api/admin/retention/policies', route((req, res) => {
+    requireAdmin(req);
+    res.json({ policies: listRetentionPolicies(deps.db), cleanupEnabled: deps.config.retentionCleanupEnabled });
   }));
 
   app.get('/api/integrations', route((req, res) => {

@@ -1,6 +1,6 @@
 # Database schema
 
-Date: 21 October 2026. Source of truth: `server/api/migrations/`, from `001_initial.sql` through `008_membership_accounting.sql`. The runner records applied files in `schema_migrations` and skips them on the next start.
+Date: 21 October 2026. Source of truth: `server/api/migrations/`, from `001_initial.sql` through `009_privacy_controls.sql`. The runner records applied files in `schema_migrations` and skips them on the next start.
 
 The file database uses foreign keys, WAL, and a five-second busy timeout. Tests use an in-memory database, which does not use WAL. Migration `008_membership_accounting.sql` extends the entitlement and ledger tables and adds the membership tables below.
 
@@ -33,7 +33,12 @@ The file database uses foreign keys, WAL, and a five-second busy timeout. Tests 
 | `provider_costs` | Provider, model, operation type, credits, usage units, currency, reported cost, estimated cost, cost status, and request status. Mock rows leave the cost amounts null |
 | `allocation_periods` | One grant per account and period key |
 | `billing_policies` | Rollover, expiry, and the paid-allocation flag. Defaults are undecided and paid allocation off |
-| `audit_events` | Register, login, and membership operator actions |
+| `privacy_notice_versions` | Draft or published notice placeholders. Seeded as `draft-0` |
+| `consent_records` | Versioned grant and withdrawal history per purpose |
+| `data_export_jobs` | Authenticated export status, storage key, size, and expiry |
+| `account_deletion_requests` | Deletion workflow status and progress |
+| `retention_policies` | Configurable retention categories. Many remain undecided |
+| `audit_events` | Register, login, membership operator actions, consent, export, and deletion |
 
 ## Differences from the earlier proposal
 

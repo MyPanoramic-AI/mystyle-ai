@@ -366,4 +366,10 @@ Beauty totals say "Demonstration estimate". The invented style-match percentage 
 
 `npm run lint`, `npx tsc --noEmit --strict`, `npx tsc -p server/api/tsconfig.json --noEmit --strict`, and `npm run build` exited 0. The JavaScript chunk is 912.08 kB, gzip 218.27 kB. `test:api` 29 passed, including 8 membership tests. `test:account` 5, `test:ai` 16, `test:shopping` 15, and `test:tryon` 16 passed. The onboarding unit test passed 1. The unique Node count is 82. `test:membership` is the same 8 tests already inside `test:api` and is not added again. Chrome `npm run test:e2e` passed 22. The first attempt failed one accessibility scan while files were still being saved; the rerun passed. Registration, Home, and Shop still reported no axe violations. The application is not commercially launch-ready.
 
+## 2026-10-21 — Privacy, export, deletion, and retention draft
+
+**Status:** Consent history, authenticated ZIP export, account deletion with reauthentication, private media delete, and retention dry-run are implemented. Destructive cleanup stays disabled. The privacy notice is a draft for legal review. No live AI, payment, retailer, or production deletion ran. Nothing was pushed.
+
+`npm run lint`, both strict TypeScript checks, and `npm run build` exited 0. The JavaScript chunk is 921.19 kB. `test:api` 34 passed, including 5 privacy tests. Unique Node count is 87 with account, AI, shopping, try-on, and onboarding. Chrome `npm run test:e2e` passed 23. The application is not commercially launch-ready and is not POPIA certified.
+
 

@@ -18,7 +18,9 @@ export interface ApiConfig {
   dataDir: string;
   databasePath: string;
   mediaDir: string;
+  exportsDir: string;
   retentionMs: number;
+  retentionCleanupEnabled: boolean;
   migrationsDir: string;
   allowedOrigins: string[];
 }
@@ -72,7 +74,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     dataDir,
     databasePath: path.join(dataDir, 'mystyle.sqlite'),
     mediaDir: path.join(dataDir, 'media'),
+    exportsDir: path.join(dataDir, 'exports'),
     retentionMs: intEnv(env, 'API_MEDIA_RETENTION_DAYS', 30) * 24 * 60 * 60 * 1000,
+    retentionCleanupEnabled: env.API_RETENTION_CLEANUP_ENABLED === 'true',
     migrationsDir: path.join(apiRoot, 'migrations'),
     allowedOrigins,
   };

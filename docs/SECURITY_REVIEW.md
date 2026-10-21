@@ -162,3 +162,7 @@ Customer sessions cannot assign a plan or grant credits. `POST /api/entitlements
 Credit amounts are integers. A hold that would make `SUM(delta)` negative is rejected. The same idempotency key does not post a second delta. A second settlement of a consumed operation is a duplicate. An unknown operation stays held until an operator sets `confirmNotBillable`. One account's credit read does not return another account's rows.
 
 The Playwright config sets a local admin token only for the isolated test API. It is not a production credential. The free entitlement created at registration cannot start a live model call. Preview still writes browser demonstration state and does not call the assignment route. Raw payment details are not stored. Provider credentials remain server-side and were not used.
+
+## Privacy controls, 21 October 2026
+
+Optional consent history defaults to withdrawn. Export and deletion require the current password in addition to the session and CSRF token. Export archives live under a private exports directory, expire, and are not public. Deletion removes personal tables and media files, revokes sessions, and anonymises the email. Credit ledger, provider costs, AI usage, audit, and consent history may remain on a tombstone user id until retention is approved. Destructive retention cleanup stays off unless `API_RETENTION_CLEANUP_ENABLED=true`. Browser demonstration localStorage is separate; clearing it does not delete the server account. These controls are technical safeguards, not a POPIA compliance claim.

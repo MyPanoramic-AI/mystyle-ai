@@ -4,6 +4,7 @@ import type { Sql } from '../db.js';
 import { assertPassword, hashPassword, verifyPassword } from '../auth/password.js';
 import { createSession } from '../auth/sessions.js';
 import { grantFreeEntitlement } from './membership.js';
+import { seedDefaultConsents } from '../privacy/consent.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -46,6 +47,7 @@ export function registerAccount(db: Sql, emailRaw: unknown, passwordRaw: unknown
        VALUES (?, 'register', ?, 'user', ?, '{}', ?)`,
     ).run(randomUUID(), userId, userId, stamp);
     grantFreeEntitlement(db, userId, now);
+    seedDefaultConsents(db, userId, now);
     db.exec('COMMIT');
     return { userId, token: session.token, csrfToken: session.csrfToken };
   } catch (error) {

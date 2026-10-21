@@ -1,5 +1,6 @@
 import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
+import { recordConsent } from '../privacy/consent.js';
 
 const ONBOARDING = new Set(['pending', 'deferred', 'completed']);
 const BUDGETS = new Set(['under-300', '300-600', '600-1000', '1000-2000', '2000-plus', 'flexible']);
@@ -137,13 +138,32 @@ export function updatePreferences(db: Sql, userId: string, body: Record<string, 
   if (!notifications || typeof notifications !== 'object' || Array.isArray(notifications)) {
     throw new ApiError('invalid_preferences', 'Notification settings must be an object.', 400);
   }
-  const ai = body.aiPersonalisationConsent === undefined ? current.aiPersonalisationConsent : body.aiPersonalisationConsent === true;
-  const marketing = body.marketingOptIn === undefined ? current.marketingOptIn : body.marketingOptIn === true;
   if (body.aiPersonalisationConsent !== undefined && typeof body.aiPersonalisationConsent !== 'boolean') {
     throw new ApiError('invalid_preferences', 'AI personalisation consent must be true or false.', 400);
   }
+  if (body.marketingOptIn !== undefined && typeof body.marketingOptIn !== 'boolean') {
+    throw new ApiError('invalid_preferences', 'Marketing consent must be true or false.', 400);
+  }
   db.prepare(
-    `UPDATE user_preferences SET privacy_json=?, notifications_json=?, ai_personalisation_consent=?, marketing_opt_in=?, updated_at=? WHERE user_id=?`,
-  ).run(JSON.stringify(privacy), JSON.stringify(notifications), ai ? 1 : 0, marketing ? 1 : 0, new Date(now).toISOString(), userId);
+    `UPDATE user_preferences SET privacy_json=?, notifications_json=?, updated_at=? WHERE user_id=?`,
+  ).run(JSON.stringify(privacy), JSON.stringify(notifications), new Date(now).toISOString(), userId);
+  if (body.aiPersonalisationConsent !== undefined) {
+    recordConsent(db, {
+      userId,
+      purpose: 'ai_personalisation',
+      granted: body.aiPersonalisationConsent === true,
+      captureMethod: 'settings_toggle',
+      evidence: { source: 'preferences_api' },
+    }, now);
+  }
+  if (body.marketingOptIn !== undefined) {
+    recordConsent(db, {
+      userId,
+      purpose: 'marketing',
+      granted: body.marketingOptIn === true,
+      captureMethod: 'settings_toggle',
+      evidence: { source: 'preferences_api' },
+    }, now);
+  }
   return getPreferences(db, userId);
 }

@@ -79,3 +79,7 @@ Registration, Home, and Shop no longer report axe color-contrast violations afte
 The API now stores a free entitlement and an integer test-credit ledger. Chrome showed the signed-in account as Free, with test credits, and a Preview click did not change that entitlement or take a payment. A second account did not see the first account's test credits. Operator-only reservation, settlement, and failure were checked through the isolated API. No payment provider, OpenAI, Gemini, FASHN, or retailer call was made.
 
 This is still not a commercial subscription. Prices and credit allowances are provisional and unapproved. Paid allocation is off. The application is not launch-ready.
+
+## Update, 21 October 2026 — privacy controls
+
+Authenticated export, consent history, photograph delete, and account deletion with password confirmation are available for isolated test accounts. Retention dry-run works. Automatic destructive cleanup remains disabled. The privacy notice is still a draft placeholder. This does not make the product POPIA compliant or commercially launch-ready.

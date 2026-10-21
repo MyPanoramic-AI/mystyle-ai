@@ -369,6 +369,8 @@ The local harness in `server/tryon-lab` is implemented and its mock tests passed
 
 ## Phase 10 — Privacy, security, performance, and end-to-end testing
 
+**Status:** PRIVACY CONTROLS FOUNDATION. Consent history, authenticated export, account deletion, media delete, and retention dry-run exist. Destructive cleanup stays disabled. The draft privacy notice is not legally approved. Live AI and payments remain off.
+
 **Status:** IN PROGRESS as of 20 October 2026. An isolated browser pass and the regression suites ran. Export, deletion, retention, and a visual review of every screen are still open. See `END_TO_END_TEST_REPORT.md`.
 
 **Objectives**

@@ -21,6 +21,7 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 - Gives a new account a free entitlement and a zero credit balance. The free row is not a paid subscription and does not start a live model call.
 - Records test credits, reservations, and provider-cost rows when an operator bearer token is configured. Customers cannot grant credits or assign Personal or Family.
 - Reports billing and credits as `not_connected`. No payment provider is called. Stylist, try-on, shopping, and beauty stay disconnected from this ledger.
+- Records optional consent history, authenticated account export archives, account deletion with password confirmation, and retention dry-runs. Destructive retention cleanup stays off unless `API_RETENTION_CLEANUP_ENABLED=true`.
 
 ## What it does not do
 
@@ -58,8 +59,14 @@ Date: 16 October 2026. This is the local account API. It is not a public deploym
 | `POST /api/credits/allocate` | Session and CSRF | 403. A customer cannot grant credits |
 | `GET /api/usage/summary` | Session | That account's provider-cost rows. Amounts stay null when the provider did not report a cost |
 | `GET /api/integrations` | Session | Billing and credits remain `not_connected` |
+| `GET /api/privacy/notice`, `GET` and `POST /api/privacy/consent` | Session; POST also CSRF | Draft notice placeholder and versioned consent history. Defaults off |
+| `GET /api/privacy/media` | Session | Owned private photographs. External photo AI remains inactive |
+| `POST /api/privacy/export`, `GET /api/privacy/export/:id`, `GET /api/privacy/export/:id/download` | Session; POST also CSRF and password | Private ZIP export. Expires. Secrets excluded |
+| `GET /api/privacy/deletion`, `POST .../start`, `.../cancel`, `.../confirm` | Session; writes CSRF; confirm needs password | Account deletion workflow |
+| `GET /api/privacy/retention/preview` | Session | Dry-run preview for the signed-in account |
 | `GET /api/admin/audit` | Admin bearer | 503 when the admin token is unset |
 | `GET /api/admin/accounts`, `GET /api/admin/usage`, `GET /api/admin/credits/reservations`, `GET /api/admin/credits/reconcile` | Admin bearer | Operator reads. No customer session is accepted as admin |
+| `POST /api/admin/retention/dry-run`, `GET /api/admin/retention/policies`, `POST /api/admin/retention/cleanup`, `POST /api/admin/exports/expire` | Admin bearer | Retention reporting. Cleanup requires `API_RETENTION_CLEANUP_ENABLED=true` |
 | `POST /api/admin/entitlements` | Admin bearer | Test assignment. Not a payment |
 | `POST /api/admin/credits/allocate`, `reserve`, `settle`, `release`, `adjust`, `refund`, `expire`, `mock` | Admin bearer | Ledger mutations. Mock operations do not call a provider |
 | `POST /api/admin/billing/run` and `POST /api/admin/billing/policy` | Admin bearer | Period run and policy flags. Paid allocation stays off unless a test sets it |

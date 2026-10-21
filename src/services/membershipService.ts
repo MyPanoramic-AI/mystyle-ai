@@ -312,9 +312,25 @@ export const updateNotificationSettings = (settings: NotificationSettings): Noti
 };
 
 // --- EXPORT & RESET UTILITIES ---
+export const DEMO_LOCAL_STORAGE_KEYS = [
+  ...Object.values(STORAGE_KEYS),
+  'mystyle_ai_user_profile_v1',
+  'mystyle_family_members_v1',
+  'mystyle_saved_family_plans_v1',
+  'mystyle_wardrobe_items_v1',
+  'mystyle_wardrobe_outfits_v1',
+  'mystyle_wardrobe_events_v1',
+  'mystyle_saved_beauty_looks_v1',
+  'mystyle_beauty_shopping_bag_v1',
+  'mystyle_saved_looks_v1',
+  'mystyle_saved_products_v1',
+] as const;
+
 export const exportUserDataAsJson = (): string => {
   const data = {
     exportedAt: new Date().toISOString(),
+    source: 'browser_demonstration_localStorage',
+    note: 'This file is browser demonstration data only. It is not an authenticated account export.',
     account: getAccountSettings(),
     membership: getMembership(),
     credits: getCreditBalance(),
@@ -326,7 +342,7 @@ export const exportUserDataAsJson = (): string => {
 };
 
 export const resetAllDemoData = (): void => {
-  Object.values(STORAGE_KEYS).forEach((k) => {
-    localStorage.removeItem(k);
-  });
+  for (const key of DEMO_LOCAL_STORAGE_KEYS) {
+    localStorage.removeItem(key);
+  }
 };
