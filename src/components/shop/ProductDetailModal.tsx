@@ -52,15 +52,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   if (!isOpen || !product) return null;
 
   const handleToggleSave = () => {
-    const nowSaved = savedProductsService.toggleSaveProduct(product.id);
-    setIsSaved(nowSaved);
-    if (onToast) {
-      onToast(
-        nowSaved
-          ? `Saved "${product.name}" to your wishlist`
-          : `Removed "${product.name}" from saved items`
-      );
-    }
+    void savedProductsService.toggleSaveProduct(product.id).then((nowSaved) => {
+      setIsSaved(nowSaved);
+      if (onToast) {
+        onToast(
+          nowSaved
+            ? `Saved demonstration reference for "${product.name}"`
+            : `Removed "${product.name}" from saved items`,
+        );
+      }
+    }).catch(() => {
+      if (onToast) onToast('That wishlist change could not be saved.');
+    });
   };
 
   const handleSendToTryOn = () => {

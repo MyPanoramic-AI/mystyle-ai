@@ -418,4 +418,26 @@ Deliverables: `FINAL_FEATURE_INVENTORY.md`, `PRODUCT_INTEGRATION_AUDIT.md`, `FIN
 
 Axe primary-module counts (not a WCAG claim): registration 0; home 1; stylist 3; shop 1; try-on 3; profile 4; wardrobe 2; family 2; beauty 2; membership 2; discover 2. Overflows array empty at 320–1440. Staging RC is documentation-ready; commercial launch remains blocked.
 
+## 2026-10-22 — Customer integrations (photos, wishlist, membership)
+
+**Status:** Complete locally. No push, no deploy, no paid services.
+
+- Private onboarding photograph slots with `private_photo_storage` consent (separate from `external_photo_ai`).
+- Authenticated shopping wishlist via `/api/saved-products` for demonstration catalogue refs.
+- Membership hub uses server entitlement + test credits; Preview is read-only for accounts.
+- Outfit plan date reschedule.
+- Docs: `ONBOARDING_PRIVATE_MEDIA.md`, `SHOPPING_WISHLIST_INTEGRATION.md`, `MEMBERSHIP_UI_CONSOLIDATION.md`.
+
+### Regression
+
+| Command | Result |
+| --- | --- |
+| lint + strict tsc (app + api) + build | Exit 0 |
+| `test:api` | 56 passed |
+| account / ai / shopping / tryon | 5 / 16 / 15 / 16 |
+| Unique Node | **108** |
+| `test:e2e` | **27** passed |
+
+Not commercially launch-ready.
+
 

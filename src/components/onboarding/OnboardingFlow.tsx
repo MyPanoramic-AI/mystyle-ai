@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserProfile, TemporaryPhotos, PersonalDetails, ClothingSizes, ColourPreferences, ShoppingPreferences } from '../../types';
 import { Step1Welcome } from './Step1Welcome';
 import { Step2PersonalDetails } from './Step2PersonalDetails';
@@ -16,12 +16,30 @@ import { Step8Completion } from './Step8Completion';
 import { ArrowLeft, X } from 'lucide-react';
 import { ONBOARDING_STEP_COUNT } from './onboardingSteps';
 
+const ONBOARDING_STEP_KEY = 'mystyle_onboarding_step';
+
+function readStoredStep(): number {
+  try {
+    const raw = window.sessionStorage.getItem(ONBOARDING_STEP_KEY);
+    const value = raw ? Number(raw) : 1;
+    if (Number.isInteger(value) && value >= 1 && value <= ONBOARDING_STEP_COUNT) return value;
+  } catch {
+    // Ignore private-mode failures.
+  }
+  return 1;
+}
+
 interface OnboardingFlowProps {
   initialProfile: UserProfile;
   initialPhotos?: TemporaryPhotos;
   onComplete: (profile: UserProfile, photos: TemporaryPhotos) => void | Promise<void>;
   onExit: () => void | Promise<void>;
   saveError?: string | null;
+  usesAccount?: boolean;
+  storageConsentGranted?: boolean;
+  onGrantStorageConsent?: () => Promise<void>;
+  onUploadPhotoSlot?: (slot: import('../../services/accountApi').ProfilePhotoSlot, imageBase64: string) => Promise<{ mediaId: string }>;
+  onDeletePhotoSlot?: (slot: import('../../services/accountApi').ProfilePhotoSlot) => Promise<void>;
 }
 
 export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
@@ -30,14 +48,35 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   onComplete,
   onExit,
   saveError,
+  usesAccount = false,
+  storageConsentGranted = false,
+  onGrantStorageConsent,
+  onUploadPhotoSlot,
+  onDeletePhotoSlot,
 }) => {
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentStep, setCurrentStep] = useState<number>(() => readStoredStep());
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
   const [photos, setPhotos] = useState<TemporaryPhotos>(initialPhotos);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
 
   const totalSteps = ONBOARDING_STEP_COUNT;
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(ONBOARDING_STEP_KEY, String(currentStep));
+    } catch {
+      // Ignore private-mode failures.
+    }
+  }, [currentStep]);
+
+  const clearStoredStep = () => {
+    try {
+      window.sessionStorage.removeItem(ONBOARDING_STEP_KEY);
+    } catch {
+      // Ignore private-mode failures.
+    }
+  };
 
   const handlePersonalDetails = (data: PersonalDetails) => {
     setProfile((prev) => ({ ...prev, personal: data }));
@@ -86,6 +125,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     setFinishError(null);
     try {
       await onComplete(finished, photos);
+      clearStoredStep();
     } catch (error) {
       setFinishError(error instanceof Error ? error.message : 'The profile could not be saved.');
     } finally {
@@ -98,7 +138,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       setCurrentStep((prev) => prev - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      onExit();
+      clearStoredStep();
+      void onExit();
     }
   };
 
@@ -148,7 +189,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
           {/* Skip / Exit Action */}
           <button
-            onClick={onExit}
+            onClick={() => {
+              clearStoredStep();
+              void onExit();
+            }}
             className="flex items-center gap-1 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer py-1"
           >
             <span className="hidden sm:inline">Skip to App</span>
@@ -160,7 +204,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       {/* Main Step Body */}
       <main className="flex-1 px-4 sm:px-6 py-6 max-w-2xl mx-auto w-full flex flex-col justify-center">
         {currentStep === 1 && (
-          <Step1Welcome onNext={() => setCurrentStep(2)} onSkip={onExit} />
+          <Step1Welcome
+            onNext={() => setCurrentStep(2)}
+            onSkip={() => {
+              clearStoredStep();
+              void onExit();
+            }}
+          />
         )}
 
         {currentStep === 2 && (
@@ -215,6 +265,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             onContinue={handlePhotographs}
             onBack={handleBack}
             onSkip={handleSkipCurrentStep}
+            usesAccount={usesAccount}
+            storageConsentGranted={storageConsentGranted}
+            onGrantStorageConsent={onGrantStorageConsent}
+            onUploadSlot={onUploadPhotoSlot}
+            onDeleteSlot={onDeletePhotoSlot}
           />
         )}
 

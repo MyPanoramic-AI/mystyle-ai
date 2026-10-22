@@ -178,3 +178,7 @@ Verification and reset tokens are random, hashed at rest, single-use, and expiri
 ## Release-candidate security note, 21 October 2026
 
 No new public surfaces were added in the RC prep pass. Lazy-loaded hubs do not change authz. Navigation restore uses `sessionStorage` for tab ids only (no tokens). Staging must keep `EMAIL_CAPTURE_ENABLED` false, labs private, and live AI/payments off. Photograph onboarding still does not upload to private media—treat as pending, not as secured customer photographs.
+
+## Private photograph slots, 22 October 2026
+
+Onboarding slots upload only after `private_photo_storage` consent. `external_photo_ai` remains separate and inactive. Media stays owner-only under `/api/media/:id` with existing type/size checks. Child purposes are refused. Storage consent never enables FASHN, OpenAI, or Gemini transmission. Wishlist rows store demonstration catalogue references only; no live retailer credentials.

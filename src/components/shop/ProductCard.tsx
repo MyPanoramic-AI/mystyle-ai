@@ -35,15 +35,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const handleToggleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const nowSaved = savedProductsService.toggleSaveProduct(product.id);
-    setIsSaved(nowSaved);
-    if (onToast) {
-      onToast(
-        nowSaved
-          ? `Saved "${product.name}" to your wishlist`
-          : `Removed "${product.name}" from saved`
-      );
-    }
+    void savedProductsService.toggleSaveProduct(product.id).then((nowSaved) => {
+      setIsSaved(nowSaved);
+      if (onToast) {
+        onToast(
+          nowSaved
+            ? `Saved demonstration reference for "${product.name}"`
+            : `Removed "${product.name}" from saved`,
+        );
+      }
+    }).catch(() => {
+      if (onToast) onToast('That wishlist change could not be saved.');
+    });
   };
 
   const handleTryClick = (e: React.MouseEvent) => {

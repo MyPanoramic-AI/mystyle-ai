@@ -16,7 +16,7 @@
     "test:shopping": "tsx --test server/shopping/tests/size.test.ts server/shopping/tests/normalize.test.ts server/shopping/tests/search.test.ts server/shopping/tests/import.test.ts server/shopping/tests/match.test.ts server/shopping/tests/http.test.ts",
     "shopping-lab": "tsx server/shopping/src/index.ts",
     "lint:api": "tsc -p server/api/tsconfig.json --noEmit",
-    "test:api": "tsx --test server/api/tests/migrate.test.ts server/api/tests/auth.test.ts server/api/tests/profile.test.ts server/api/tests/isolation.test.ts server/api/tests/media.test.ts server/api/tests/wardrobe.test.ts server/api/tests/family.test.ts server/api/tests/beauty.test.ts server/api/tests/membership.test.ts server/api/tests/privacy.test.ts server/api/tests/infrastructure.test.ts server/api/tests/email-security.test.ts",
+    "test:api": "tsx --test server/api/tests/migrate.test.ts server/api/tests/auth.test.ts server/api/tests/profile.test.ts server/api/tests/isolation.test.ts server/api/tests/media.test.ts server/api/tests/wardrobe.test.ts server/api/tests/family.test.ts server/api/tests/beauty.test.ts server/api/tests/membership.test.ts server/api/tests/privacy.test.ts server/api/tests/infrastructure.test.ts server/api/tests/email-security.test.ts server/api/tests/profile-photos.test.ts",
     "test:email": "tsx --test server/api/tests/email-security.test.ts",
     "test:infra": "tsx --test server/api/tests/infrastructure.test.ts",
     "backup:create": "tsx server/api/src/ops/backupCli.ts create",

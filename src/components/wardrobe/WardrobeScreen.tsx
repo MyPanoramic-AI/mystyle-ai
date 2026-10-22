@@ -288,6 +288,18 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
     showToast('Planned outfit removed');
   };
 
+  const handleUpdateEventDate = (eventId: string, date: string) => {
+    const event = events.find((row) => row.id === eventId);
+    if (!event) return;
+    if (accountStore) {
+      void accountStore.saveEvent({ ...event, date }).then(() => refreshAccount()).then(() => showToast('Plan date updated')).catch((error: unknown) => setScreenError(explain(error)));
+      return;
+    }
+    savePlannedEvent({ ...event, date });
+    setEvents(getPlannedEvents());
+    showToast('Plan date updated');
+  };
+
   const handleShopGap = (gap: WardrobeGap) => {
     onSendToShop(gap.searchQuery, gap.title);
   };
@@ -552,6 +564,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
             wardrobeItems={items}
             onAddEvent={handleAddEvent}
             onRemoveEvent={handleRemoveEvent}
+            onUpdateEventDate={handleUpdateEventDate}
             onAssignOutfit={handleAssignOutfitToEvent}
             onAskStylist={onAskStylist}
             onSendToTryOn={onSendToTryOn}

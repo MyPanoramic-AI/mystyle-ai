@@ -4,18 +4,18 @@ Date: 21 October 2026. This checklist supports a **future controlled staging** d
 
 ## Source and Git
 
-- [x] Freeze commit id: `626b8a86c10aed0724bc096dadead052ec75bb39` (Prompt 15 RC prep; re-verify before any push)
+- [x] Freeze commit id: set to Prompt 16 tip after local commit (see git log / `CURSOR_PROGRESS.md`)
 - [ ] Working tree clean after RC tag; secrets untracked
 - [x] Auto-deploy risk understood: **do not push** until staging branch/service policy is approved
-- [x] Local branch historically ahead of origin (14+ commits before this phase; +1 after RC prep commit)
+- [x] Local branch ahead of origin (do not push while Render auto-deploy is on)
 
 ## Automated quality
 
 - [x] `npm run lint`
 - [x] `npx tsc --noEmit --strict` (app + api)
-- [x] `npm run build` — main JS **639.48 kB** / gzip **169.47 kB**
-- [x] `npm run test:api` 54 / account 5 / ai 16 / shopping 15 / tryon 16 (unique Node **106**)
-- [x] `npm run test:e2e` **26** passed
+- [x] `npm run build`
+- [x] `npm run test:api` 56 / account 5 / ai 16 / shopping 15 / tryon 16 (unique Node **108**)
+- [x] `npm run test:e2e` **27** passed (includes customer-integrations)
 - [ ] Re-run the suite on the frozen RC commit before any push
 
 ## Security
@@ -41,7 +41,7 @@ Date: 21 October 2026. This checklist supports a **future controlled staging** d
 - [x] Demo Shop / Try On / Discover labelled
 - [x] Membership Preview non-payment
 - [x] Mock stylist when live off
-- [x] Photo slots pending private upload (document on staging notes)
+- [x] Photo slots private + labelled; external AI consent separate and inactive
 - [ ] Staging privacy notice still draft / legal pending
 
 ## Explicitly out of scope for this RC

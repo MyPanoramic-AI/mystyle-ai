@@ -4,7 +4,14 @@ import path from 'node:path';
 import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
 
-const PURPOSES = new Set(['wardrobe', 'profile', 'garment_reference']);
+const PURPOSES = new Set([
+  'wardrobe',
+  'profile',
+  'garment_reference',
+  'profile_portrait',
+  'full_body_front',
+  'full_body_additional',
+]);
 
 export function inspectImage(bytes: Buffer): string {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
@@ -21,7 +28,11 @@ export function assertPurpose(purpose: unknown): string {
     throw new ApiError('child_media_refused', 'Child photographs are not accepted.', 403);
   }
   if (typeof purpose !== 'string' || !PURPOSES.has(purpose)) {
-    throw new ApiError('invalid_purpose', 'Purpose must be wardrobe, profile, or garment_reference.', 400);
+    throw new ApiError(
+      'invalid_purpose',
+      'Purpose must be wardrobe, profile, garment_reference, profile_portrait, full_body_front, or full_body_additional.',
+      400,
+    );
   }
   return purpose;
 }
@@ -75,6 +86,9 @@ export function deleteOwnedMedia(db: Sql, mediaDir: string, userId: string, id: 
   if (!row) throw new ApiError('not_found', 'That photograph was not found.', 404);
   db.prepare('UPDATE media_assets SET deleted_at = ? WHERE id = ?').run(new Date(now).toISOString(), id);
   db.prepare('UPDATE wardrobe_items SET media_id = NULL WHERE media_id = ? AND user_id = ?').run(id, userId);
+  db.prepare('UPDATE customer_profiles SET portrait_media_id = NULL WHERE user_id = ? AND portrait_media_id = ?').run(userId, id);
+  db.prepare('UPDATE customer_profiles SET full_body_front_media_id = NULL WHERE user_id = ? AND full_body_front_media_id = ?').run(userId, id);
+  db.prepare('UPDATE customer_profiles SET full_body_additional_media_id = NULL WHERE user_id = ? AND full_body_additional_media_id = ?').run(userId, id);
   const full = path.resolve(mediaDir, row.storageKey);
   if (full.startsWith(path.resolve(mediaDir))) rmSync(full, { force: true });
 }

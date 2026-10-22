@@ -100,3 +100,7 @@ Feature inventory, integration audit, journey report, staging checklist, and rem
 
 **Staging RC:** may proceed only after paid disk + secrets + frozen commit and an approved push plan.  
 **Commercial launch:** still blocked (live email, AI, retailers, payments, legal, image rights, persistence). See `STAGING_RELEASE_CANDIDATE_CHECKLIST.md` and `REMAINING_PRODUCT_GAPS.md`.
+
+## Update, 22 October 2026 — customer integration completion
+
+Private onboarding photograph slots, authenticated demo-catalogue wishlist, and membership UI consolidation (server entitlement + read-only preview) are implemented and tested. Outfit plan date reschedule is available. Unique Node **108**, Chrome e2e **27**. Still not commercially launch-ready. See `ONBOARDING_PRIVATE_MEDIA.md`, `SHOPPING_WISHLIST_INTEGRATION.md`, `MEMBERSHIP_UI_CONSOLIDATION.md`.

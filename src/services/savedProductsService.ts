@@ -1,35 +1,63 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * 
- * Local persistence service for saved shopping products.
- * Stores non-sensitive product IDs with reactive subscriptions.
+ *
+ * Saved shopping products: browser demo localStorage, or authenticated account API.
  */
 
-const STORAGE_KEY = 'mystyle_saved_products_v1';
+export const DEMO_CATALOGUE_SOURCE = 'mystyle_demo_catalogue';
 
 export interface SavedProductItem {
   productId: string;
   savedAt: string;
+  serverId?: string;
+  demonstration?: boolean;
+  label?: string;
 }
 
-// Starter saved products so the customer sees real utility immediately
+const STORAGE_KEY = 'mystyle_saved_products_v1';
+
 const DEFAULT_SAVED_PRODUCTS: SavedProductItem[] = [
-  { productId: 'prod-cream-sculptural-blazer', savedAt: 'Yesterday' },
-  { productId: 'prod-forest-silk-slip-dress', savedAt: '2 days ago' },
+  { productId: 'prod-cream-sculptural-blazer', savedAt: 'Yesterday', demonstration: true },
+  { productId: 'prod-forest-silk-slip-dress', savedAt: '2 days ago', demonstration: true },
 ];
 
 class SavedProductsService {
   private listeners: Set<() => void> = new Set();
+  private remote: {
+    list: () => Promise<{ products: { id: string; externalProductId: string; savedAt: string; demonstration?: boolean; label?: string }[] }>;
+    save: (externalProductId: string) => Promise<{ id: string; duplicate?: boolean; demonstration?: boolean; label?: string }>;
+    remove: (id: string) => Promise<void>;
+  } | null = null;
+  private remoteItems: SavedProductItem[] = [];
+
+  public async useAccount(remote: SavedProductsService['remote']): Promise<void> {
+    this.remote = remote;
+    if (!remote) {
+      this.remoteItems = [];
+      this.notify();
+      return;
+    }
+    const listed = await remote.list();
+    this.remoteItems = listed.products.map((row) => ({
+      productId: row.externalProductId,
+      savedAt: row.savedAt.slice(0, 10),
+      serverId: row.id,
+      demonstration: row.demonstration !== false,
+      label: row.label,
+    }));
+    this.notify();
+  }
 
   public getSavedProducts(): SavedProductItem[] {
+    if (this.remote) return this.remoteItems;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) {
         this.saveToStorage(DEFAULT_SAVED_PRODUCTS);
         return DEFAULT_SAVED_PRODUCTS;
       }
-      return JSON.parse(raw);
+      return JSON.parse(raw) as SavedProductItem[];
     } catch {
       return DEFAULT_SAVED_PRODUCTS;
     }
@@ -43,26 +71,48 @@ class SavedProductsService {
     return this.getSavedProducts().some((item) => item.productId === productId);
   }
 
-  public toggleSaveProduct(productId: string): boolean {
+  public async toggleSaveProduct(productId: string): Promise<boolean> {
+    if (this.remote) {
+      const existing = this.remoteItems.find((item) => item.productId === productId);
+      if (existing?.serverId) {
+        await this.remote.remove(existing.serverId);
+        this.remoteItems = this.remoteItems.filter((item) => item.productId !== productId);
+        this.notify();
+        return false;
+      }
+      const saved = await this.remote.save(productId);
+      this.remoteItems = [
+        {
+          productId,
+          savedAt: 'Today',
+          serverId: saved.id,
+          demonstration: saved.demonstration !== false,
+          label: saved.label,
+        },
+        ...this.remoteItems.filter((item) => item.productId !== productId),
+      ];
+      this.notify();
+      return true;
+    }
     const current = this.getSavedProducts();
     const exists = current.some((item) => item.productId === productId);
-
-    let updated: SavedProductItem[];
-    if (exists) {
-      updated = current.filter((item) => item.productId !== productId);
-    } else {
-      updated = [{ productId, savedAt: 'Just now' }, ...current];
-    }
-
+    const updated = exists
+      ? current.filter((item) => item.productId !== productId)
+      : [{ productId, savedAt: 'Just now', demonstration: true }, ...current];
     this.saveToStorage(updated);
     this.notify();
     return !exists;
   }
 
-  public removeSavedProduct(productId: string): void {
-    const current = this.getSavedProducts();
-    const updated = current.filter((item) => item.productId !== productId);
-    this.saveToStorage(updated);
+  public async removeSavedProduct(productId: string): Promise<void> {
+    if (this.remote) {
+      const existing = this.remoteItems.find((item) => item.productId === productId);
+      if (existing?.serverId) await this.remote.remove(existing.serverId);
+      this.remoteItems = this.remoteItems.filter((item) => item.productId !== productId);
+      this.notify();
+      return;
+    }
+    this.saveToStorage(this.getSavedProducts().filter((item) => item.productId !== productId));
     this.notify();
   }
 

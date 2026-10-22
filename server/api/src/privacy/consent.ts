@@ -5,6 +5,7 @@ import type { Sql } from '../db.js';
 export const CONSENT_PURPOSES = [
   'ai_personalisation',
   'marketing',
+  'private_photo_storage',
   'external_photo_ai',
   'browser_profile_import',
 ] as const;
@@ -74,9 +75,10 @@ export function listConsentState(db: Sql, userId: string) {
       createdAt: row.createdAt,
     })),
     notes: {
-      externalPhotoAi: 'External AI photograph processing is not active. Granting this consent does not start a provider call.',
-      bundling: 'Each purpose is recorded separately. Saving a style profile does not grant photograph processing.',
-      family: 'Account-holder consent does not imply consent for a dependent profile.',
+      privatePhotoStorage: 'Private photograph storage keeps adult images inside MyStyle AI only. It never authorises FASHN, OpenAI, Gemini, or other external image processors.',
+      externalPhotoAi: 'External AI photograph processing is not active. Granting this consent does not start a provider call and is separate from private storage.',
+      bundling: 'Each purpose is recorded separately. Private storage consent does not grant external photo AI. Saving a style profile does not grant photograph processing.',
+      family: 'Account-holder consent does not imply consent for a dependent profile. Child photographs are refused.',
     },
   };
 }

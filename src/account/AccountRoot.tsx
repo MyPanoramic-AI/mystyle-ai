@@ -16,6 +16,7 @@ import {
 import { profileService } from '../services/profileService';
 import { loginError, registrationError } from '../services/registrationRules';
 import { savedLooksService } from '../services/savedLooksService';
+import { DEMO_CATALOGUE_SOURCE, savedProductsService } from '../services/savedProductsService';
 import { createAccountWardrobe, type AccountWardrobe } from '../services/wardrobeAccount';
 import { createAccountFamily, type AccountFamily } from '../services/familyAccount';
 import { createAccountBeauty, type AccountBeauty } from '../services/beautyAccount';
@@ -95,6 +96,11 @@ export function AccountRoot() {
       list: () => accountApi.looks(),
       save: (sourceKey, title) => accountApi.createLook({ kind: 'inspiration', sourceKey, title }),
       remove: (id) => accountApi.deleteLook(id),
+    });
+    await savedProductsService.useAccount({
+      list: () => accountApi.savedProducts(),
+      save: (externalProductId) => accountApi.saveProduct({ retailerSource: DEMO_CATALOGUE_SOURCE, externalProductId }),
+      remove: (id) => accountApi.deleteSavedProduct(id),
     });
     setMode('account');
     const stored = inspectBrowserStore(window.localStorage);
@@ -258,6 +264,7 @@ export function AccountRoot() {
     },
     logout: async () => {
       await savedLooksService.useAccount(null);
+      await savedProductsService.useAccount(null);
       await accountApi.logout();
       generation.current += 1;
       setUserId(null);
@@ -301,6 +308,7 @@ export function AccountRoot() {
       <Status title="Account service unavailable" body={formError ?? 'The local account service is not running. Demonstration browsing is separate from a saved account.'}>
         <Button variant="primary" onClick={() => {
           void savedLooksService.useAccount(null);
+          void savedProductsService.useAccount(null);
           setMode('demo');
           setProfile(profileService.getProfile());
           setEmail(null);
@@ -361,6 +369,7 @@ export function AccountRoot() {
         }}
         onDemo={() => {
           void savedLooksService.useAccount(null);
+          void savedProductsService.useAccount(null);
           setMode('demo');
           setProfile(profileService.getProfile());
           setPhase('ready');

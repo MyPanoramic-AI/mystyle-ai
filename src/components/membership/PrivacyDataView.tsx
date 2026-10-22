@@ -221,7 +221,8 @@ export const PrivacyDataView: React.FC<PrivacyDataViewProps> = ({
           {[
             { purpose: 'ai_personalisation', label: 'Optional AI personalisation', detail: 'Allows the stylist to use saved style lists when personalisation is on. It does not start live model calls by itself.' },
             { purpose: 'marketing', label: 'Optional marketing communications', detail: 'Separate from styling. Defaults off.' },
-            { purpose: 'external_photo_ai', label: 'Optional external AI photograph processing', detail: 'Prepared only. External image providers are not connected in this revision.' },
+            { purpose: 'private_photo_storage', label: 'Private photograph storage', detail: 'Stores adult styling photographs privately for this account. Does not authorise FASHN, OpenAI, Gemini, or any external image AI.' },
+            { purpose: 'external_photo_ai', label: 'Optional external AI photograph processing', detail: 'Separate from private storage. External image providers are not connected in this revision.' },
             { purpose: 'browser_profile_import', label: 'Optional import of previous browser profile data', detail: 'Does not import demonstration family or child profiles.' },
           ].map((item) => (
             <div key={item.purpose} className="py-3.5 flex items-center justify-between gap-4">

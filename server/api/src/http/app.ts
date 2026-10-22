@@ -19,6 +19,7 @@ import {
 import { createCaptureMailer, createDisabledMailer, listCapturedEmails, readCapturedAction } from '../email/localCapture.js';
 import type { Mailer } from '../email/types.js';
 import { getPreferences, getProfile, updatePreferences, updateProfile } from '../domain/profiles.js';
+import { assertPhotoSlot, deleteProfilePhotoSlot, readProfilePhotoSlots, uploadProfilePhotoSlot } from '../domain/profilePhotos.js';
 import { createFamilyEvent, createFamilyMember, deleteFamilyEvent, deleteFamilyMember, getFamilyEvent, getFamilyMember, listFamily, listFamilyEvents, updateFamilyEvent, updateFamilyMember } from '../domain/family.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
@@ -310,6 +311,39 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.put('/api/profile', route((req, res) => {
     res.json(updateProfile(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
+  }));
+  app.get('/api/profile/photos', route((req, res) => {
+    res.json({
+      photos: readProfilePhotoSlots(deps.db, requireUser(req).userId),
+      storageConsentRequired: 'private_photo_storage',
+      externalAiConsent: 'external_photo_ai',
+      note: 'Private storage consent does not authorise external AI photograph processing. Photographs are not sent to FASHN, OpenAI, or Gemini.',
+    });
+  }));
+  app.put('/api/profile/photos/:slot', route((req, res) => {
+    const session = requireUser(req);
+    const encoded = typeof req.body?.imageBase64 === 'string' ? req.body.imageBase64 : '';
+    if (!/^[A-Za-z0-9+/=\r\n]+$/.test(encoded)) throw new ApiError('invalid_image', 'The image payload was not accepted.', 400);
+    const result = uploadProfilePhotoSlot({
+      db: deps.db,
+      mediaDir: deps.config.mediaDir,
+      userId: session.userId,
+      slot: assertPhotoSlot(req.params.slot),
+      bytes: Buffer.from(encoded, 'base64'),
+      now: deps.now(),
+      maxBytes: deps.config.mediaMaxBytes,
+      retentionMs: deps.config.retentionMs,
+    });
+    res.status(201).json(result);
+  }));
+  app.delete('/api/profile/photos/:slot', route((req, res) => {
+    res.json(deleteProfilePhotoSlot({
+      db: deps.db,
+      mediaDir: deps.config.mediaDir,
+      userId: requireUser(req).userId,
+      slot: assertPhotoSlot(req.params.slot),
+      now: deps.now(),
+    }));
   }));
   app.get('/api/preferences', route((req, res) => {
     res.json(getPreferences(deps.db, requireUser(req).userId));

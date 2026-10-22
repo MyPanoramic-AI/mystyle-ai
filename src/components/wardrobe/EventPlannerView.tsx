@@ -24,6 +24,7 @@ interface EventPlannerViewProps {
   wardrobeItems: WardrobeItem[];
   onAddEvent: (event: Omit<PlannedEvent, 'id'>) => void;
   onRemoveEvent?: (eventId: string) => void;
+  onUpdateEventDate?: (eventId: string, date: string) => void;
   onAssignOutfit: (eventId: string, outfitId: string) => void;
   onAskStylist: (prompt: string) => void;
   onSendToTryOn: (outfit: WardrobeOutfit, pieces: WardrobeItem[]) => void;
@@ -35,6 +36,7 @@ export const EventPlannerView: React.FC<EventPlannerViewProps> = ({
   wardrobeItems,
   onAddEvent,
   onRemoveEvent,
+  onUpdateEventDate,
   onAssignOutfit,
   onAskStylist,
   onSendToTryOn,
@@ -49,6 +51,8 @@ export const EventPlannerView: React.FC<EventPlannerViewProps> = ({
   const [newEventNotes, setNewEventNotes] = useState('');
 
   const [activeAssignEventId, setActiveAssignEventId] = useState<string | null>(null);
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editingDateValue, setEditingDateValue] = useState('');
 
   const handleSubmitNewEvent = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,11 +142,47 @@ export const EventPlannerView: React.FC<EventPlannerViewProps> = ({
                 <h3 className="font-serif text-lg font-bold text-[#242326] leading-snug">
                   {event.title}
                 </h3>
-                {onRemoveEvent && (
-                  <button type="button" onClick={() => onRemoveEvent(event.id)} className="text-[11px] text-[#9C6A61] hover:underline cursor-pointer">
-                    Remove
-                  </button>
-                )}
+                <div className="flex flex-wrap items-center gap-3">
+                  {onUpdateEventDate && (
+                    editingDateId === event.id ? (
+                      <form
+                        className="flex items-center gap-2"
+                        onSubmit={(submitEvent) => {
+                          submitEvent.preventDefault();
+                          if (editingDateValue.trim()) onUpdateEventDate(event.id, editingDateValue.trim());
+                          setEditingDateId(null);
+                        }}
+                      >
+                        <label className="sr-only" htmlFor={`plan-date-${event.id}`}>New plan date</label>
+                        <input
+                          id={`plan-date-${event.id}`}
+                          value={editingDateValue}
+                          onChange={(change) => setEditingDateValue(change.target.value)}
+                          className="rounded-lg border border-[#242326]/15 px-2 py-1 text-[11px]"
+                          placeholder="e.g. Sat, 15 Nov"
+                        />
+                        <button type="submit" className="text-[11px] font-semibold text-[#9C6A61]">Save date</button>
+                        <button type="button" className="text-[11px] text-[#5C585E]" onClick={() => setEditingDateId(null)}>Cancel</button>
+                      </form>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingDateId(event.id);
+                          setEditingDateValue(event.date);
+                        }}
+                        className="text-[11px] text-[#9C6A61] hover:underline cursor-pointer"
+                      >
+                        Reschedule
+                      </button>
+                    )
+                  )}
+                  {onRemoveEvent && (
+                    <button type="button" onClick={() => onRemoveEvent(event.id)} className="text-[11px] text-[#9C6A61] hover:underline cursor-pointer">
+                      Remove
+                    </button>
+                  )}
+                </div>
 
                 <div className="flex flex-wrap items-center gap-3 text-xs text-[#5C585E]">
                   <span className="flex items-center gap-1">

@@ -1,6 +1,6 @@
 # Remaining product gaps
 
-Date: 21 October 2026. Ordered by impact for a staging RC vs commercial launch.
+Date: 22 October 2026. Ordered by impact for a staging RC vs commercial launch.
 
 ## Critical / blockers for commercial launch
 
@@ -18,11 +18,7 @@ Date: 21 October 2026. Ordered by impact for a staging RC vs commercial launch.
 
 | Gap | Impact |
 | --- | --- |
-| Profile photograph private media wiring | Onboarding photos lost on refresh; not in export as owned media |
 | AI credits unused by stylist coordinator | Ledger and stylist cost controls are separate |
-| Dual membership UI | Server Free/test credits coexist with browser `membershipService` demo plans/credits |
-| Shop wishlist account wiring | Client wishlist uses localStorage; `/api/saved-products` exists but is unused by `accountApi` |
-| Outfit reschedule UX | Delete-and-recreate only |
 | Inner-tab restore | Only shell navigation persisted |
 
 ## Medium / low
@@ -31,15 +27,23 @@ Date: 21 October 2026. Ordered by impact for a staging RC vs commercial launch.
 | --- | --- |
 | In-session password / email change | Only public reset + register email; no signed-in change endpoints |
 | Login session hygiene | New login does not revoke other sessions |
-| Further code-splitting (Shop/Stylist/Home) | Main chunk still 639.48 kB |
+| Further code-splitting (Shop/Stylist/Home) | Main chunk still ~644 kB |
 | Editorial JPEG sizes (605–989 kB) | Bandwidth |
 | Gold/cream contrast on unscanned screens | A11y follow-up |
-| Membership Select affordances | Already labelled non-payment |
 
-## Closed or improved this phase
+## Closed in Prompt 16
+
+| Item | Result |
+| --- | --- |
+| Profile photograph private media wiring | Three slots + `private_photo_storage` consent |
+| Shop wishlist account wiring | Authenticated `/api/saved-products` |
+| Dual membership UI for signed-in accounts | Server entitlement + test credits; preview read-only |
+| Outfit reschedule UX | Date edit on existing plans |
+
+## Closed or improved in Prompt 15
 
 | Item | Result |
 | --- | --- |
 | Refresh loses section (K2 shell) | Fixed via sessionStorage |
-| Single ~926 kB JS entry | Split; main 639.48 kB gzip 169.47 kB |
+| Single ~926 kB JS entry | Split; main ~639–644 kB |
 | Axe only on 3 screens | Extended to primary modules (record counts; not WCAG pass) |

@@ -24,11 +24,17 @@ import {
 
 interface ExplorePlansViewProps {
   currentMembership: UserMembership;
+  accountMode?: boolean;
+  accountPlanName?: string | null;
+  publishedPlans?: { planCode: string; displayName: string; indicativeMonthlyZar: number | null }[];
   onSelectPlan: (planId: SubscriptionPlanId, billingCycle: BillingCycle) => void;
 }
 
 export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
   currentMembership,
+  accountMode = false,
+  accountPlanName,
+  publishedPlans = [],
   onSelectPlan,
 }) => {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(currentMembership.billingCycle);
@@ -37,7 +43,11 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
   const handleChoose = (planId: SubscriptionPlanId) => {
     onSelectPlan(planId, billingCycle);
     const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
-    setSuccessMessage(`Demonstration only: ${plan?.name} is shown in this browser. No payment was taken.`);
+    setSuccessMessage(
+      accountMode
+        ? `Preview only: ${plan?.name ?? planId}. Your account remains ${accountPlanName ?? 'Free'}. No payment or entitlement change.`
+        : `Demonstration only: ${plan?.name} is shown in this browser. No payment was taken.`,
+    );
     setTimeout(() => {
       setSuccessMessage(null);
     }, 4000);
@@ -49,15 +59,21 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
       <div className="text-center max-w-2xl mx-auto space-y-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5CDBE]/40 text-[#9C6A61] text-xs font-semibold uppercase tracking-wider">
           <Crown className="w-3.5 h-3.5" />
-          <span>Transparent Membership Tiers</span>
+          <span>{accountMode ? 'Provisional plans · preview only' : 'Transparent Membership Tiers'}</span>
         </div>
         <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-[#242326]">
-          Invest in Effortless Personal Elegance
+          {accountMode ? 'Preview Available Plans' : 'Invest in Effortless Personal Elegance'}
         </h2>
         <p className="text-xs sm:text-sm text-[#5C585E] leading-relaxed">
-          From casual daily wardrobe organization to high-definition 4K Virtual Try-Ons and coordinated
-          household styling, choose the tier that harmonizes with your lifestyle.
+          {accountMode
+            ? `Current membership: ${accountPlanName ?? 'Free'}. Selecting a package below is a preview only. Prices are provisional and not commercially approved.`
+            : 'From casual daily wardrobe organization to high-definition 4K Virtual Try-Ons and coordinated household styling, choose the tier that harmonizes with your lifestyle.'}
         </p>
+        {accountMode && publishedPlans.length > 0 && (
+          <p className="text-[11px] text-[#5C585E]">
+            Server definitions: {publishedPlans.map((plan) => `${plan.displayName} R${plan.indicativeMonthlyZar ?? 0}`).join(' · ')}
+          </p>
+        )}
 
         {/* Billing Switcher (Monthly / Yearly) */}
         <div className="pt-3 flex items-center justify-center">

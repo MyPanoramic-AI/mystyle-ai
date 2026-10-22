@@ -42,10 +42,11 @@ test('shop filters, product details, and saved products stay labelled as demonst
   await expect(page.getByText(/Demo price: R/)).toBeVisible();
   await expect(page.getByText(/in stock|checked stock|verified retailer offer/i)).toHaveCount(0);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText(/Saved ".*" to your wishlist/)).toBeVisible();
+  await expect(page.getByText(/Saved demonstration reference for/i)).toBeVisible();
   await page.getByRole('button', { name: 'Close product details' }).click();
   await page.getByRole('button', { name: /Saved Wishlist/ }).click();
   await expect(page.getByText('Your Saved Products')).toBeVisible();
+  await expect(page.getByText(/demonstration catalogue references/i)).toBeVisible();
   await expect(page.getByText('Demo Listing').first()).toBeVisible();
 });
 
@@ -84,7 +85,7 @@ test('membership stays a labelled demonstration without a payment success', asyn
   await page.getByRole('button', { name: 'My Membership' }).click();
   await expect(page.getByText('Transparent Prototype Guarantee')).toBeVisible();
   await expect(page.getByText(/No live credit card charges/i)).toBeVisible();
-  await expect(page.getByText('Browser demonstration')).toBeVisible();
+  await expect(page.getByText(/Account entitlement|Browser demonstration/i).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'AI Credits', exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: 'Home' }).first().click();

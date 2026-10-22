@@ -9,7 +9,7 @@ Intended path: Registration → Email verification → Onboarding → Home → S
 | Segment | Continuity finding |
 | --- | --- |
 | Auth → Home | Session cookie + CSRF; verification banner when unverified |
-| Onboarding → Profile | Saved via API; photos remain `TemporaryPhotos` blob URLs (not private media) |
+| Onboarding → Profile | Saved via API; adult photo slots use private media after storage consent |
 | Home → modules | Subpages for discover/family/wardrobe/beauty/membership |
 | Refresh | **Fixed in this phase:** `sessionStorage` restores primary tab + subpage (not deep inner tabs) |
 | Account isolation | API + browser isolation tests for wardrobe/family/beauty/credits |
@@ -23,10 +23,10 @@ Intended path: Registration → Email verification → Onboarding → Home → S
 | Wardrobe / looks / plans | SQLite | Owner-scoped |
 | Beauty / family | SQLite | Owner-scoped; demo seeds not imported |
 | Stylist conversations | SQLite | Mock replies; not live provider text |
-| Membership credits | SQLite ledger | **Not debiting** stylist mock messages; UI still has separate browser demo plan/credits |
-| Shop wishlist | localStorage (`savedProductsService`) | `/api/saved-products` not called from client |
+| Membership credits | SQLite ledger | **Not debiting** stylist mock messages; signed-in UI shows server entitlement (preview read-only) |
+| Shop wishlist | `/api/saved-products` for accounts | Demo catalogue refs labelled; localStorage only in demo mode |
 | Shop / Discover / Try On consumer | In-app demo data | Must stay labelled |
-| Onboarding photographs | React state / object URLs | Not mapped to `media_assets` |
+| Onboarding photographs | `media_assets` + profile slot columns | Requires `private_photo_storage`; not external AI |
 
 ## AI stylist ↔ membership credits
 
@@ -55,7 +55,7 @@ Proposed later work (requires approval):
 5. Retention aligned with privacy policies.  
 6. Separate consent before any future external AI vision use.  
 
-**RC status:** pending — clearly marked in inventory and gaps.
+**RC status:** implemented for adult private storage (Prompt 16). External AI photo processing remains inactive.
 
 ## Corrections in this phase
 

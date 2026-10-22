@@ -36,6 +36,7 @@ export const SavedProductsView: React.FC<SavedProductsViewProps> = ({
   }, []);
 
   const savedProducts = SHOP_PRODUCTS.filter((p) => savedIds.includes(p.id));
+  const missingIds = savedIds.filter((id) => !SHOP_PRODUCTS.some((product) => product.id === id));
 
   return (
     <div className="space-y-6 text-left">
@@ -49,7 +50,7 @@ export const SavedProductsView: React.FC<SavedProductsViewProps> = ({
             </h2>
           </div>
           <p className="text-xs text-[#5C585E] mt-0.5">
-            Personal wishlist stored privately in your browser session.
+            Saved demonstration catalogue references. Not verified live retailer offers or current prices.
           </p>
         </div>
 
@@ -85,16 +86,39 @@ export const SavedProductsView: React.FC<SavedProductsViewProps> = ({
         </div>
       ) : (
         /* Saved Products Grid */
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-          {savedProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onOpenDetail={onOpenDetail}
-              onTryItem={onTryItem}
-              onToast={onToast}
-            />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+            {savedProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onOpenDetail={onOpenDetail}
+                onTryItem={onTryItem}
+                onToast={onToast}
+              />
+            ))}
+          </div>
+          {missingIds.length > 0 && (
+            <div className="rounded-2xl border border-[#242326]/10 bg-[#FAF7F2] px-4 py-3 text-xs text-[#5C585E] space-y-2">
+              <p className="font-semibold text-[#242326]">Saved references no longer in the demonstration catalogue</p>
+              {missingIds.map((id) => (
+                <div key={id} className="flex items-center justify-between gap-3">
+                  <span>{id}</span>
+                  <button
+                    type="button"
+                    className="text-[#9C6A61] font-semibold"
+                    onClick={() => {
+                      void savedProductsService.removeSavedProduct(id).then(() => {
+                        if (onToast) onToast('Removed unavailable demonstration reference.');
+                      });
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

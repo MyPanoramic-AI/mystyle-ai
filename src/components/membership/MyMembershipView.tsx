@@ -21,6 +21,11 @@ import {
 
 interface MyMembershipViewProps {
   membership: UserMembership;
+  accountMode?: boolean;
+  accountPlanName?: string;
+  accountStatus?: string;
+  accountTestCredits?: number | null;
+  previewPlanCode?: string | null;
   onExplorePlans: () => void;
   onOpenCredits: () => void;
   onCancelSubscription: () => void;
@@ -29,6 +34,11 @@ interface MyMembershipViewProps {
 
 export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
   membership,
+  accountMode = false,
+  accountPlanName,
+  accountStatus,
+  accountTestCredits,
+  previewPlanCode,
   onExplorePlans,
   onOpenCredits,
   onCancelSubscription,
@@ -38,11 +48,8 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
   const currentPlan: SubscriptionPlan =
     SUBSCRIPTION_PLANS.find((p) => p.id === membership.planId) || SUBSCRIPTION_PLANS[1];
 
-  const isFree = currentPlan.id === 'free';
-  const priceDisplay =
-    membership.billingCycle === 'monthly'
-      ? `R${currentPlan.monthlyPriceZar}/month`
-      : `R${currentPlan.yearlyPriceZar}/year (billed annually)`;
+  const isFree = accountMode ? (accountPlanName ?? 'Free').toLowerCase().includes('free') : currentPlan.id === 'free';
+  const displayName = accountMode ? (accountPlanName ?? 'Free') : currentPlan.name;
 
   return (
     <div className="space-y-6">
@@ -58,55 +65,56 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
               <span>Current Membership Tier</span>
             </div>
 
-            {membership.cancelAtPeriodEnd ? (
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30">
-                Cancels at end of billing cycle
-              </span>
-            ) : (
-              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Browser demonstration
-              </span>
-            )}
+            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {accountMode ? `Account entitlement · ${accountStatus ?? 'active'}` : 'Browser demonstration'}
+            </span>
+            {accountMode ? (
+              <span className="sr-only">Browser demonstration is separate from this account entitlement.</span>
+            ) : null}
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 mb-4">
             <div>
               <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-white mb-1">
-                {currentPlan.name}
+                {displayName}
               </h2>
               <p className="text-sm text-[#E5CDBE]/80 max-w-xl">
-                {currentPlan.tagline}
+                {accountMode
+                  ? 'Your current membership comes from the account server. Preview packages do not change this entitlement.'
+                  : currentPlan.tagline}
               </p>
+              {accountMode && previewPlanCode ? (
+                <p className="text-xs text-[#E5CDBE]/70 mt-2">Preview selected: {previewPlanCode} (not purchased)</p>
+              ) : null}
             </div>
 
             <div className="text-left sm:text-right shrink-0">
               <span className="font-serif text-2xl sm:text-3xl font-bold text-white">
                 {isFree ? 'Free' : `R${membership.billingCycle === 'monthly' ? currentPlan.monthlyPriceZar : Math.round(currentPlan.yearlyPriceZar / 12)}`}
               </span>
-              {!isFree && (
-                <span className="text-xs text-[#E5CDBE]/70 block">
-                  per month · Demonstration price, not billed
-                </span>
-              )}
+              <span className="text-xs text-[#E5CDBE]/70 block">
+                {accountMode ? 'Provisional catalogue price · not billed' : 'Demonstration price, not billed'}
+              </span>
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 mt-4 border-t border-white/10 text-xs">
             <div className="p-3 rounded-2xl bg-white/5 backdrop-blur-xs border border-white/10">
-              <span className="text-[#E5CDBE]/70 block mb-0.5">Demonstration allowance</span>
+              <span className="text-[#E5CDBE]/70 block mb-0.5">{accountMode ? 'Credit balance' : 'Demonstration allowance'}</span>
               <span className="font-semibold text-white text-sm flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
-                {currentPlan.monthlyCredits} demonstration credits
+                {accountMode
+                  ? `${accountTestCredits ?? 0} test credits`
+                  : `${currentPlan.monthlyCredits} demonstration credits`}
               </span>
             </div>
 
             <div className="p-3 rounded-2xl bg-white/5 backdrop-blur-xs border border-white/10">
-              <span className="text-[#E5CDBE]/70 block mb-0.5">Renewal Date</span>
+              <span className="text-[#E5CDBE]/70 block mb-0.5">{accountMode ? 'Renewal' : 'Renewal Date'}</span>
               <span className="font-semibold text-white text-sm flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-[#9C6A61]" />
-                {membership.renewsOn}
+                {accountMode ? 'No paid renewal date' : membership.renewsOn}
               </span>
             </div>
 
@@ -114,19 +122,18 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
               <span className="text-[#E5CDBE]/70 block mb-0.5">Payment Method</span>
               <span className="font-semibold text-white text-sm flex items-center gap-1">
                 <CreditCard className="w-3.5 h-3.5 text-[#B49361]" />
-                {isFree ? 'No card required' : 'Demonstration · no card charged'}
+                {accountMode ? 'Payments not connected' : (isFree ? 'No card required' : 'Demo · no card charged')}
               </span>
             </div>
           </div>
 
-          {/* CTAs */}
           <div className="flex flex-wrap items-center gap-3 pt-6">
             <button
               onClick={onExplorePlans}
               className="px-5 py-2.5 rounded-xl bg-[#B49361] hover:bg-[#a08152] text-white text-xs font-semibold transition-all shadow-sm flex items-center gap-2 cursor-pointer"
             >
               <Crown className="w-3.5 h-3.5" />
-              <span>{isFree ? 'Preview Signature' : 'Explore All Tier Options'}</span>
+              <span>{accountMode ? 'Preview Available Plans' : (isFree ? 'Preview Signature' : 'Explore All Tier Options')}</span>
             </button>
 
             <button
@@ -134,10 +141,10 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
               className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-medium border border-white/15 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
-              <span>Manage AI Credits</span>
+              <span>{accountMode ? 'View Test Credits' : 'Manage AI Credits'}</span>
             </button>
 
-            {!isFree && (
+            {!accountMode && !isFree && (
               <div className="ml-auto">
                 {membership.cancelAtPeriodEnd ? (
                   <button
@@ -170,10 +177,12 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
             </div>
             <div>
               <h3 className="font-serif text-lg font-semibold text-[#242326]">
-                What's Included in {currentPlan.name}
+                What's Included in {displayName}
               </h3>
               <p className="text-xs text-[#5C585E]">
-                Full breakdown of your current styling allowances and studio capabilities.
+                {accountMode
+                  ? 'Illustrative Free-tier capabilities. Provisional paid plans are shown under Explore Plans as previews only.'
+                  : 'Full breakdown of your current styling allowances and studio capabilities.'}
               </p>
             </div>
           </div>
@@ -227,9 +236,9 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
             Transparent Prototype Guarantee
           </span>
           <p>
-            This application is currently in frontend prototype mode. All tier switches, credit refills,
-            and billing updates are simulated deterministically in your local browser memory. No live credit
-            card charges or external billing webhooks are executed.
+            {accountMode
+              ? 'Current membership and test credits come from the account server. Previewing a package never assigns a paid plan, never takes payment, and never changes your credit balance. No live credit card charges.'
+              : 'Demonstration browsing only. Tier switches and credit refills stay in local browser memory. No live credit card charges.'}
           </p>
         </div>
       </div>

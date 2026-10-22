@@ -101,6 +101,9 @@ export interface TemporaryPhotos {
   profilePhotoUrl?: string;
   fullBodyFrontUrl?: string;
   fullBodyAdditionalUrl?: string;
+  portraitMediaId?: string;
+  fullBodyFrontMediaId?: string;
+  fullBodyAdditionalMediaId?: string;
 }
 
 export interface StyleCategoryItem {

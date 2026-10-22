@@ -342,23 +342,41 @@ export function listPlans(db: Sql, userId: string): Record<string, unknown>[] {
   ).all(userId) as Record<string, unknown>[]).map((row) => ({ ...row, completed: row.completed === 1 }));
 }
 
+const DEMO_CATALOGUE_SOURCE = 'mystyle_demo_catalogue';
+
+function savedProductView(row: Record<string, unknown>): Record<string, unknown> {
+  const retailerSource = String(row.retailerSource);
+  const demonstration = retailerSource === DEMO_CATALOGUE_SOURCE || retailerSource.startsWith('demo_');
+  return {
+    ...row,
+    demonstration,
+    sourceKind: demonstration ? 'demonstration_catalogue' : 'retailer_reference',
+    label: demonstration
+      ? 'Demonstration catalogue reference. Not a verified live retailer offer.'
+      : 'Saved product reference. Availability and price are not confirmed live.',
+  };
+}
+
 export function saveProduct(db: Sql, userId: string, body: Record<string, unknown>, now: number): Record<string, unknown> {
-  const retailer = requiredText(body.retailerSource, 'retailerSource', 80);
+  const retailer = requiredText(body.retailerSource ?? DEMO_CATALOGUE_SOURCE, 'retailerSource', 80);
   const externalId = requiredText(body.externalProductId, 'externalProductId', 120);
+  if (/child|minor|dependent/i.test(retailer) || /child|minor|dependent/i.test(externalId)) {
+    throw new ApiError('invalid_product', 'That product reference was not accepted.', 400);
+  }
   const existing = db.prepare(
     'SELECT id, retailer_source AS retailerSource, external_product_id AS externalProductId, saved_at AS savedAt FROM saved_products WHERE user_id = ? AND retailer_source = ? AND external_product_id = ?',
   ).get(userId, retailer, externalId) as Record<string, unknown> | undefined;
-  if (existing) return existing;
+  if (existing) return savedProductView({ ...existing, duplicate: true });
   const id = randomUUID();
   const stamp = new Date(now).toISOString();
   db.prepare('INSERT INTO saved_products (id, user_id, retailer_source, external_product_id, saved_at) VALUES (?, ?, ?, ?, ?)').run(id, userId, retailer, externalId, stamp);
-  return { id, retailerSource: retailer, externalProductId: externalId, savedAt: stamp };
+  return savedProductView({ id, retailerSource: retailer, externalProductId: externalId, savedAt: stamp, duplicate: false });
 }
 
 export function listSavedProducts(db: Sql, userId: string): Record<string, unknown>[] {
-  return db.prepare(
+  return (db.prepare(
     'SELECT id, retailer_source AS retailerSource, external_product_id AS externalProductId, saved_at AS savedAt FROM saved_products WHERE user_id = ? ORDER BY saved_at',
-  ).all(userId) as Record<string, unknown>[];
+  ).all(userId) as Record<string, unknown>[]).map(savedProductView);
 }
 
 export function deleteSavedProduct(db: Sql, userId: string, id: string): void {

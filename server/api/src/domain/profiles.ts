@@ -1,6 +1,7 @@
 import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
 import { recordConsent } from '../privacy/consent.js';
+import { readProfilePhotoSlots } from './profilePhotos.js';
 
 const ONBOARDING = new Set(['pending', 'deferred', 'completed']);
 const BUDGETS = new Set(['under-300', '300-600', '600-1000', '1000-2000', '2000-plus', 'flexible']);
@@ -66,6 +67,7 @@ export function getProfile(db: Sql, userId: string): Record<string, unknown> {
     onboardingStatus: profile.onboarding_status ?? 'pending',
     completionStatus: profile.completion_status,
     measurements: measurements ?? null,
+    photos: readProfilePhotoSlots(db, userId),
   };
 }
 

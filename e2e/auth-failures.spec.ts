@@ -26,12 +26,14 @@ test('a stopped account service and an invalid session are explained', async ({ 
   const email = `qa-session-${Date.now()}@example.com`;
   await register(page, email);
   await skipToApp(page);
+  await expect(page.getByRole('button', { name: 'Home' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'My Profile' }).first().click();
+  await expect(page.getByRole('heading', { name: /Sizes & Measurements|Personal|Profile/i }).first()).toBeVisible();
   await page.context().addCookies([{
     name: 'mystyle_session',
     value: 'expired-session',
     url: 'http://127.0.0.1:4173',
   }]);
-  await page.getByRole('button', { name: 'My Profile' }).first().click();
   await editAndExpectEnded(page);
 
   await page.route('**/api/**', (route) => route.abort());
@@ -55,6 +57,7 @@ test('onboarding save failure does not enter the app', async ({ page }) => {
     await expect(page.getByText(`${step} of 8`, { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Skip', exact: true }).click();
   }
+  await expect(page.getByText('8 of 8', { exact: true })).toBeVisible();
   await page.route('**/api/profile', (route) => route.request().method() === 'PUT' ? route.abort() : route.continue());
   await page.getByRole('button', { name: 'Explore MyStyle AI' }).click();
   await expect(page.getByRole('alert')).toBeVisible();

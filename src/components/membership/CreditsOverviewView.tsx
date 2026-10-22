@@ -27,22 +27,30 @@ import {
 
 interface CreditsOverviewViewProps {
   balance: CreditBalance;
+  accountMode?: boolean;
   onPurchaseTopUp: (packId: string) => void;
   onViewHistory: () => void;
 }
 
 export const CreditsOverviewView: React.FC<CreditsOverviewViewProps> = ({
   balance,
+  accountMode = false,
   onPurchaseTopUp,
   onViewHistory,
 }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const totalAvailable = balance.remainingCredits + balance.bonusCredits;
-  const percentage = Math.min(100, Math.round((balance.remainingCredits / balance.totalMonthlyAllocation) * 100));
+  const percentage = balance.totalMonthlyAllocation > 0
+    ? Math.min(100, Math.round((balance.remainingCredits / balance.totalMonthlyAllocation) * 100))
+    : 0;
 
   const handleBuy = (pack: CreditTopUpPack) => {
     onPurchaseTopUp(pack.id);
-    setSuccessMessage(`Added ${pack.credits + pack.bonusCredits} credits to your account balance!`);
+    setSuccessMessage(
+      accountMode
+        ? 'Top-ups are not available from the browser. Test credits stay on the server ledger.'
+        : `Demonstration only: added ${pack.credits + pack.bonusCredits} browser credits. No payment was taken.`,
+    );
     setTimeout(() => {
       setSuccessMessage(null);
     }, 4000);
@@ -71,8 +79,9 @@ export const CreditsOverviewView: React.FC<CreditsOverviewViewProps> = ({
             </div>
 
             <p className="text-xs text-[#E5CDBE]/75 max-w-md leading-relaxed">
-              Includes {balance.remainingCredits} monthly allocation credits and {balance.bonusCredits} rollover/top-up bonus credits.
-              Your monthly allocation replenishes on <strong>{balance.renewsOn}</strong>.
+              {accountMode
+                ? `Server test credit balance: ${balance.remainingCredits}. Not a purchased allowance. ${balance.renewsOn}.`
+                : <>Includes {balance.remainingCredits} monthly allocation credits and {balance.bonusCredits} rollover/top-up bonus credits. Your monthly allocation replenishes on <strong>{balance.renewsOn}</strong>.</>}
             </p>
           </div>
 

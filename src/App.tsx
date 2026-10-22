@@ -25,6 +25,8 @@ import { ShopPreloadedContext } from './components/pages/ShopPlaceholder';
 import { ShopScreen } from './components/shop/ShopScreen';
 import { ProfileDashboard } from './components/profile/ProfileDashboard';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
+import { accountApi } from './services/accountApi';
+import { photosFromSlots } from './services/profilePhotosClient';
 import {
   BeautyCategory,
   BeautyProductItem,
@@ -87,13 +89,43 @@ export default function App({ account }: { account: ReadyAccount }) {
   const [shopPreloadedContext, setShopPreloadedContext] = useState<ShopPreloadedContext | null>(null);
   const [stylistState, setStylistState] = useState<StylistNavigationState>({});
 
-  // Profile and temporary memory photos
+  // Profile and photograph slots (account media ids or demo blob URLs)
   const [profile, setProfile] = useState<UserProfile>(account.profile);
   const [photos, setPhotos] = useState<TemporaryPhotos>({});
+  const [photoStorageConsent, setPhotoStorageConsent] = useState(false);
   const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(account.mode === 'account' && account.profile.onboardingStatus === 'pending');
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
   const [wardrobeCounts, setWardrobeCounts] = useState<{ pieces: number; outfits: number } | null>(null);
+
+  useEffect(() => {
+    setProfile(account.profile);
+  }, [account.profile]);
+
+  useEffect(() => {
+    if (account.mode !== 'account' || isOnboardingActive) {
+      if (account.mode !== 'account') {
+        setPhotos({});
+        setPhotoStorageConsent(false);
+      }
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([accountApi.getProfile(), accountApi.privacyConsent()]).then(([raw, consent]) => {
+      if (cancelled) return;
+      const slots = (raw as { photos?: import('./services/accountApi').ProfilePhotoSlots }).photos;
+      setPhotos(slots ? photosFromSlots(slots) : {});
+      setPhotoStorageConsent(consent.current.find((row) => row.purpose === 'private_photo_storage')?.granted === true);
+    }).catch(() => {
+      if (!cancelled) {
+        setPhotos({});
+        setPhotoStorageConsent(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [account.mode, account.email, isOnboardingActive]);
 
   useEffect(() => {
     if (!account.wardrobe) {
@@ -403,6 +435,19 @@ export default function App({ account }: { account: ReadyAccount }) {
         onComplete={handleOnboardingComplete}
         onExit={handleExitOnboarding}
         saveError={accountError}
+        usesAccount={account.mode === 'account'}
+        storageConsentGranted={photoStorageConsent}
+        onGrantStorageConsent={async () => {
+          await accountApi.setPrivacyConsent({ purpose: 'private_photo_storage', granted: true, captureMethod: 'settings_toggle' });
+          setPhotoStorageConsent(true);
+        }}
+        onUploadPhotoSlot={async (slot, imageBase64) => {
+          const uploaded = await accountApi.uploadProfilePhotoSlot(slot, imageBase64);
+          return { mediaId: uploaded.mediaId };
+        }}
+        onDeletePhotoSlot={async (slot) => {
+          await accountApi.deleteProfilePhotoSlot(slot);
+        }}
       />
     );
   }
@@ -491,6 +536,7 @@ export default function App({ account }: { account: ReadyAccount }) {
       {activeSubpage === 'membership' && (
         <MembershipHubScreen
           initialTab={membershipInitialTab}
+          usesAccount={account.mode === 'account'}
           onBack={() => {
             setActiveSubpage(null);
             setCurrentTab('profile');

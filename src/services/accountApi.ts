@@ -60,6 +60,12 @@ export interface AccountApi {
   updateOutfitPlan(id: string, body: Record<string, unknown>): Promise<PlanRecord>;
   deleteOutfitPlan(id: string): Promise<void>;
   uploadWardrobePhoto(imageBase64: string): Promise<{ id: string }>;
+  profilePhotos(): Promise<ProfilePhotosResponse>;
+  uploadProfilePhotoSlot(slot: ProfilePhotoSlot, imageBase64: string): Promise<ProfilePhotoUploadResult>;
+  deleteProfilePhotoSlot(slot: ProfilePhotoSlot): Promise<{ slot: ProfilePhotoSlot; removedMediaId: string | null }>;
+  savedProducts(): Promise<{ products: SavedProductRecord[] }>;
+  saveProduct(body: { retailerSource?: string; externalProductId: string }): Promise<SavedProductRecord>;
+  deleteSavedProduct(id: string): Promise<void>;
   familyMembers(): Promise<{ members: Record<string, unknown>[] }>;
   createFamilyMember(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   updateFamilyMember(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
@@ -101,6 +107,40 @@ export interface ConsentStateResponse {
   current: { purpose: string; granted: boolean; status: string; updatedAt: string | null }[];
   history: { purpose: string; status: string; createdAt: string }[];
   notes: Record<string, string>;
+}
+
+export type ProfilePhotoSlot = 'portrait' | 'full_body_front' | 'full_body_additional';
+
+export interface ProfilePhotoSlots {
+  portraitMediaId: string | null;
+  fullBodyFrontMediaId: string | null;
+  fullBodyAdditionalMediaId: string | null;
+}
+
+export interface ProfilePhotosResponse {
+  photos: ProfilePhotoSlots;
+  storageConsentRequired: string;
+  externalAiConsent: string;
+  note: string;
+}
+
+export interface ProfilePhotoUploadResult {
+  slot: ProfilePhotoSlot;
+  mediaId: string;
+  contentType: string;
+  byteSize: number;
+  previousMediaId: string | null;
+}
+
+export interface SavedProductRecord {
+  id: string;
+  retailerSource: string;
+  externalProductId: string;
+  savedAt: string;
+  demonstration?: boolean;
+  sourceKind?: string;
+  label?: string;
+  duplicate?: boolean;
 }
 
 export interface MembershipPlanDefinition {
@@ -321,6 +361,12 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     updateOutfitPlan: (id, body) => request(`/api/outfit-plans/${id}`, { method: 'PATCH', body, csrf: true }),
     deleteOutfitPlan: (id) => request(`/api/outfit-plans/${id}`, { method: 'DELETE', csrf: true }),
     uploadWardrobePhoto: (imageBase64) => request('/api/media', { method: 'POST', body: { purpose: 'wardrobe', imageBase64 }, csrf: true }),
+    profilePhotos: () => request('/api/profile/photos'),
+    uploadProfilePhotoSlot: (slot, imageBase64) => request(`/api/profile/photos/${slot}`, { method: 'PUT', body: { imageBase64 }, csrf: true }),
+    deleteProfilePhotoSlot: (slot) => request(`/api/profile/photos/${slot}`, { method: 'DELETE', csrf: true }),
+    savedProducts: () => request('/api/saved-products'),
+    saveProduct: (body) => request('/api/saved-products', { method: 'POST', body, csrf: true }),
+    deleteSavedProduct: (id) => request(`/api/saved-products/${id}`, { method: 'DELETE', csrf: true }),
     familyMembers: () => request('/api/family'),
     createFamilyMember: (body) => request('/api/family', { method: 'POST', body, csrf: true }),
     updateFamilyMember: (id, body) => request(`/api/family/${id}`, { method: 'PATCH', body, csrf: true }),
