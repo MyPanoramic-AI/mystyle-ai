@@ -192,4 +192,9 @@ See `BUG_REGISTER.md`, `MASTER_QA_REPORT.md`, and `COMPLETE_FUNCTIONAL_TEST_MATR
 
 - K2 (partial restore), K3 (bundle/images), K4 residual NOT TESTED rows, K6 family budget wording.
 - **MQ-007** / **MQ-008**: Account Settings contact fields and Beauty bag remain demonstration surfaces (labelled).
+- **MQ-018**: Profile Manage Photos has no upload control; onboarding Step 7 remains the account photo path.
 - Commercial blockers unchanged (live email/AI/retail/payments/legal/Free Render disk).
+
+### Corrected in Master QA audit follow-up (same day)
+
+- **MQ-009–017**: Customer media cleanup scoped to owner; retention preview account-scoped; media upload requires `private_photo_storage` consent; auth rate limit uses `req.ip`; credit refund restores allocation remaining; stylist rolls back user message on provider failure; Discover Share writes clipboard; header credits use server test balance when signed in; duplicate creates return HTTP 200.

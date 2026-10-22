@@ -46,7 +46,7 @@ import {
   settleOperation,
   usageTotals,
 } from '../domain/membership.js';
-import { listConsentState, readPrivacyNotice, recordConsent } from '../privacy/consent.js';
+import { hasGrantedConsent, listConsentState, readPrivacyNotice, recordConsent } from '../privacy/consent.js';
 import { cancelDeletionRequest, confirmDeletion, deletionStatus, startDeletionRequest } from '../privacy/deletion.js';
 import { cleanupExpiredExports, createDataExport, downloadExport, readExportJob } from '../privacy/export.js';
 import { listRetentionPolicies, retentionDryRun, runRetentionCleanup } from '../privacy/retention.js';
@@ -121,7 +121,8 @@ export function createApp(deps: AppDeps): express.Express {
   }
 
   function limitAuth(req: Request): void {
-    const key = `${req.socket.remoteAddress ?? 'local'}:${req.path}`;
+    const client = req.ip || req.socket.remoteAddress || 'local';
+    const key = `${client}:${req.path}`;
     if (!deps.rateLimiter.consume(key)) throw new ApiError('rate_limited', 'Too many attempts. Wait and try again.', 429);
   }
 
@@ -401,7 +402,10 @@ export function createApp(deps: AppDeps): express.Express {
   }));
 
   app.get('/api/looks', route((req, res) => res.json({ looks: listLooks(deps.db, requireUser(req).userId) })));
-  app.post('/api/looks', route((req, res) => res.status(201).json(createLook(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()))));
+  app.post('/api/looks', route((req, res) => {
+    const created = createLook(deps.db, requireUser(req).userId, req.body ?? {}, deps.now());
+    res.status(created.duplicate ? 200 : 201).json(created);
+  }));
   app.get('/api/looks/:id', route((req, res) => res.json(getLook(deps.db, requireUser(req).userId, String(req.params.id)))));
   app.patch('/api/looks/:id', route((req, res) => res.json(updateLook(deps.db, requireUser(req).userId, String(req.params.id), req.body ?? {}, deps.now()))));
   app.delete('/api/looks/:id', route((req, res) => {
@@ -420,7 +424,8 @@ export function createApp(deps: AppDeps): express.Express {
 
   app.get('/api/saved-products', route((req, res) => res.json({ products: listSavedProducts(deps.db, requireUser(req).userId) })));
   app.post('/api/saved-products', route((req, res) => {
-    res.status(201).json(saveProduct(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
+    const saved = saveProduct(deps.db, requireUser(req).userId, req.body ?? {}, deps.now());
+    res.status(saved.duplicate ? 200 : 201).json(saved);
   }));
   app.delete('/api/saved-products/:id', route((req, res) => {
     deleteSavedProduct(deps.db, requireUser(req).userId, String(req.params.id));
@@ -429,6 +434,13 @@ export function createApp(deps: AppDeps): express.Express {
 
   app.post('/api/media', route((req, res) => {
     const session = requireUser(req);
+    if (!hasGrantedConsent(deps.db, session.userId, 'private_photo_storage')) {
+      throw new ApiError(
+        'private_photo_consent_required',
+        'Grant private photograph storage consent before uploading private media. This does not authorise external AI processing.',
+        403,
+      );
+    }
     const encoded = typeof req.body?.imageBase64 === 'string' ? req.body.imageBase64 : '';
     if (!/^[A-Za-z0-9+/=\r\n]+$/.test(encoded)) throw new ApiError('invalid_image', 'The image payload was not accepted.', 400);
     const saved = saveMedia({
@@ -453,8 +465,8 @@ export function createApp(deps: AppDeps): express.Express {
     res.json({ ok: true });
   }));
   app.post('/api/media/cleanup', route((req, res) => {
-    requireUser(req);
-    res.json({ removed: cleanupExpiredMedia(deps.db, deps.config.mediaDir, deps.now()) });
+    const session = requireUser(req);
+    res.json({ removed: cleanupExpiredMedia(deps.db, deps.config.mediaDir, deps.now(), session.userId) });
   }));
 
   app.get('/api/plans', route((req, res) => {
@@ -549,7 +561,8 @@ export function createApp(deps: AppDeps): express.Express {
   app.post('/api/privacy/deletion/start', route((req, res) => {
     const session = requireUser(req);
     assertEmailVerifiedForSensitive(deps.db, session.userId, deps.config.requireVerifiedForSensitive);
-    res.status(201).json(startDeletionRequest(deps.db, session.userId, deps.now()));
+    const started = startDeletionRequest(deps.db, session.userId, deps.now());
+    res.status((started as { duplicate?: boolean }).duplicate ? 200 : 201).json(started);
   }));
   app.post('/api/privacy/deletion/cancel', route((req, res) => {
     res.json(cancelDeletionRequest(deps.db, requireUser(req).userId, deps.now()));

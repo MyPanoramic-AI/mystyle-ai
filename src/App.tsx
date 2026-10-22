@@ -459,6 +459,7 @@ export default function App({ account }: { account: ReadyAccount }) {
       userAvatarName={profile.personal.firstName || 'Guest'}
       userAvatarPhoto={photos.profilePhotoUrl}
       onOpenMembership={handleOpenMembership}
+      usesAccount={account.mode === 'account'}
     >
       {account.mode === 'demo' ? (
         <div className="max-w-4xl mx-auto mb-4 rounded-2xl border border-[#B49361]/40 bg-[#E5CDBE]/30 px-4 py-3 text-sm text-[#242326] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

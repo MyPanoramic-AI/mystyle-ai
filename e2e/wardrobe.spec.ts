@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { garmentPng, register, skipToApp } from './support';
+import { garmentPng, grantPrivatePhotoStorage, register, skipToApp } from './support';
 
 test('a wardrobe piece can be uploaded, edited, planned, and deleted', async ({ page }) => {
   await register(page, `qa-wardrobe-${Date.now()}@example.com`);
   await skipToApp(page);
+  await grantPrivatePhotoStorage(page);
   await page.getByRole('button', { name: /Browse All/ }).click();
   await page.getByRole('button', { name: 'Add Clothing Piece' }).click();
   await page.locator('input[type="file"]').setInputFiles({

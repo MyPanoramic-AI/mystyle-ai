@@ -17,18 +17,28 @@ export function retentionDryRun(
   input: { mediaDir: string; exportsDir: string; now: number; userId?: string },
 ) {
   const stamp = new Date(input.now).toISOString();
-  const expiredSessions = db.prepare(
-    `SELECT COUNT(*) AS count FROM sessions WHERE expires_at <= ?`,
-  ).get(stamp) as { count: number };
-  const expiredMedia = db.prepare(
-    `SELECT COUNT(*) AS count FROM media_assets WHERE deleted_at IS NULL AND retain_until IS NOT NULL AND retain_until <= ?`,
-  ).get(stamp) as { count: number };
-  const expiredExports = db.prepare(
-    `SELECT COUNT(*) AS count FROM data_export_jobs WHERE status = 'ready' AND expires_at IS NOT NULL AND expires_at <= ?`,
-  ).get(stamp) as { count: number };
+  const customerScoped = Boolean(input.userId);
+
+  const expiredSessions = (customerScoped
+    ? db.prepare(`SELECT COUNT(*) AS count FROM sessions WHERE user_id = ? AND expires_at <= ?`).get(input.userId, stamp)
+    : db.prepare(`SELECT COUNT(*) AS count FROM sessions WHERE expires_at <= ?`).get(stamp)) as { count: number };
+  const expiredMedia = (customerScoped
+    ? db.prepare(
+        `SELECT COUNT(*) AS count FROM media_assets WHERE user_id = ? AND deleted_at IS NULL AND retain_until IS NOT NULL AND retain_until <= ?`,
+      ).get(input.userId, stamp)
+    : db.prepare(
+        `SELECT COUNT(*) AS count FROM media_assets WHERE deleted_at IS NULL AND retain_until IS NOT NULL AND retain_until <= ?`,
+      ).get(stamp)) as { count: number };
+  const expiredExports = (customerScoped
+    ? db.prepare(
+        `SELECT COUNT(*) AS count FROM data_export_jobs WHERE user_id = ? AND status = 'ready' AND expires_at IS NOT NULL AND expires_at <= ?`,
+      ).get(input.userId, stamp)
+    : db.prepare(
+        `SELECT COUNT(*) AS count FROM data_export_jobs WHERE status = 'ready' AND expires_at IS NOT NULL AND expires_at <= ?`,
+      ).get(stamp)) as { count: number };
 
   let orphanedMediaFiles = 0;
-  if (existsSync(input.mediaDir)) {
+  if (!customerScoped && existsSync(input.mediaDir)) {
     const known = new Set(
       (db.prepare(`SELECT storage_key AS storageKey FROM media_assets`).all() as { storageKey: string }[])
         .map((row) => row.storageKey),
@@ -39,9 +49,9 @@ export function retentionDryRun(
     }
   }
 
-  const deletedAccounts = db.prepare(
-    `SELECT COUNT(*) AS count FROM users WHERE status = 'deleted'`,
-  ).get() as { count: number };
+  const deletedAccounts = customerScoped
+    ? { count: 0 }
+    : db.prepare(`SELECT COUNT(*) AS count FROM users WHERE status = 'deleted'`).get() as { count: number };
 
   const scoped = input.userId
     ? {
@@ -62,8 +72,11 @@ export function retentionDryRun(
       deletedAccountTombsstones: Number(deletedAccounts.count),
     },
     accountScope: scoped,
+    scope: customerScoped ? 'account' : 'platform',
     policies: listRetentionPolicies(db),
-    note: 'No data was deleted. Automatic destructive cleanup remains disabled unless an operator explicitly enables it.',
+    note: customerScoped
+      ? 'Account-scoped preview only. Platform-wide retention counts are available to operators. No data was deleted.'
+      : 'No data was deleted. Automatic destructive cleanup remains disabled unless an operator explicitly enables it.',
   };
 }
 

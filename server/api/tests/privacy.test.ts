@@ -83,6 +83,11 @@ test('authenticated export includes owned records, excludes secrets, and isolate
       headers,
       body: JSON.stringify({ displayName: 'Export Ada', styles: ['classic'], sizes: { tops: 'M' }, budgetTier: 'flexible' }),
     });
+    await fetch(`${api.base}/api/privacy/consent`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ purpose: 'private_photo_storage', granted: true, captureMethod: 'settings_toggle' }),
+    });
     await fetch(`${api.base}/api/media`, {
       method: 'POST',
       headers,
@@ -141,6 +146,11 @@ test('account deletion requires reauthentication, can be cancelled, and cleans o
       headers,
       body: JSON.stringify({ displayName: 'Delete Me', styles: ['classic'], sizes: { tops: 'S' }, budgetTier: 'flexible' }),
     });
+    await fetch(`${api.base}/api/privacy/consent`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ purpose: 'private_photo_storage', granted: true, captureMethod: 'settings_toggle' }),
+    });
     const media = await fetch(`${api.base}/api/media`, {
       method: 'POST',
       headers,
@@ -198,9 +208,17 @@ test('retention dry run reports actions without deleting, and destructive cleanu
   try {
     const created = await register(api.base, 'retain@example.com');
     const preview = await fetch(`${api.base}/api/privacy/retention/preview`, { headers: { cookie: created.cookie } });
-    const body = await preview.json() as { mode: string; destructiveCleanupEnabled: boolean };
+    const body = await preview.json() as {
+      mode: string;
+      destructiveCleanupEnabled: boolean;
+      scope: string;
+      wouldActOn: { deletedAccountTombsstones: number; orphanedMediaFiles: number };
+    };
     assert.equal(body.mode, 'dry_run');
     assert.equal(body.destructiveCleanupEnabled, false);
+    assert.equal(body.scope, 'account');
+    assert.equal(body.wouldActOn.deletedAccountTombsstones, 0);
+    assert.equal(body.wouldActOn.orphanedMediaFiles, 0);
     const blocked = await fetch(`${api.base}/api/admin/retention/cleanup`, {
       method: 'POST',
       headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },

@@ -243,20 +243,26 @@ export async function sendMessage(runtime: StylistRuntime, userId: string, conve
       .slice(-8)
       .map((message) => ({ role: message.role, text: message.content }));
     const created = stamp(runtime.now());
-    runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(randomUUID(), conversationId, 'user', content, null, null, null, null, created);
-    const context = contextFor(runtime.db, userId);
-    const produced = await produce(runtime, content, history, context, userId, conversationId);
-    const assistantId = randomUUID();
-    const answered = stamp(runtime.now());
-    runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      assistantId, conversationId, 'assistant', produced.reply.responseText, JSON.stringify(produced.reply), produced.draft.provider, produced.draft.model, idempotencyKey, answered,
-    );
-    if (produced.draft.status === 'succeeded' || produced.draft.status === 'failed') {
-      recordUsage(runtime.db, userId, conversationId, 'stylist_message', produced.draft, runtime.now());
+    const userMessageId = randomUUID();
+    runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(userMessageId, conversationId, 'user', content, null, null, null, null, created);
+    try {
+      const context = contextFor(runtime.db, userId);
+      const produced = await produce(runtime, content, history, context, userId, conversationId);
+      const assistantId = randomUUID();
+      const answered = stamp(runtime.now());
+      runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+        assistantId, conversationId, 'assistant', produced.reply.responseText, JSON.stringify(produced.reply), produced.draft.provider, produced.draft.model, idempotencyKey, answered,
+      );
+      if (produced.draft.status === 'succeeded' || produced.draft.status === 'failed') {
+        recordUsage(runtime.db, userId, conversationId, 'stylist_message', produced.draft, runtime.now());
+      }
+      const title = content.slice(0, 60);
+      runtime.db.prepare(`UPDATE ai_conversations SET last_activity_at = ?, title = CASE WHEN title = 'New styling session' THEN ? ELSE title END WHERE id = ?`).run(answered, title, conversationId);
+      return { id: assistantId, role: 'assistant', content: produced.reply.responseText, recommendation: produced.reply, provider: produced.draft.provider, model: produced.draft.model, createdAt: answered, duplicate: false };
+    } catch (error) {
+      runtime.db.prepare('DELETE FROM ai_messages WHERE id = ? AND conversation_id = ? AND role = ?').run(userMessageId, conversationId, 'user');
+      throw error;
     }
-    const title = content.slice(0, 60);
-    runtime.db.prepare(`UPDATE ai_conversations SET last_activity_at = ?, title = CASE WHEN title = 'New styling session' THEN ? ELSE title END WHERE id = ?`).run(answered, title, conversationId);
-    return { id: assistantId, role: 'assistant', content: produced.reply.responseText, recommendation: produced.reply, provider: produced.draft.provider, model: produced.draft.model, createdAt: answered, duplicate: false };
   };
   if (specialist === 'style' && isLive(runtime.config.provider)) return withLiveLock(deliver);
   return deliver();

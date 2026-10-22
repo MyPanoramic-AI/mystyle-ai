@@ -54,6 +54,15 @@ export async function csrf(page: Page): Promise<string> {
   return body.csrfToken;
 }
 
+export async function grantPrivatePhotoStorage(page: Page): Promise<void> {
+  const token = await csrf(page);
+  const response = await page.request.post('/api/privacy/consent', {
+    headers: { 'content-type': 'application/json', 'x-csrf-token': token },
+    data: { purpose: 'private_photo_storage', granted: true, captureMethod: 'settings_toggle' },
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
 export async function editProfileCard(page: Page, heading: string): Promise<void> {
   const card = page.locator('div').filter({
     has: page.getByRole('heading', { name: heading, exact: true }),

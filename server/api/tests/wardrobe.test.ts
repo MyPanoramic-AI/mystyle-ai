@@ -28,6 +28,12 @@ test('wardrobe items, outfits, and plans persist for the owner only', async () =
       body: JSON.stringify({ name: '', category: 'tops' }),
     });
     assert.equal(invalid.status, 400);
+    const consent = await fetch(`${api.base}/api/privacy/consent`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ purpose: 'private_photo_storage', granted: true, captureMethod: 'settings_toggle' }),
+    });
+    assert.equal(consent.status, 200);
     const photo = await fetch(`${api.base}/api/media`, {
       method: 'POST',
       headers: authHeaders(ada.cookie, ada.body.csrfToken),
@@ -110,7 +116,7 @@ test('wardrobe items, outfits, and plans persist for the owner only', async () =
       body: JSON.stringify({ title: 'Parisian', kind: 'inspiration', sourceKey: 'look-parisian-chic' }),
     });
     const firstSaved = await bodyOf<{ id: string }>(inspiration, 201);
-    const secondSaved = await bodyOf<{ id: string; duplicate: boolean }>(again, 201);
+    const secondSaved = await bodyOf<{ id: string; duplicate: boolean }>(again, 200);
     assert.equal(secondSaved.id, firstSaved.id);
     assert.equal(secondSaved.duplicate, true);
     const removedItem = await fetch(`${api.base}/api/wardrobe/${item.id}`, {

@@ -60,15 +60,20 @@ export const OutfitDetailView: React.FC<OutfitDetailViewProps> = ({
   };
 
   const handleShare = () => {
+    const payload = {
+      title: `${look.title} · MyStyle AI`,
+      text: `Check out this ${look.category} outfit inspiration on MyStyle AI.`,
+      url: window.location.href,
+    };
     if (navigator.share) {
-      navigator.share({
-        title: `${look.title} · MyStyle AI`,
-        text: `Check out this ${look.category} outfit inspiration on MyStyle AI.`,
-        url: window.location.href,
-      }).catch(() => {});
-    } else if (onToast) {
-      onToast('Look link copied to clipboard');
+      void navigator.share(payload).catch(() => {});
+      return;
     }
+    void navigator.clipboard.writeText(payload.url).then(() => {
+      if (onToast) onToast('Look link copied to clipboard');
+    }).catch(() => {
+      if (onToast) onToast('Sharing is not available in this browser.');
+    });
   };
 
   return (

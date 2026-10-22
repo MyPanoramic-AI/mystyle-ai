@@ -103,10 +103,16 @@ export function deleteOwnedMedia(db: Sql, mediaDir: string, userId: string, id: 
   if (isInsideMediaDir(mediaDir, full)) rmSync(full, { force: true });
 }
 
-export function cleanupExpiredMedia(db: Sql, mediaDir: string, now: number): number {
-  const rows = db.prepare(
-    `SELECT id, user_id AS userId, storage_key AS storageKey FROM media_assets WHERE deleted_at IS NULL AND retain_until IS NOT NULL AND retain_until <= ?`,
-  ).all(new Date(now).toISOString()) as { id: string; userId: string; storageKey: string }[];
+export function cleanupExpiredMedia(db: Sql, mediaDir: string, now: number, userId?: string): number {
+  const rows = (userId
+    ? db.prepare(
+        `SELECT id, user_id AS userId, storage_key AS storageKey FROM media_assets
+         WHERE user_id = ? AND deleted_at IS NULL AND retain_until IS NOT NULL AND retain_until <= ?`,
+      ).all(userId, new Date(now).toISOString())
+    : db.prepare(
+        `SELECT id, user_id AS userId, storage_key AS storageKey FROM media_assets
+         WHERE deleted_at IS NULL AND retain_until IS NOT NULL AND retain_until <= ?`,
+      ).all(new Date(now).toISOString())) as { id: string; userId: string; storageKey: string }[];
   for (const row of rows) {
     db.prepare('UPDATE media_assets SET deleted_at = ? WHERE id = ?').run(new Date(now).toISOString(), row.id);
     clearMediaReferences(db, row.userId, row.id);

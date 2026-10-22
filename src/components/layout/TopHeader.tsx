@@ -8,6 +8,7 @@ import { NavigationTab } from '../../types';
 import { Sparkles, User, Zap } from 'lucide-react';
 import { MembershipSubpageTab } from '../../types/membership';
 import { getCreditBalance } from '../../services/membershipService';
+import { accountApi } from '../../services/accountApi';
 
 interface TopHeaderProps {
   currentTab: NavigationTab;
@@ -15,6 +16,7 @@ interface TopHeaderProps {
   userAvatarName?: string;
   userAvatarPhoto?: string;
   onOpenMembership?: (tab?: MembershipSubpageTab) => void;
+  usesAccount?: boolean;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
@@ -23,14 +25,33 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   userAvatarName = 'Nandi',
   userAvatarPhoto,
   onOpenMembership,
+  usesAccount = false,
 }) => {
   const [credits, setCredits] = React.useState(getCreditBalance());
+  const [testCredits, setTestCredits] = React.useState<number | null>(null);
 
   React.useEffect(() => {
+    if (usesAccount) return undefined;
     const handleUpdate = () => setCredits(getCreditBalance());
     window.addEventListener('mystyle_credits_updated', handleUpdate);
     return () => window.removeEventListener('mystyle_credits_updated', handleUpdate);
-  }, []);
+  }, [usesAccount]);
+
+  React.useEffect(() => {
+    if (!usesAccount) {
+      setTestCredits(null);
+      return undefined;
+    }
+    let cancelled = false;
+    void accountApi.membershipCredits().then((state) => {
+      if (!cancelled) setTestCredits(state.balance);
+    }).catch(() => {
+      if (!cancelled) setTestCredits(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [usesAccount, currentTab]);
   return (
     <header className="sticky top-0 z-40 bg-[#F6F2EC]/90 backdrop-blur-md border-b border-[#242326]/8 transition-all">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-8">
@@ -115,7 +136,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/80 hover:bg-white text-[11px] font-semibold text-[#242326] border border-[#B49361]/30 hover:border-[#B49361] transition-all shadow-xs cursor-pointer active:scale-95"
           >
             <Sparkles className="w-3 h-3 text-[#866a40]" />
-            <span>{credits.remainingCredits} Credits</span>
+            <span>
+              {usesAccount
+                ? (testCredits === null ? 'Test credits' : `${testCredits} test credits`)
+                : `${credits.remainingCredits} Credits`}
+            </span>
           </button>
 
           {/* User profile avatar trigger */}

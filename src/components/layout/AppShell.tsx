@@ -16,6 +16,7 @@ interface AppShellProps {
   userAvatarName?: string;
   userAvatarPhoto?: string;
   onOpenMembership?: (tab?: MembershipSubpageTab) => void;
+  usesAccount?: boolean;
   children: React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   userAvatarName,
   userAvatarPhoto,
   onOpenMembership,
+  usesAccount = false,
   children,
 }) => {
   return (
@@ -36,6 +38,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         userAvatarName={userAvatarName}
         userAvatarPhoto={userAvatarPhoto}
         onOpenMembership={onOpenMembership}
+        usesAccount={usesAccount}
       />
 
       {/* Main Content Area - mobile optimized with responsive desktop breathing room */}

@@ -52,7 +52,7 @@ export function startDeletionRequest(db: Sql, userId: string, now: number) {
     throw new ApiError('deletion_in_progress', 'Account deletion is already running.', 409);
   }
   if (existing?.status === 'pending') {
-    return { requestId: existing.id, status: 'pending', explanation: DELETION_EXPLANATION };
+    return { requestId: existing.id, status: 'pending', explanation: DELETION_EXPLANATION, duplicate: true };
   }
   const id = randomUUID();
   const stamp = new Date(now).toISOString();

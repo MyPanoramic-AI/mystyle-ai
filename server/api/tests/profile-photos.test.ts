@@ -154,6 +154,7 @@ test('saved demonstration products persist per account without duplicates', asyn
       body: JSON.stringify({ retailerSource: 'mystyle_demo_catalogue', externalProductId: 'prod-cream-sculptural-blazer' }),
     });
     const duplicate = await again.json() as { id: string; duplicate?: boolean };
+    assert.equal(again.status, 200);
     assert.equal(duplicate.id, first.id);
     assert.equal(duplicate.duplicate, true);
     const listed = await fetch(`${api.base}/api/saved-products`, { headers: { cookie: ada.cookie } });

@@ -335,6 +335,7 @@ export function refundConsumed(db: Sql, input: { userId: string; operationId: st
     const stamp = new Date(now).toISOString();
     const balance = postedBalance(db, input.userId) + reservation.amount;
     post(db, input.userId, 'REFUND', reservation.amount, reservation.operationId, input.idempotencyKey, input.reason, balance, stamp);
+    restoreAllocation(db, input.userId, reservation.amount);
     audit(db, 'credit_refunded', null, reservation.operationId, { userId: input.userId, amount: reservation.amount }, stamp);
     const body = { balance, status: 'refunded', duplicate: false };
     writeIdempotency(db, input.userId, 'refund', input.idempotencyKey, body, now);
@@ -525,6 +526,21 @@ function reduceAllocation(db: Sql, userId: string, amount: number): void {
     const used = Math.min(row.remaining, left);
     db.prepare(`UPDATE allocation_periods SET remaining = remaining - ? WHERE id = ?`).run(used, row.id);
     left -= used;
+  }
+}
+
+function restoreAllocation(db: Sql, userId: string, amount: number): void {
+  let left = amount;
+  const rows = db.prepare(
+    `SELECT id, amount, remaining FROM allocation_periods WHERE user_id = ? ORDER BY created_at DESC`,
+  ).all(userId) as { id: string; amount: number; remaining: number }[];
+  for (const row of rows) {
+    if (left <= 0) break;
+    const room = Math.max(0, row.amount - row.remaining);
+    if (room <= 0) continue;
+    const restored = Math.min(room, left);
+    db.prepare(`UPDATE allocation_periods SET remaining = remaining + ? WHERE id = ?`).run(restored, row.id);
+    left -= restored;
   }
 }
 
