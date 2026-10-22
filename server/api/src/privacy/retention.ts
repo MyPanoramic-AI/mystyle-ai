@@ -93,7 +93,8 @@ export function runRetentionCleanup(
       if (name.includes('..') || name.includes('/') || name.includes('\\')) continue;
       if (known.has(name)) continue;
       const full = path.resolve(input.mediaDir, name);
-      if (!full.startsWith(path.resolve(input.mediaDir))) continue;
+      const root = path.resolve(input.mediaDir);
+      if (full !== root && !full.startsWith(root + path.sep)) continue;
       if (statSync(full).isFile()) {
         rmSync(full, { force: true });
         orphanedRemoved += 1;

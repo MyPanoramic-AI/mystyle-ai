@@ -22,6 +22,7 @@ import {
 interface AccountSettingsViewProps {
   settings: AccountSettings;
   onSaveSettings: (updated: AccountSettings) => void;
+  accountMode?: boolean;
 }
 
 const SA_CITIES = [
@@ -39,11 +40,13 @@ const SA_CITIES = [
 export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
   settings,
   onSaveSettings,
+  accountMode = false,
 }) => {
   const [formData, setFormData] = useState<AccountSettings>(settings);
   const [success, setSuccess] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordBlocked, setPasswordBlocked] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,14 +67,20 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
           Account Settings
         </h2>
         <p className="text-xs text-[#5C585E]">
-          Manage your personal contact details, South African regional location, authentication, and connected services.
+          {accountMode
+            ? 'These contact and security toggles are browser demonstration fields only. Your signed-in profile, password, and email are managed through the account API and password-reset flow.'
+            : 'Manage your personal contact details, South African regional location, authentication, and connected services. Values stay in this browser only.'}
         </p>
       </div>
 
       {success && (
         <div className="rounded-2xl bg-emerald-50 border border-emerald-300 p-4 text-xs font-medium text-emerald-800 flex items-center gap-2.5 animate-fadeIn shadow-xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Account preferences successfully updated and saved locally.</span>
+          <span>
+            {accountMode
+              ? 'Browser demonstration preferences updated on this device. Your signed-in account profile was not changed.'
+              : 'Account preferences successfully updated and saved locally.'}
+          </span>
         </div>
       )}
 
@@ -181,7 +190,11 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setShowPasswordModal(true)}
+                onClick={() => {
+                  setPasswordSuccess(false);
+                  setPasswordBlocked(accountMode);
+                  setShowPasswordModal(true);
+                }}
                 className="px-3 py-1.5 rounded-xl border border-[#242326]/15 text-xs font-semibold text-[#242326] hover:bg-white cursor-pointer"
               >
                 Change Password
@@ -294,12 +307,19 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
               Change Password
             </h3>
 
-            {passwordSuccess ? (
+            {passwordBlocked ? (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900" role="status">
+                Your signed-in account password cannot be changed from this demonstration form. Use Forgot password on the sign-in screen. No password was updated.
+              </div>
+            ) : passwordSuccess ? (
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800">
-                Password successfully updated in your simulated security profile.
+                Password updated in this browser demonstration profile only. No account password was changed.
               </div>
             ) : (
               <div className="space-y-3">
+                <p className="text-[11px] text-[#5C585E]">
+                  Demonstration only. This does not change a signed-in account password.
+                </p>
                 <div>
                   <label className="block text-xs font-semibold text-[#242326] mb-1">Current Password</label>
                   <input
@@ -325,18 +345,19 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
                 onClick={() => {
                   setShowPasswordModal(false);
                   setPasswordSuccess(false);
+                  setPasswordBlocked(false);
                 }}
                 className="px-4 py-2 text-xs font-medium text-[#5C585E] hover:text-[#242326] cursor-pointer"
               >
                 Close
               </button>
-              {!passwordSuccess && (
+              {!passwordSuccess && !passwordBlocked && (
                 <button
                   type="button"
                   onClick={() => setPasswordSuccess(true)}
                   className="px-4 py-2 text-xs font-semibold bg-[#242326] text-white rounded-xl hover:bg-[#38363a] cursor-pointer"
                 >
-                  Update Password
+                  Update Demonstration Password
                 </button>
               )}
             </div>

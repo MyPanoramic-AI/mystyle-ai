@@ -191,7 +191,6 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
   const handleSaveOutfit = (newOutfit: Omit<WardrobeOutfit, 'id' | 'dateCreated' | 'wearCount'>) => {
     if (accountStore) {
       setScreenError(null);
-      showToast('Saving your outfit.');
       void accountStore.saveOutfit(newOutfit).then(async (saved) => {
         await refreshAccount();
         setActiveTab('outfits');

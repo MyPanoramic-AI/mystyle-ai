@@ -21,11 +21,13 @@ import {
 interface NotificationPreferencesViewProps {
   settings: NotificationSettings;
   onSaveSettings: (updated: NotificationSettings) => void;
+  accountMode?: boolean;
 }
 
 export const NotificationPreferencesView: React.FC<NotificationPreferencesViewProps> = ({
   settings,
   onSaveSettings,
+  accountMode = false,
 }) => {
   const [formData, setFormData] = useState<NotificationSettings>(settings);
   const [success, setSuccess] = useState(false);
@@ -50,14 +52,20 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
           Notification Preferences
         </h2>
         <p className="text-xs text-[#5C585E]">
-          Receive intentional fashion alerts, morning weather outfit ideas, and credit replenishment updates without digital noise.
+          {accountMode
+            ? 'These toggles are stored in this browser only. They do not register push, email, or SMS delivery for your signed-in account.'
+            : 'Receive intentional fashion alerts, morning weather outfit ideas, and credit replenishment updates without digital noise. Preferences stay in this browser only.'}
         </p>
       </div>
 
       {success && (
         <div className="rounded-2xl bg-emerald-50 border border-emerald-300 p-4 text-xs font-medium text-emerald-800 flex items-center gap-2.5 animate-fadeIn shadow-xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Notification preferences updated.</span>
+          <span>
+            {accountMode
+              ? 'Browser demonstration notification preferences updated. No account delivery channels were changed.'
+              : 'Notification preferences updated in this browser.'}
+          </span>
         </div>
       )}
 

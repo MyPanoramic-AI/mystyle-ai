@@ -37,9 +37,9 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
 
   const handleToggleSave = () => {
     setIsSaved(!isSaved);
-    showToast(outfit.conceptOnly
-      ? (!isSaved ? 'Kept on this screen only. It is not saved to your account.' : 'Removed from this screen.')
-      : (!isSaved ? 'Outfit saved to your curated wardrobe' : 'Removed from saved wardrobe'));
+    showToast(!isSaved
+      ? 'Kept on this screen only. It was not saved to your wardrobe or account.'
+      : 'Removed from this screen.');
   };
 
   const displayedPieces = showAllPieces ? outfit.pieces : outfit.pieces.slice(0, 2);

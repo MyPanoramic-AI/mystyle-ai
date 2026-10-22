@@ -37,6 +37,19 @@ export function assertPurpose(purpose: unknown): string {
   return purpose;
 }
 
+function isInsideMediaDir(mediaDir: string, candidate: string): boolean {
+  const root = path.resolve(mediaDir);
+  const full = path.resolve(candidate);
+  return full === root || full.startsWith(root + path.sep);
+}
+
+function clearMediaReferences(db: Sql, userId: string, mediaId: string): void {
+  db.prepare('UPDATE wardrobe_items SET media_id = NULL WHERE media_id = ? AND user_id = ?').run(mediaId, userId);
+  db.prepare('UPDATE customer_profiles SET portrait_media_id = NULL WHERE user_id = ? AND portrait_media_id = ?').run(userId, mediaId);
+  db.prepare('UPDATE customer_profiles SET full_body_front_media_id = NULL WHERE user_id = ? AND full_body_front_media_id = ?').run(userId, mediaId);
+  db.prepare('UPDATE customer_profiles SET full_body_additional_media_id = NULL WHERE user_id = ? AND full_body_additional_media_id = ?').run(userId, mediaId);
+}
+
 export function saveMedia(options: {
   db: Sql;
   mediaDir: string;
@@ -55,7 +68,7 @@ export function saveMedia(options: {
   const storageKey = `${id}.img`;
   mkdirSync(options.mediaDir, { recursive: true });
   const full = path.join(options.mediaDir, storageKey);
-  if (!full.startsWith(path.resolve(options.mediaDir))) {
+  if (!isInsideMediaDir(options.mediaDir, full)) {
     throw new ApiError('invalid_path', 'The storage path was rejected.', 400);
   }
   writeFileSync(full, options.bytes);
@@ -75,7 +88,7 @@ export function readOwnedMedia(db: Sql, mediaDir: string, userId: string, id: st
     throw new ApiError('not_found', 'That photograph was not found.', 404);
   }
   const full = path.resolve(mediaDir, row.storageKey);
-  if (!full.startsWith(path.resolve(mediaDir))) throw new ApiError('not_found', 'That photograph was not found.', 404);
+  if (!isInsideMediaDir(mediaDir, full)) throw new ApiError('not_found', 'That photograph was not found.', 404);
   return { bytes: readFileSync(full), contentType: row.contentType };
 }
 
@@ -85,21 +98,20 @@ export function deleteOwnedMedia(db: Sql, mediaDir: string, userId: string, id: 
   ).get(id, userId) as { storageKey: string } | undefined;
   if (!row) throw new ApiError('not_found', 'That photograph was not found.', 404);
   db.prepare('UPDATE media_assets SET deleted_at = ? WHERE id = ?').run(new Date(now).toISOString(), id);
-  db.prepare('UPDATE wardrobe_items SET media_id = NULL WHERE media_id = ? AND user_id = ?').run(id, userId);
-  db.prepare('UPDATE customer_profiles SET portrait_media_id = NULL WHERE user_id = ? AND portrait_media_id = ?').run(userId, id);
-  db.prepare('UPDATE customer_profiles SET full_body_front_media_id = NULL WHERE user_id = ? AND full_body_front_media_id = ?').run(userId, id);
-  db.prepare('UPDATE customer_profiles SET full_body_additional_media_id = NULL WHERE user_id = ? AND full_body_additional_media_id = ?').run(userId, id);
+  clearMediaReferences(db, userId, id);
   const full = path.resolve(mediaDir, row.storageKey);
-  if (full.startsWith(path.resolve(mediaDir))) rmSync(full, { force: true });
+  if (isInsideMediaDir(mediaDir, full)) rmSync(full, { force: true });
 }
 
 export function cleanupExpiredMedia(db: Sql, mediaDir: string, now: number): number {
   const rows = db.prepare(
-    `SELECT id, storage_key AS storageKey FROM media_assets WHERE deleted_at IS NULL AND retain_until IS NOT NULL AND retain_until <= ?`,
-  ).all(new Date(now).toISOString()) as { id: string; storageKey: string }[];
+    `SELECT id, user_id AS userId, storage_key AS storageKey FROM media_assets WHERE deleted_at IS NULL AND retain_until IS NOT NULL AND retain_until <= ?`,
+  ).all(new Date(now).toISOString()) as { id: string; userId: string; storageKey: string }[];
   for (const row of rows) {
     db.prepare('UPDATE media_assets SET deleted_at = ? WHERE id = ?').run(new Date(now).toISOString(), row.id);
-    rmSync(path.resolve(mediaDir, row.storageKey), { force: true });
+    clearMediaReferences(db, row.userId, row.id);
+    const full = path.resolve(mediaDir, row.storageKey);
+    if (isInsideMediaDir(mediaDir, full)) rmSync(full, { force: true });
   }
   return rows.length;
 }

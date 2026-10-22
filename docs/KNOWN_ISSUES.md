@@ -54,7 +54,7 @@ These are not new defects from this run. They remain launch blockers and are lis
 - Live FASHN quality is untested. No photograph was sent.
 - There is no verified retailer feed. Shop copy identifies demonstration data.
 - Account recovery and email verification exist with **local capture only**; live email is pending.
-- Personal photograph onboarding is still not part of the private media save path.
+- Personal photograph onboarding slots are wired to private media with `private_photo_storage` consent (22 October 2026 / Prompt 16). Live external photo AI remains off.
 - POPIA certification, image licensing, subscription billing, and approved legal notices remain incomplete (technical export/deletion/consent exist).
 - Production HTTPS, cookie `Secure`, and backups are designed; Free Render persistence and live email remain blockers.
 
@@ -174,3 +174,22 @@ These are not new defects from this run. They remain launch blockers and are lis
 ### K4 — Browser coverage
 
 - The journeys listed as PASS on 21 October in `CUSTOMER_JOURNEY_TEST_MATRIX.md` were executed. These remain NOT RUN: going back to check an onboarding answer, a stylist session-expiry message, Simulate Fit while a photograph is active, clicking a membership Select button, and the browser request that links a real saved beauty look to another account's outfit. The last case is covered by the API beauty test. Keyboard order and touch-target size were not measured. Screenshots were not taken at 320, 390, 768, or 1024.
+
+## Master QA — 22 October 2026
+
+See `BUG_REGISTER.md`, `MASTER_QA_REPORT.md`, and `COMPLETE_FUNCTIONAL_TEST_MATRIX.md`.
+
+### Corrected
+
+- **MQ-001** (high): Stylist heart/save claimed a wardrobe write; now labelled screen-only.
+- **MQ-002** (high): Account Settings password change blocked in account mode; demo path labelled.
+- **MQ-003** (medium): Notification toggles labelled as browser-only in account mode.
+- **MQ-004** (medium): Premature wardrobe outfit “Saving…” success toast removed.
+- **MQ-005** (high): Expired media cleanup clears profile photograph slot references (+ regression test).
+- **MQ-006** (medium): Media path containment uses directory separator boundary.
+
+### Still open
+
+- K2 (partial restore), K3 (bundle/images), K4 residual NOT TESTED rows, K6 family budget wording.
+- **MQ-007** / **MQ-008**: Account Settings contact fields and Beauty bag remain demonstration surfaces (labelled).
+- Commercial blockers unchanged (live email/AI/retail/payments/legal/Free Render disk).

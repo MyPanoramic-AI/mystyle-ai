@@ -333,6 +333,7 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
           <AccountSettingsView
             settings={accountSettings}
             onSaveSettings={handleSaveAccount}
+            accountMode={usesAccount}
           />
         )}
 
@@ -347,6 +348,7 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
           <NotificationPreferencesView
             settings={notificationSettings}
             onSaveSettings={handleSaveNotifications}
+            accountMode={usesAccount}
           />
         )}
       </div>

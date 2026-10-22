@@ -39,7 +39,9 @@ export const TryOnPreviewModal: React.FC<TryOnPreviewModalProps> = ({
 
   const handleToggleSave = () => {
     setIsSaved(!isSaved);
-    showToast(!isSaved ? 'Look saved to your digital wardrobe!' : 'Removed from saved wardrobe');
+    showToast(!isSaved
+      ? 'Kept on this preview only. It was not saved to your wardrobe or account.'
+      : 'Removed from this preview.');
   };
 
   return (

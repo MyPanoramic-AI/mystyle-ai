@@ -105,6 +105,35 @@ test('profile photograph slots require storage consent and stay owner-only', asy
   }
 });
 
+test('expired media cleanup clears profile photograph slot references', async () => {
+  const api = await startApi({ retentionMs: -1 });
+  try {
+    const ada = await register(api.base, 'photo-expiry@example.com');
+    await grantStorage(api.base, ada.cookie, ada.body.csrfToken);
+    const uploaded = await fetch(`${api.base}/api/profile/photos/portrait`, {
+      method: 'PUT',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ imageBase64: jpeg }),
+    });
+    const first = await uploaded.json() as { mediaId: string };
+    assert.equal(uploaded.status, 201);
+    const before = await fetch(`${api.base}/api/profile/photos`, { headers: { cookie: ada.cookie } });
+    assert.equal((await before.json() as { photos: { portraitMediaId: string } }).photos.portraitMediaId, first.mediaId);
+    const cleaned = await fetch(`${api.base}/api/media/cleanup`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+    });
+    assert.equal(cleaned.status, 200);
+    assert.equal((await cleaned.json() as { removed: number }).removed >= 1, true);
+    const after = await fetch(`${api.base}/api/profile/photos`, { headers: { cookie: ada.cookie } });
+    assert.equal((await after.json() as { photos: { portraitMediaId: string | null } }).photos.portraitMediaId, null);
+    const gone = await fetch(`${api.base}/api/media/${first.mediaId}`, { headers: { cookie: ada.cookie } });
+    assert.equal(gone.status, 404);
+  } finally {
+    await api.close();
+  }
+});
+
 test('saved demonstration products persist per account without duplicates', async () => {
   const api = await startApi();
   try {
