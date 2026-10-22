@@ -627,6 +627,18 @@ export default function App({ account }: { account: ReadyAccount }) {
           onOpenMembership={handleOpenMembership}
           wardrobeCounts={wardrobeCounts}
           usesAccount={account.mode === 'account'}
+          storageConsentGranted={photoStorageConsent}
+          onGrantStorageConsent={async () => {
+            await accountApi.setPrivacyConsent({ purpose: 'private_photo_storage', granted: true, captureMethod: 'settings_toggle' });
+            setPhotoStorageConsent(true);
+          }}
+          onUploadPhotoSlot={async (slot, imageBase64) => {
+            const uploaded = await accountApi.uploadProfilePhotoSlot(slot, imageBase64);
+            return { mediaId: uploaded.mediaId };
+          }}
+          onDeletePhotoSlot={async (slot) => {
+            await accountApi.deleteProfilePhotoSlot(slot);
+          }}
         />
       )}
     </AppShell>

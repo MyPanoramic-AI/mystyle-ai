@@ -452,4 +452,17 @@ Not commercially launch-ready.
 
 READY FOR CONTROLLED STAGING. Not commercially launch-ready.
 
+## 2026-10-22 — Final QA follow-up (Manage Photos)
+
+**Status:** Complete locally. No push, no deploy, no paid services.
+
+- Wired My Profile → Manage Photos to existing three-slot private media APIs and `private_photo_storage` consent (`PrivatePhotoSlotsEditor`).
+- Fixed privacy e2e regression (media upload now requires storage consent first).
+- Added `e2e/manage-photos.spec.ts` (upload, replace, delete, refresh, login restore, isolation, export download).
+- Full regression: unique Node **109**, Playwright **28**.
+
+### Recommendation
+
+READY FOR CONTROLLED STAGING. Not commercially launch-ready.
+
 

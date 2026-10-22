@@ -18,10 +18,16 @@ test('account consent, export, and deletion stay owner-scoped', async ({ page })
     headers: { 'x-csrf-token': csrfToken, 'content-type': 'application/json' },
     data: { displayName: 'Privacy Adult', styles: ['classic'], sizes: { tops: 'M' }, budgetTier: 'flexible' },
   });
-  await page.request.post('/api/media', {
+  const storageConsent = await page.request.post('/api/privacy/consent', {
+    headers: { 'x-csrf-token': csrfToken, 'content-type': 'application/json' },
+    data: { purpose: 'private_photo_storage', granted: true, captureMethod: 'settings_toggle' },
+  });
+  expect(storageConsent.ok()).toBeTruthy();
+  const uploaded = await page.request.post('/api/media', {
     headers: { 'x-csrf-token': csrfToken, 'content-type': 'application/json' },
     data: { purpose: 'wardrobe', imageBase64: png.toString('base64') },
   });
+  expect(uploaded.ok()).toBeTruthy();
 
   const granted = await page.request.post('/api/privacy/consent', {
     headers: { 'x-csrf-token': csrfToken, 'content-type': 'application/json' },

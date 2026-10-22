@@ -170,11 +170,22 @@ Confirmed findings from [Security and auth audit](b58bbb67-425b-40bb-8d6d-13f4e1
 | Fix | Looks, saved-products, and pending deletion-start return **200** when duplicate. |
 | Status | Corrected |
 
+### Corrected — Final QA follow-up
+
+### MQ-018 — Profile Manage Photos had no upload path
+
+| Field | Detail |
+| --- | --- |
+| Severity | Medium |
+| Description | My Profile → Manage Photos showed thumbs and remove-only behaviour; no file picker and no account slot API. Copy claimed temporary browser memory even for signed-in accounts. |
+| Fix | `PrivatePhotoSlotsEditor` wired through Profile Manage Photos to existing `/api/profile/photos/*` + `private_photo_storage` consent. Three slots: upload, replace, view, delete. |
+| Evidence | `e2e/manage-photos.spec.ts` |
+| Status | Corrected |
+
 ### Still open from UI inventory
 
 | ID | Severity | Notes |
 | --- | --- | --- |
-| MQ-018 | Medium | Profile **Manage Photos** still has no add/upload control (onboarding Step 7 remains the upload path). |
 | Orphan home widgets | Low | Unmounted components (`FeatureGrid`, etc.) — dead code, not user-facing. |
 
 ## Totals this pass
@@ -185,4 +196,4 @@ Confirmed findings from [Security and auth audit](b58bbb67-425b-40bb-8d6d-13f4e1
 | Critical | 0 unresolved |
 | High corrected | MQ-001, 002, 005, 009, 011, 013, 014 |
 | Medium corrected | MQ-003, 004, 006, 010, 012, 015, 016 |
-| Remaining unresolved in product scope | K2, K3, K4 partial, K6, MQ-007, MQ-008, MQ-018, commercial blockers |
+| Remaining unresolved in product scope | K2, K3, K4 partial, K6, MQ-007, MQ-008, commercial blockers |

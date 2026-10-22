@@ -65,3 +65,10 @@ Not ready for commercial launch. Staging must keep paid providers off, use ficti
 ## Git safety
 
 Local commits only after documentation and re-verification. Nothing pushed. Nothing deployed.
+
+## Final QA follow-up (same day)
+
+- Security fixes from the Master QA audit (cleanup scope, consent, retention, refunds, stylist rollback, rate-limit IP) re-verified in API suites.
+- **MQ-018** closed: Profile Manage Photos uses private slots; Playwright `manage-photos.spec.ts` added.
+- Privacy e2e updated for consent-before-media-upload.
+- Counts after follow-up: unique Node **109**, browser **28**, all passing locally.

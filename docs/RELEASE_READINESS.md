@@ -112,3 +112,9 @@ Independent Master QA executed against tip `8bf6f3b` with local mocks only. High
 **Decision:** **READY FOR CONTROLLED STAGING** (fictional accounts, paid providers off, paid disk + secrets + approved push plan still required before any hosted staging cutover).
 
 **Not** ready for commercial launch. See `MASTER_QA_REPORT.md`, `BUG_REGISTER.md`, `FINAL_REGRESSION_REPORT.md`, `STAGING_RELEASE_CANDIDATE_CHECKLIST.md`.
+
+## Update, 22 October 2026 — Final QA follow-up
+
+Audit security fixes re-verified. Profile **Manage Photos** connected to private photograph slots (consent, upload/replace/delete, refresh/login restore, cross-account isolation, export path exercised in e2e). Unique Node **109**, Chrome e2e **28**. Tip after this work recorded in `CURSOR_PROGRESS.md`.
+
+**Staging blockers unchanged:** Free Render ephemeral disk, live email, live AI/FASHN, verified retailers, payments, POPIA/legal, image licensing.

@@ -15,7 +15,7 @@ Base tip: `8bf6f3b`. Fixes applied in working tree then committed locally after 
 | `npm run test:ai` | PASS — **16** tests |
 | `npm run test:shopping` | PASS — **15** tests |
 | `npm run test:tryon` | PASS — **16** tests |
-| `npm run test:e2e` | PASS — **27** browser tests (pre-fix and post-fix runs) |
+| `npm run test:e2e` | PASS — **28** browser tests after Manage Photos follow-up |
 
 ## Unique automated counts
 
@@ -29,10 +29,10 @@ Avoid double-counting overlapping scripts:
 | Shopping lab | 15 |
 | Try-on lab | 16 |
 | **Node total** | **109** |
-| Playwright e2e | **27** |
-| **Grand unique** | **136** |
+| Playwright e2e | **28** (includes `manage-photos.spec.ts`) |
+| **Grand unique** | **137** |
 
-Passed: **136**. Failed: **0**. Blocked: **0** (within local mock scope).  
+Passed: **137**. Failed: **0**. Blocked: **0** (within local mock scope).  
 Not executed: live provider suites, production DB, public Render scans, full manual keyboard audit.
 
 ## New regression coverage

@@ -33,6 +33,7 @@ import { getSavedBeautyLooks } from '../../services/beautyService';
 import { getMembership, getCreditBalance } from '../../services/membershipService';
 import { MembershipSubpageTab } from '../../types/membership';
 import { Crown, Coins, Shield, Bell, Settings } from 'lucide-react';
+import type { ProfilePhotoSlot } from '../../services/accountApi';
 
 interface ProfileDashboardProps {
   profile: UserProfile;
@@ -50,6 +51,10 @@ interface ProfileDashboardProps {
   onOpenMembership?: (tab?: MembershipSubpageTab) => void;
   wardrobeCounts?: { pieces: number; outfits: number } | null;
   usesAccount?: boolean;
+  storageConsentGranted?: boolean;
+  onGrantStorageConsent?: () => Promise<void>;
+  onUploadPhotoSlot?: (slot: ProfilePhotoSlot, imageBase64: string) => Promise<{ mediaId: string }>;
+  onDeletePhotoSlot?: (slot: ProfilePhotoSlot) => Promise<void>;
 }
 
 export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
@@ -68,6 +73,10 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   onOpenMembership,
   wardrobeCounts = null,
   usesAccount = false,
+  storageConsentGranted = false,
+  onGrantStorageConsent,
+  onUploadPhotoSlot,
+  onDeletePhotoSlot,
 }) => {
   const [activeEditSection, setActiveEditSection] = useState<EditableSection | null>(null);
 
@@ -470,11 +479,13 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveEditSection('photos')}
                 className="text-xs font-medium text-[#9C6A61] hover:text-[#794E46] flex items-center gap-1 cursor-pointer"
+                aria-label="Manage Photos"
               >
                 <Pencil className="w-3 h-3" />
-                <span>Manage</span>
+                <span>Manage Photos</span>
               </button>
             </div>
 
@@ -493,14 +504,23 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                   <Camera className="w-5 h-5 text-[#5C585E]" />
                 )}
               </div>
+              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
+                {photos.fullBodyAdditionalUrl ? (
+                  <img src={photos.fullBodyAdditionalUrl} alt="Additional angle" className="w-full h-full object-cover" />
+                ) : (
+                  <Camera className="w-5 h-5 text-[#5C585E]" />
+                )}
+              </div>
               <div className="text-xs text-[#5C585E] leading-snug">
                 <span>
-                  {photos.profilePhotoUrl || photos.fullBodyFrontUrl
-                    ? 'Photos active in temporary browser memory'
+                  {photos.profilePhotoUrl || photos.fullBodyFrontUrl || photos.fullBodyAdditionalUrl
+                    ? (usesAccount ? 'Private styling photographs on this account' : 'Photos active in temporary browser memory')
                     : 'No fitting photos selected yet'}
                 </span>
                 <span className="block text-[10px] text-[#9C6A61] mt-0.5">
-                  Stored locally for session only
+                  {usesAccount
+                    ? 'Stored privately for this account. Not sent to external AI from Profile.'
+                    : 'Stored locally for session only'}
                 </span>
               </div>
             </div>
@@ -834,6 +854,11 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
         onClose={() => setActiveEditSection(null)}
         onSaveProfile={onUpdateProfile}
         onUpdatePhotos={onUpdatePhotos}
+        usesAccount={usesAccount}
+        storageConsentGranted={storageConsentGranted}
+        onGrantStorageConsent={onGrantStorageConsent}
+        onUploadPhotoSlot={onUploadPhotoSlot}
+        onDeletePhotoSlot={onDeletePhotoSlot}
       />
     </div>
   );

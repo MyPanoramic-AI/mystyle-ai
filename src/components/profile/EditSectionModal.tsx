@@ -24,7 +24,8 @@ import {
   SIZE_OPTIONS,
   SOUTH_AFRICAN_RETAILERS,
 } from '../../data/mockData';
-import { Check, Upload, X, ShieldCheck } from 'lucide-react';
+import type { ProfilePhotoSlot } from '../../services/accountApi';
+import { PrivatePhotoSlotsEditor } from './PrivatePhotoSlotsEditor';
 
 export type EditableSection = 'personal' | 'sizes' | 'styles' | 'colours' | 'shopping' | 'photos';
 
@@ -36,6 +37,11 @@ interface EditSectionModalProps {
   onClose: () => void;
   onSaveProfile: (updated: UserProfile) => void | Promise<void>;
   onUpdatePhotos: (photos: TemporaryPhotos) => void;
+  usesAccount?: boolean;
+  storageConsentGranted?: boolean;
+  onGrantStorageConsent?: () => Promise<void>;
+  onUploadPhotoSlot?: (slot: ProfilePhotoSlot, imageBase64: string) => Promise<{ mediaId: string }>;
+  onDeletePhotoSlot?: (slot: ProfilePhotoSlot) => Promise<void>;
 }
 
 export const EditSectionModal: React.FC<EditSectionModalProps> = ({
@@ -46,6 +52,11 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
   onClose,
   onSaveProfile,
   onUpdatePhotos,
+  usesAccount = false,
+  storageConsentGranted = false,
+  onGrantStorageConsent,
+  onUploadPhotoSlot,
+  onDeletePhotoSlot,
 }) => {
   // Local state for whichever section is active
   const [personal, setPersonal] = useState<PersonalDetails>(profile.personal);
@@ -59,6 +70,10 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
   if (!section) return null;
 
   const handleSave = async () => {
+    if (section === 'photos') {
+      onClose();
+      return;
+    }
     let updated: UserProfile = { ...profile };
     if (section === 'personal') updated.personal = personal;
     if (section === 'sizes') updated.sizes = sizes;
@@ -429,59 +444,24 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
 
         {/* SECTION 6: PHOTOS */}
         {section === 'photos' && (
-          <div className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-[#E5CDBE]/20 border border-[#242326]/10 flex items-start gap-2.5">
-              <ShieldCheck className="w-4 h-4 text-[#9C6A61] shrink-0 mt-0.5" />
-              <p className="text-xs text-[#242326]">
-                Photos uploaded in this prototype are preserved only in temporary browser memory. When refreshed, new photos can be selected.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-white border border-[#242326]/10 text-center">
-                <span className="text-xs font-semibold block mb-2">Profile Photo</span>
-                {photos.profilePhotoUrl ? (
-                  <div className="relative aspect-square rounded-lg overflow-hidden mb-2">
-                    <img src={photos.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => onUpdatePhotos({ ...photos, profilePhotoUrl: undefined })}
-                      className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-xs text-[#5C585E] block py-6">No photo selected</span>
-                )}
-              </div>
-
-              <div className="p-3 rounded-xl bg-white border border-[#242326]/10 text-center">
-                <span className="text-xs font-semibold block mb-2">Front Full-Body</span>
-                {photos.fullBodyFrontUrl ? (
-                  <div className="relative aspect-square rounded-lg overflow-hidden mb-2">
-                    <img src={photos.fullBodyFrontUrl} alt="Front body" className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => onUpdatePhotos({ ...photos, fullBodyFrontUrl: undefined })}
-                      className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <span className="text-xs text-[#5C585E] block py-6">No photo selected</span>
-                )}
-              </div>
-            </div>
-          </div>
+          <PrivatePhotoSlotsEditor
+            photos={photos}
+            onUpdatePhotos={onUpdatePhotos}
+            usesAccount={usesAccount}
+            storageConsentGranted={storageConsentGranted}
+            onGrantStorageConsent={onGrantStorageConsent}
+            onUploadSlot={onUploadPhotoSlot}
+            onDeleteSlot={onDeletePhotoSlot}
+          />
         )}
 
         {/* Footer Actions */}
         <div className="pt-4 border-t border-[#242326]/8 flex items-center justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Cancel
+            {section === 'photos' ? 'Close' : 'Cancel'}
           </Button>
           <Button variant="primary" size="sm" onClick={() => { void handleSave(); }} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Changes'}
+            {section === 'photos' ? 'Done' : saving ? 'Saving…' : 'Save Changes'}
           </Button>
           {saveError ? <p className="text-xs text-[#9C6A61]" role="alert">{saveError}</p> : null}
         </div>
