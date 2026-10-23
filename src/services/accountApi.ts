@@ -25,7 +25,7 @@ export interface SessionResponse extends AuthResult {
 
 export interface AccountApi {
   health(): Promise<{ ok: boolean; status?: string; database?: string }>;
-  ready(): Promise<{ ok: boolean; status: string; database: string }>;
+  ready(): Promise<{ ok: boolean; status: string; database: string; persistence?: 'persistent' | 'ephemeral' | 'local' }>;
   session(): Promise<SessionResponse>;
   register(email: string, password: string): Promise<AuthResult>;
   login(email: string, password: string): Promise<AuthResult>;

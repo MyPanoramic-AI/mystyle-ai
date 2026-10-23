@@ -163,7 +163,12 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/ready', route((_req, res) => {
     try {
       pingDatabase(deps.db);
-      res.json({ ok: true, status: 'ready', database: 'up' });
+      res.json({
+        ok: true,
+        status: 'ready',
+        database: 'up',
+        persistence: deps.config.dataPersistence,
+      });
     } catch {
       res.status(503).json({ ok: false, status: 'not_ready', database: 'unavailable' });
     }

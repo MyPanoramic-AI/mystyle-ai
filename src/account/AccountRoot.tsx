@@ -80,6 +80,7 @@ export function AccountRoot() {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [securityNotice, setSecurityNotice] = useState<string | null>(null);
+  const [persistence, setPersistence] = useState<'persistent' | 'ephemeral' | 'local' | null>(null);
   const [authBoot, setAuthBoot] = useState<{ panel: 'register' | 'login' | 'forgot' | 'reset' | 'verify'; token?: string; message?: string }>({ panel: 'register' });
   const generation = useRef(0);
 
@@ -121,6 +122,9 @@ export function AccountRoot() {
     try {
       const ready = await accountApi.ready();
       if (!ready.ok || ready.database !== 'up') throw new AccountApiError('unavailable', 'The account service is unavailable.', 503);
+      if (ready.persistence === 'persistent' || ready.persistence === 'ephemeral' || ready.persistence === 'local') {
+        setPersistence(ready.persistence);
+      }
 
       const params = new URLSearchParams(window.location.search);
       const action = params.get('action');
@@ -407,6 +411,15 @@ export function AccountRoot() {
   }
   return (
     <>
+      {mode === 'account' && persistence === 'ephemeral' ? (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-sm text-amber-950">
+          <div className="max-w-5xl mx-auto">
+            <p>
+              This host has no persistent disk. Account logins, profile changes, and private photographs are wiped when the service restarts or spins down. Use a paid Render plan with a disk at <span className="font-medium">/var/data</span> (see <span className="font-medium">render.yaml</span>) for durable storage.
+            </p>
+          </div>
+        </div>
+      ) : null}
       {mode === 'account' && !emailVerified ? (
         <div className="bg-[#F6F2EC] border-b border-[#242326]/10 px-4 py-3 text-sm text-[#5C585E]">
           <div className="max-w-5xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

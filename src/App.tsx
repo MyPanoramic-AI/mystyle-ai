@@ -103,29 +103,47 @@ export default function App({ account }: { account: ReadyAccount }) {
   }, [account.profile]);
 
   useEffect(() => {
-    if (account.mode !== 'account' || isOnboardingActive) {
-      if (account.mode !== 'account') {
-        setPhotos({});
-        setPhotoStorageConsent(false);
-      }
+    if (account.mode !== 'account') {
+      setPhotos({});
+      setPhotoStorageConsent(false);
       return;
     }
+    if (isOnboardingActive) return;
+
     let cancelled = false;
-    void Promise.all([accountApi.getProfile(), accountApi.privacyConsent()]).then(([raw, consent]) => {
+
+    void accountApi.profilePhotos().then((response) => {
       if (cancelled) return;
-      const slots = (raw as { photos?: import('./services/accountApi').ProfilePhotoSlots }).photos;
-      setPhotos(slots ? photosFromSlots(slots) : {});
+      const next = photosFromSlots(response.photos);
+      setPhotos((previous) => {
+        const nextHas = Boolean(next.portraitMediaId || next.fullBodyFrontMediaId || next.fullBodyAdditionalMediaId);
+        const previousHas = Boolean(
+          previous.portraitMediaId
+          || previous.fullBodyFrontMediaId
+          || previous.fullBodyAdditionalMediaId
+          || previous.profilePhotoUrl
+          || previous.fullBodyFrontUrl
+          || previous.fullBodyAdditionalUrl,
+        );
+        // Do not replace in-memory photographs with an empty account payload.
+        if (!nextHas && previousHas) return previous;
+        return next;
+      });
+    }).catch(() => {
+      // Keep any photos already shown (for example right after onboarding) if reload fails.
+    });
+
+    void accountApi.privacyConsent().then((consent) => {
+      if (cancelled) return;
       setPhotoStorageConsent(consent.current.find((row) => row.purpose === 'private_photo_storage')?.granted === true);
     }).catch(() => {
-      if (!cancelled) {
-        setPhotos({});
-        setPhotoStorageConsent(false);
-      }
+      // Consent failure must not wipe loaded photographs.
     });
+
     return () => {
       cancelled = true;
     };
-  }, [account.mode, account.email, isOnboardingActive]);
+  }, [account.mode, account.email, isOnboardingActive, currentTab]);
 
   useEffect(() => {
     if (!account.wardrobe) {
@@ -405,6 +423,12 @@ export default function App({ account }: { account: ReadyAccount }) {
     const saved = await account.saveProfile({ ...completedProfile, isOnboardingCompleted: true, onboardingStatus: 'completed' });
     setProfile(saved);
     setPhotos(completedPhotos);
+    try {
+      const slots = await accountApi.profilePhotos();
+      setPhotos(photosFromSlots(slots.photos));
+    } catch {
+      // Keep onboarding photographs if the slot reload fails.
+    }
     setSaveMessage('Your style profile is saved.');
     setIsOnboardingActive(false);
     setActiveSubpage(null);
@@ -592,6 +616,7 @@ export default function App({ account }: { account: ReadyAccount }) {
           preloadedGarment={tryOnPreloadedGarment}
           familyMemberName={tryOnFamilyMemberName}
           photos={photos}
+          usesAccount={account.mode === 'account'}
           onClearGarment={() => {
             setTryOnPreloadedGarment(null);
             setTryOnFamilyMemberName(null);

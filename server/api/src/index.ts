@@ -25,8 +25,20 @@ logEvent('api_starting', {
   secureCookie: config.secureCookie,
   trustProxy: config.trustProxy,
   serveStatic: Boolean(config.staticDir),
+  dataPersistence: config.dataPersistence,
   ...summarizeEnvironment(config.appEnv),
 });
+
+if (config.dataPersistence === 'ephemeral') {
+  logEvent(
+    'persistence_ephemeral',
+    {
+      message:
+        'Account SQLite and private media are on an ephemeral filesystem. Logins and uploads will be wiped on Render spin-down, restart, or redeploy until a paid disk is mounted at /var/data with API_DATA_DIR=/var/data.',
+    },
+    'warn',
+  );
+}
 
 let db;
 try {

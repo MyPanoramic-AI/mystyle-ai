@@ -1,10 +1,30 @@
+# MyStyle AI — Render Blueprint
+#
+# Persistence: Free web services cannot attach disks. Account logins, profiles,
+# and private photos live in SQLite under API_DATA_DIR and are wiped on Free
+# spin-down unless a paid plan + disk is used. This Blueprint uses starter + a
+# 1 GB disk at /var/data. Syncing it will leave Free and incur paid usage.
+# Apply only when you intend to keep customer data across restarts.
+
 services:
   - type: web
     name: mystyle-ai
     runtime: node
-    plan: free
+    plan: starter
     buildCommand: npm install && npm run build
     startCommand: npm start
+    disk:
+      name: mystyle-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 24.4.0
+      - key: APP_ENV
+        value: production
+      - key: API_DATA_DIR
+        value: /var/data
+      - key: API_ALLOWED_ORIGINS
+        value: https://mystyle-ai.onrender.com
+      - key: API_ADMIN_TOKEN
+        generateValue: true

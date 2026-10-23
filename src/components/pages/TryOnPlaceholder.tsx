@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationTab, TemporaryPhotos } from '../../types';
 import { FashionLook } from '../../types/discover';
 import { PreloadedGarment } from '../../types/shop';
@@ -15,7 +15,6 @@ import {
   ArrowLeft,
   Layers,
   ShieldCheck,
-  Shirt,
   Sparkles,
   X,
   User,
@@ -27,6 +26,7 @@ interface TryOnPlaceholderProps {
   preloadedGarment?: PreloadedGarment | null;
   familyMemberName?: string | null;
   photos?: TemporaryPhotos;
+  usesAccount?: boolean;
   onClearGarment?: () => void;
   onClearOutfit?: () => void;
 }
@@ -37,17 +37,31 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   preloadedGarment,
   familyMemberName,
   photos,
+  usesAccount = false,
   onClearGarment,
   onClearOutfit,
 }) => {
-  const [activePhoto, setActivePhoto] = useState<string | undefined>(
-    photos?.fullBodyFrontUrl || photos?.profilePhotoUrl
+  const accountPhoto = photos?.fullBodyFrontUrl || photos?.profilePhotoUrl || photos?.fullBodyAdditionalUrl;
+  const [activePhoto, setActivePhoto] = useState<string | undefined>(accountPhoto);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActivePhoto(accountPhoto);
+  }, [accountPhoto]);
+
+  const showStatus = (message: string) => {
+    setStatusMessage(message);
+  };
+
+  const hasAccountMediaIds = Boolean(
+    photos?.portraitMediaId || photos?.fullBodyFrontMediaId || photos?.fullBodyAdditionalMediaId,
   );
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 text-left">
       <div className="flex items-center justify-between">
         <button
+          type="button"
           onClick={() => onNavigate('home')}
           className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer"
         >
@@ -75,7 +89,15 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           </div>
         </div>
 
-        {/* 1. Preloaded Garment from Shop */}
+        {statusMessage && (
+          <div
+            role="status"
+            className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 leading-relaxed"
+          >
+            {statusMessage}
+          </div>
+        )}
+
         {preloadedGarment && (
           <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-[#B49361]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in">
             <div className="flex items-center gap-3">
@@ -108,6 +130,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               {onClearGarment && (
                 <button
+                  type="button"
                   onClick={onClearGarment}
                   className="p-1.5 rounded-full text-[#5C585E] hover:text-[#242326] hover:bg-white transition-colors cursor-pointer"
                   title="Remove garment"
@@ -122,7 +145,6 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           </div>
         )}
 
-        {/* 2. Preloaded Outfit from Discover */}
         {preloadedOutfit && !preloadedGarment && (
           <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#9C6A61]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in">
             <div className="flex items-center gap-3">
@@ -147,6 +169,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
             </div>
             {onClearOutfit && (
               <button
+                type="button"
                 onClick={onClearOutfit}
                 className="p-1.5 rounded-full text-[#5C585E] hover:text-[#242326] cursor-pointer"
               >
@@ -156,9 +179,8 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           </div>
         )}
 
-        {/* Customer Temporary Photograph Status */}
         {activePhoto ? (
-          <div className="p-4 rounded-2xl bg-white border border-[#242326]/10 flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-white border border-[#242326]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#242326]/10 bg-[#FAF7F2]">
                 <img
@@ -171,21 +193,24 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                 <div className="flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-[#9C6A61]" />
                   <span className="text-xs font-semibold text-[#242326]">
-                    Full-Length Fitting Photo Active
+                    Fitting photograph ready
                   </span>
                 </div>
                 <p className="text-[11px] text-[#5C585E]">
-                  Held securely in temporary session memory
+                  {hasAccountMediaIds
+                    ? 'Using a private photograph from your account'
+                    : 'Preview photograph for this session only'}
                 </p>
               </div>
             </div>
 
             <Button
+              type="button"
               variant="secondary"
               size="sm"
               onClick={() =>
-                alert(
-                  'Real try-on generation is not active. This button does not create or send a photograph.'
+                showStatus(
+                  'Simulate Fit acknowledged. Real virtual try-on generation is not active yet, so no new image was created and nothing was sent to FASHN or any external AI. Your account photograph was not changed.',
                 )
               }
             >
@@ -193,48 +218,62 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
             </Button>
           </div>
         ) : (
-          /* Mock Fitting Stage Area */
           <div className="border-2 border-dashed border-[#242326]/15 rounded-3xl p-8 sm:p-12 text-center bg-[#F6F2EC]/40 flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-white shadow-xs border border-[#242326]/8 flex items-center justify-center text-[#9C6A61] mb-4">
               <Upload className="w-6 h-6" />
             </div>
             <h3 className="font-serif text-lg font-semibold text-[#242326]">
-              Upload a Full-Length Photo
+              {usesAccount ? 'No fitting photograph loaded yet' : 'Upload a Full-Length Photo'}
             </h3>
             <p className="text-xs sm:text-sm text-[#5C585E] max-w-md mt-1.5 mb-6">
-              Real virtual try-on generation is not active. Choosing a photo here does not send it to a fitting service.
+              {usesAccount
+                ? 'Photographs you saved during sign-up or in Manage Photos are used here. Open My Profile to confirm they are still on this account, then return to Try On.'
+                : 'Real virtual try-on generation is not active. Add private styling photographs from My Profile → Manage Photos, or use the controls below for a local preview only.'}
             </p>
 
             <div className="flex flex-wrap gap-3 justify-center">
               <Button
+                type="button"
                 variant="primary"
                 size="md"
-                icon={<Camera className="w-4 h-4" />}
-                onClick={() =>
-                  alert(
-                    'Camera upload will be activated with on-device privacy protections in Phase 2.'
-                  )
-                }
+                onClick={() => onNavigate('profile')}
               >
-                Take Photo
+                Open My Profile
               </Button>
-              <Button
-                variant="secondary"
-                size="md"
-                icon={<Upload className="w-4 h-4" />}
-                onClick={() =>
-                  alert(
-                    'Gallery selection will be activated with on-device privacy protections in Phase 2.'
-                  )
-                }
-              >
-                Choose from Gallery
-              </Button>
+              {!usesAccount && (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    icon={<Camera className="w-4 h-4" />}
+                    onClick={() =>
+                      showStatus(
+                        'Camera capture is not active in this preview. Use My Profile → Manage Photos to save a private photograph to your account, or wait until live try-on is approved.',
+                      )
+                    }
+                  >
+                    Take Photo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    icon={<Upload className="w-4 h-4" />}
+                    onClick={() =>
+                      showStatus(
+                        'Gallery selection is not active in this preview. Use My Profile → Manage Photos to upload a private photograph to your account.',
+                      )
+                    }
+                  >
+                    Choose from Gallery
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}
 
-        {/* Feature Highlights Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div className="p-4 rounded-2xl bg-[#F6F2EC] border border-[#242326]/8">
             <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-[#242326]">

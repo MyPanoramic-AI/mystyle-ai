@@ -16,6 +16,7 @@ import {
   verifyBackup,
 } from '../src/ops/backup.js';
 import { assertProductionSafeConfig, resolveAppEnvironment } from '../src/ops/environment.js';
+import { classifyDataPersistence } from '../src/ops/persistence.js';
 import { register, startApi } from './harness.js';
 
 const PROD_ADMIN = 'infrastructure-admin-token-ok';
@@ -39,6 +40,26 @@ test('environment profiles resolve development, test, staging, and production', 
   assert.equal(resolveAppEnvironment({ APP_ENV: 'staging' }), 'staging');
   assert.equal(resolveAppEnvironment({ APP_ENV: 'production' }), 'production');
   assert.equal(resolveAppEnvironment({ RENDER: 'true' }), 'production');
+});
+
+test('data persistence classifies Render disk vs ephemeral vs local', () => {
+  assert.equal(classifyDataPersistence({ dataDir: '/var/data', apiDataDirEnv: '/var/data', onRender: true }), 'persistent');
+  assert.equal(classifyDataPersistence({ dataDir: '/var/data/media', apiDataDirEnv: '/var/data', onRender: true }), 'persistent');
+  assert.equal(classifyDataPersistence({ dataDir: '/opt/render/project/src/server/api/private', onRender: true }), 'ephemeral');
+  assert.equal(classifyDataPersistence({ dataDir: 'C:\\Users\\x\\server\\api\\private', onRender: false }), 'local');
+});
+
+test('ready reports persistence mode', async () => {
+  const api = await startApi();
+  try {
+    const response = await fetch(`${api.base}/api/ready`);
+    assert.equal(response.status, 200);
+    const body = await response.json() as { ok: boolean; persistence: string };
+    assert.equal(body.ok, true);
+    assert.equal(body.persistence, 'local');
+  } finally {
+    await api.close();
+  }
 });
 
 test('invalid production configuration fails safely without printing secrets', () => {

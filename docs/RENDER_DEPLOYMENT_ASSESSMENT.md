@@ -1,19 +1,19 @@
 # Render deployment assessment
 
-Date: 21 October 2026. Based on the repository `render.yaml`, local Git state, and [Render documentation](https://render.com/docs/disks) / [free plan limits](https://render.com/docs/free). **No Render settings were changed. No disk was purchased. No deploy was triggered.**
+Updated: 22 October 2026. Based on the repository `render.yaml`, local Git state, and [Render documentation](https://render.com/docs/disks) / [free plan limits](https://render.com/docs/free). **No live Render settings were changed from this workspace. No disk was purchased via Dashboard/MCP. No deploy was triggered.**
 
-## What is configured today
+## What is configured in the repo today
 
 | Item | Evidence |
 | --- | --- |
 | Service name | `mystyle-ai` in `render.yaml` |
-| Plan | `free` |
+| Plan (Blueprint) | `starter` (required for a disk; Free cannot attach disks) |
 | Runtime | Node, `NODE_VERSION=24.4.0` |
 | Build / start | `npm install && npm run build` / `npm start` |
-| Persistent disk | **Not declared** in `render.yaml` |
-| Auto-deploy | Documented as GitHub-connected; local `master` was ahead of origin at assessment time |
+| Persistent disk (Blueprint) | `mystyle-data` at `/var/data`, `sizeGB: 1`, with `API_DATA_DIR=/var/data` |
+| Auto-deploy | Documented as GitHub-connected; Blueprint changes apply only after sync/deploy |
 
-The public URL `https://mystyle-ai.onrender.com` therefore reflects whatever commit GitHub last deployed — **not** the newer local branch that includes the Express API, SQLite domains, and privacy controls.
+The public URL `https://mystyle-ai.onrender.com` still reflects whatever commit GitHub last deployed. Until this Blueprint is synced and the service leaves Free, hosted logins remain on an ephemeral filesystem.
 
 ## Filesystem persistence (blocker)
 
@@ -36,13 +36,14 @@ From [Persistent Disks](https://render.com/docs/disks):
 - Attaching a disk **disables zero-downtime deploys**; Render stops the old instance before starting the new one (brief downtime).
 - Encrypted at rest; automatic daily snapshots retained at least seven days (platform feature — not a substitute for application-level backup testing).
 
-### Recommendation (not implemented)
+### Recommendation (Blueprint prepared in repo)
 
-1. **Production blocker on Free plan:** do not store customer SQLite or private media on the current Free service filesystem.
-2. Before any production cutover of this architecture: move the web service to a **paid plan**, attach a disk (start small, e.g. 1–10 GB), mount at an absolute path such as `/var/data`, and set `API_DATA_DIR=/var/data`.
+1. **Production blocker on Free plan:** do not store customer SQLite or private media on a Free service filesystem.
+2. The repo `render.yaml` now declares **starter + 1 GB disk** at `/var/data` with `API_DATA_DIR=/var/data`. Syncing it upgrades off Free and starts paid usage.
 3. Keep a **single instance**.
 4. Run operator SQLite backups (see `DATABASE_BACKUP_AND_RESTORE.md`) and copy archives **off the service**.
 5. Treat Render disk snapshots as a secondary recovery aid, not the only backup.
+6. `/api/ready` reports `persistence: persistent | ephemeral | local`. Ephemeral hosts show an in-app warning banner.
 
 Estimated platform needs (order-of-magnitude, verify current Render pricing before purchase):
 
@@ -66,6 +67,7 @@ Do not point a staging service at the production disk or production database fil
 
 | Question | Answer |
 | --- | --- |
-| Can the current Free Render service safely host SQLite + private photos? | **No — production blocker** |
+| Can a Free Render service safely host SQLite + private photos? | **No — production blocker** |
 | Is a single paid web service + disk a viable first topology? | **Yes, with single-instance and downtime caveats** |
-| Was anything purchased or reconfigured? | **No** |
+| Is that topology declared in `render.yaml`? | **Yes (starter + `/var/data` disk)** |
+| Was a live disk purchased or deploy triggered from this pass? | **No** |

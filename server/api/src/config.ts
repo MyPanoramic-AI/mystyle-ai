@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Sql } from './db.js';
 import { assertProductionSafeConfig, resolveAppEnvironment, type AppEnvironment } from './ops/environment.js';
+import { classifyDataPersistence, type DataPersistence } from './ops/persistence.js';
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -18,6 +19,7 @@ export interface ApiConfig {
   authRateWindowMs: number;
   adminToken: string | null;
   dataDir: string;
+  dataPersistence: DataPersistence;
   databasePath: string;
   mediaDir: string;
   exportsDir: string;
@@ -71,6 +73,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   // Prefer an explicit absolute data directory (local QA isolation or a Render disk mount).
   // When unset, fall back to server/api/private under the application tree.
   const dataDir = requestedDataDir ? path.resolve(requestedDataDir) : path.join(apiRoot, 'private');
+  const dataPersistence = classifyDataPersistence({
+    dataDir,
+    apiDataDirEnv: requestedDataDir || null,
+    onRender,
+  });
   const publicOrigin = (env.API_PUBLIC_ORIGIN ?? env.RENDER_EXTERNAL_URL)?.replace(/\/$/, '') || null;
   const allowedOrigins = configuredOrigins(env.API_ALLOWED_ORIGINS);
   if (publicOrigin && !allowedOrigins.includes(publicOrigin)) allowedOrigins.push(publicOrigin);
@@ -121,6 +128,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     authRateWindowMs: intEnv(env, 'API_AUTH_RATE_WINDOW_MS', 15 * 60 * 1000),
     adminToken: admin || null,
     dataDir,
+    dataPersistence,
     databasePath: path.join(dataDir, 'mystyle.sqlite'),
     mediaDir: path.join(dataDir, 'media'),
     exportsDir: path.join(dataDir, 'exports'),
