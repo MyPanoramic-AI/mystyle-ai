@@ -758,3 +758,41 @@ test('catalogue garmentImageUrl is loaded from static assets without client base
     await api.close();
   }
 });
+
+test('allowlisted remote garmentImageUrl is fetched server-side', async () => {
+  const pngBytes = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const remoteUrl = 'https://images.unsplash.com/photo-demo-garment';
+  const tryOnFetch: typeof fetch = async (input, init) => {
+    const url = String(input);
+    if (url === remoteUrl) {
+      return new Response(pngBytes, { status: 200, headers: { 'content-type': 'image/png' } });
+    }
+    return fetch(input, init);
+  };
+  const api = await startApi({}, { tryOnFetch });
+  try {
+    const ada = await register(api.base, 'tryon-remote-url@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageUrl: remoteUrl,
+        category: 'tops',
+        providerId: 'mock',
+        idempotencyKey: 'remote-url-001',
+      }),
+    });
+    const createdText = await created.text();
+    assert.equal(created.status, 201, createdText);
+    const job = JSON.parse(createdText) as { id: string };
+    const done = await pollJob(api.base, ada.cookie, job.id);
+    assert.equal(done.status, 'succeeded');
+  } finally {
+    await api.close();
+  }
+});

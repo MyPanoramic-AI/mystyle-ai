@@ -94,23 +94,34 @@ function mediaIdFromUrl(url: string): string | null {
   }
 }
 
-function sameOriginCataloguePath(url: string): string | null {
+/** Prefer server-side garment loading — browser fetch hits CORS on Unsplash and some CDNs. */
+function garmentUrlForServer(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return null;
   try {
-    const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://local.invalid');
-    if (typeof window !== 'undefined' && parsed.origin !== window.location.origin) return null;
-    if (!parsed.pathname.startsWith('/assets/') && !parsed.pathname.startsWith('/images/')) return null;
-    return `${parsed.pathname}${parsed.search}`;
+    const parsed = new URL(trimmed, typeof window !== 'undefined' ? window.location.origin : 'https://local.invalid');
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    // Same-origin catalogue assets: send path only so the API can read dist/assets.
+    if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+      if (parsed.pathname.startsWith('/assets/') || parsed.pathname.startsWith('/images/')) {
+        return `${parsed.pathname}${parsed.search}`;
+      }
+    }
+    // Absolute remote (e.g. Unsplash wardrobe demos) — server allowlist fetches these.
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith('/')) return trimmed;
+    return null;
   } catch {
     return null;
   }
 }
 
-async function urlToBase64(url: string): Promise<string> {
+async function blobOrDataUrlToBase64(url: string): Promise<string> {
   let response: Response;
   try {
-    response = await fetch(url, { credentials: 'include', mode: 'cors' });
+    response = await fetch(url);
   } catch {
-    throw new Error('The garment preview could not be loaded. Check that the image is reachable from this browser.');
+    throw new Error('The garment preview could not be loaded.');
   }
   if (!response.ok) throw new Error('The garment preview could not be loaded.');
   const blob = await response.blob();
@@ -339,9 +350,12 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       const imageUrl = preloadedGarment.imageUrl;
       const mediaId = mediaIdFromUrl(imageUrl);
       if (mediaId) return { garmentMediaId: mediaId };
-      const cataloguePath = sameOriginCataloguePath(imageUrl);
-      if (cataloguePath) return { garmentImageUrl: cataloguePath };
-      return { garmentImageBase64: await urlToBase64(imageUrl) };
+      const forServer = garmentUrlForServer(imageUrl);
+      if (forServer) return { garmentImageUrl: forServer };
+      if (imageUrl.startsWith('blob:') || imageUrl.startsWith('data:')) {
+        return { garmentImageBase64: await blobOrDataUrlToBase64(imageUrl) };
+      }
+      throw new Error('That garment image cannot be used for try-on. Choose a Shop listing, wardrobe photo, or upload.');
     }
     if (garmentMode === 'upload' && garmentFile) {
       return { garmentImageBase64: await fileToBase64(garmentFile) };

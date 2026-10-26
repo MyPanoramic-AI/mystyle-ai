@@ -647,9 +647,9 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/tryon/garments', route((req, res) => {
     res.json(listTryOnGarments(deps.db, requireUser(req).userId));
   }));
-  app.post('/api/tryon/prepare', route((req, res) => {
+  app.post('/api/tryon/prepare', route(async (req, res) => {
     const session = requireUser(req);
-    res.json(prepareTryOnJob({
+    res.json(await prepareTryOnJob({
       db: deps.db,
       mediaDir: deps.config.mediaDir,
       staticDir: deps.config.staticDir,
@@ -660,6 +660,7 @@ export function createApp(deps: AppDeps): express.Express {
       maxBytes: deps.config.mediaMaxBytes,
       retentionMs: deps.config.retentionMs,
       config: tryOnConfig,
+      fetchImpl: deps.tryOnFetch,
     }));
   }));
   app.get('/api/tryon/jobs', route((req, res) => {
@@ -668,9 +669,9 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/tryon/fittings', route((req, res) => {
     res.json({ fittings: listTryOnFittings(deps.db, requireUser(req).userId) });
   }));
-  app.post('/api/tryon/jobs', route((req, res) => {
+  app.post('/api/tryon/jobs', route(async (req, res) => {
     const session = requireUser(req);
-    const created = createTryOnJob({
+    const created = await createTryOnJob({
       db: deps.db,
       mediaDir: deps.config.mediaDir,
       staticDir: deps.config.staticDir,

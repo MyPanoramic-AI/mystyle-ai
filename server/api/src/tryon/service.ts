@@ -196,6 +196,11 @@ function isInsideDir(rootDir: string, candidate: string): boolean {
   return full === root || full.startsWith(root + path.sep);
 }
 
+const ALLOWED_REMOTE_GARMENT_HOSTS = new Set([
+  'images.unsplash.com',
+  'plus.unsplash.com',
+]);
+
 function cataloguePathname(raw: string, appPublicUrl: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.length > 500) return null;
@@ -223,39 +228,92 @@ function cataloguePathname(raw: string, appPublicUrl: string): string | null {
   return url.pathname;
 }
 
-/** Load a same-origin shop/catalogue image from the published static build (never arbitrary remote hosts). */
-function loadCatalogueGarmentBytes(options: {
-  garmentImageUrl: string;
-  staticDir: string | null;
-  appPublicUrl: string;
-  maxBytes: number;
-}): Buffer {
-  const pathname = cataloguePathname(options.garmentImageUrl, options.appPublicUrl);
-  if (!pathname || (!pathname.startsWith('/assets/') && !pathname.startsWith('/images/'))) {
-    throw new ApiError(
-      'invalid_garment_url',
-      'Shop garment images must be same-origin catalogue assets under /assets/ or /images/.',
-      400,
-    );
-  }
-  if (!options.staticDir) {
-    throw new ApiError(
-      'invalid_garment_url',
-      'Catalogue garment images are not available from this API process. Upload the garment or send garmentImageBase64.',
-      400,
-    );
-  }
+function readStaticCatalogueBytes(staticDir: string, pathname: string, maxBytes: number): Buffer | null {
+  if (!pathname.startsWith('/assets/') && !pathname.startsWith('/images/')) return null;
   const relative = pathname.replace(/^\/+/, '');
-  const full = path.resolve(options.staticDir, relative);
-  if (!isInsideDir(options.staticDir, full) || !existsSync(full)) {
-    throw new ApiError('invalid_garment_url', 'That catalogue garment image was not found on the server.', 404);
-  }
+  const full = path.resolve(staticDir, relative);
+  if (!isInsideDir(staticDir, full) || !existsSync(full)) return null;
   const bytes = readFileSync(full);
-  if (bytes.length === 0 || bytes.length > options.maxBytes) {
+  if (bytes.length === 0 || bytes.length > maxBytes) {
     throw new ApiError('invalid_image', 'The image is empty or larger than the configured limit.', 400);
   }
   inspectImage(bytes);
   return bytes;
+}
+
+async function fetchGarmentBytes(options: {
+  url: URL;
+  maxBytes: number;
+  fetchImpl: typeof fetch;
+}): Promise<Buffer> {
+  if (options.url.protocol !== 'https:' && options.url.protocol !== 'http:') {
+    throw new ApiError('invalid_garment_url', 'That garment image URL is not supported.', 400);
+  }
+  const response = await options.fetchImpl(options.url, {
+    redirect: 'error',
+    headers: { accept: 'image/*,*/*;q=0.8' },
+  });
+  if (!response.ok) {
+    throw new ApiError('invalid_garment_url', 'The garment image could not be downloaded.', 400);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length === 0 || buffer.length > options.maxBytes) {
+    throw new ApiError('invalid_image', 'The image is empty or larger than the configured limit.', 400);
+  }
+  inspectImage(buffer);
+  return buffer;
+}
+
+/**
+ * Load a shop/catalogue/wardrobe preview image.
+ * Same-origin /assets|/images from disk (or appPublicUrl fetch), plus a small Unsplash allowlist.
+ * Never follows arbitrary remote hosts.
+ */
+async function loadCatalogueGarmentBytes(options: {
+  garmentImageUrl: string;
+  staticDir: string | null;
+  appPublicUrl: string;
+  maxBytes: number;
+  fetchImpl?: typeof fetch;
+}): Promise<Buffer> {
+  const trimmed = options.garmentImageUrl.trim();
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const pathname = cataloguePathname(trimmed, options.appPublicUrl);
+
+  if (pathname && (pathname.startsWith('/assets/') || pathname.startsWith('/images/'))) {
+    if (options.staticDir) {
+      const fromDisk = readStaticCatalogueBytes(options.staticDir, pathname, options.maxBytes);
+      if (fromDisk) return fromDisk;
+    }
+    if (options.appPublicUrl) {
+      try {
+        const absolute = new URL(pathname, `${options.appPublicUrl.replace(/\/$/, '')}/`);
+        return await fetchGarmentBytes({ url: absolute, maxBytes: options.maxBytes, fetchImpl });
+      } catch (error) {
+        if (error instanceof ApiError) throw error;
+      }
+    }
+    throw new ApiError('invalid_garment_url', 'That catalogue garment image was not found on the server.', 404);
+  }
+
+  let remote: URL;
+  try {
+    remote = new URL(trimmed);
+  } catch {
+    throw new ApiError(
+      'invalid_garment_url',
+      'Shop garment images must be catalogue assets or an allowed demonstration image host.',
+      400,
+    );
+  }
+  if (remote.protocol !== 'https:' || !ALLOWED_REMOTE_GARMENT_HOSTS.has(remote.hostname)) {
+    throw new ApiError(
+      'invalid_garment_url',
+      'That garment image host is not allowed. Use a Shop listing, wardrobe photo, or upload.',
+      400,
+    );
+  }
+  return fetchGarmentBytes({ url: remote, maxBytes: options.maxBytes, fetchImpl });
 }
 
 function hasAiImageFeature(db: Sql, userId: string, now = Date.now()): boolean {
@@ -396,7 +454,7 @@ export function listTryOnGarments(db: Sql, userId: string): {
   };
 }
 
-export function prepareTryOnJob(options: {
+export async function prepareTryOnJob(options: {
   db: Sql;
   mediaDir: string;
   staticDir?: string | null;
@@ -407,7 +465,8 @@ export function prepareTryOnJob(options: {
   maxBytes: number;
   retentionMs: number;
   config: TryOnConfig;
-}): {
+  fetchImpl?: typeof fetch;
+}): Promise<{
   ok: boolean;
   providerId: TryOnProviderId;
   live: boolean;
@@ -420,8 +479,8 @@ export function prepareTryOnJob(options: {
   quality: Quality;
   blockers: string[];
   note: string;
-} {
-  const resolved = resolveTryOnInputs({ ...options, persistGarmentUpload: false });
+}> {
+  const resolved = await resolveTryOnInputs({ ...options, persistGarmentUpload: false });
   const live = resolved.providerId !== 'mock';
   const blockers: string[] = [];
   if (!live && !options.config.allowCustomerMock) blockers.push('mock_tryon_disabled');
@@ -478,7 +537,7 @@ export function getTryOnJob(db: Sql, userId: string, id: string): TryOnJobView {
   return toView(readJobRow(db, userId, id));
 }
 
-function resolveTryOnInputs(options: {
+async function resolveTryOnInputs(options: {
   db: Sql;
   mediaDir: string;
   staticDir?: string | null;
@@ -490,14 +549,15 @@ function resolveTryOnInputs(options: {
   retentionMs: number;
   config: TryOnConfig;
   persistGarmentUpload: boolean;
-}): {
+  fetchImpl?: typeof fetch;
+}): Promise<{
   providerId: TryOnProviderId;
   quality: Quality;
   category: GarmentCategory;
   scenario: MockScenario | null;
   personMediaId: string;
   garmentMediaId: string;
-} {
+}> {
   const providerId = assertProvider(options.body.providerId);
   const quality = assertQuality(options.body.quality);
   const category = assertCategory(options.body.category);
@@ -546,11 +606,12 @@ function resolveTryOnInputs(options: {
     if (/^[A-Za-z0-9+/=\r\n]+$/.test(encoded) && encoded.length > 0) {
       uploadBytes = Buffer.from(encoded, 'base64');
     } else if (garmentImageUrl) {
-      uploadBytes = loadCatalogueGarmentBytes({
+      uploadBytes = await loadCatalogueGarmentBytes({
         garmentImageUrl,
         staticDir: options.staticDir ?? null,
         appPublicUrl: options.appPublicUrl || '',
         maxBytes: options.maxBytes,
+        fetchImpl: options.fetchImpl,
       });
     } else {
       throw new ApiError(
@@ -592,7 +653,7 @@ function resolveTryOnInputs(options: {
   return { providerId, quality, category, scenario, personMediaId, garmentMediaId };
 }
 
-export function createTryOnJob(options: {
+export async function createTryOnJob(options: {
   db: Sql;
   mediaDir: string;
   staticDir?: string | null;
@@ -604,7 +665,7 @@ export function createTryOnJob(options: {
   retentionMs: number;
   config: TryOnConfig;
   fetchImpl?: typeof fetch;
-}): TryOnJobView {
+}): Promise<TryOnJobView> {
   const idempotencyKey = text(options.body.idempotencyKey, 'idempotencyKey', 8, 80);
   if (!/^[a-zA-Z0-9_-]+$/.test(idempotencyKey)) {
     throw new ApiError('invalid_idempotency_key', 'Use an idempotency key of 8–80 URL-safe characters.', 400);
@@ -615,7 +676,7 @@ export function createTryOnJob(options: {
   ).get(options.userId, idempotencyKey) as { id: string } | undefined;
   if (prior) return toView(readJobRow(options.db, options.userId, prior.id), true);
 
-  const { providerId, quality, category, scenario, personMediaId, garmentMediaId } = resolveTryOnInputs({
+  const { providerId, quality, category, scenario, personMediaId, garmentMediaId } = await resolveTryOnInputs({
     ...options,
     persistGarmentUpload: true,
   });
