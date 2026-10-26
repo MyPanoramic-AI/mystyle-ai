@@ -176,9 +176,10 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       setGarmentMode('shop');
       setGarmentPreview(preloadedGarment.imageUrl);
       setGarmentFile(null);
-      setStep('photo');
+      // Skip ahead: photo ready → confirm; otherwise land on photograph step.
+      setStep(hasFullBody || preferredPerson?.mediaId ? 'confirm' : 'photo');
     }
-  }, [preloadedGarment]);
+  }, [preloadedGarment, hasFullBody, preferredPerson?.mediaId]);
 
   const refreshFittings = async () => {
     if (!usesAccount) return;

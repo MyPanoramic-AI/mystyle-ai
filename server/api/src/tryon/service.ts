@@ -5,7 +5,6 @@ import { deleteOwnedMedia, inspectImage, readOwnedMedia, saveMedia } from '../me
 import { hasGrantedConsent } from '../privacy/consent.js';
 import { readCredits, readEntitlement, reserveCredits, settleOperation } from '../domain/membership.js';
 import {
-  estimatedProviderCredits,
   estimatedProviderUsd,
   listAccountProviders,
   providerRuntime,
@@ -361,12 +360,12 @@ export function prepareTryOnJob(options: {
     const cost = estimatedProviderUsd(resolved.providerId, resolved.quality);
     const spent = spentLiveUsd(options.db);
     if (options.config.maxBudgetUsd <= 0 || spent + cost > options.config.maxBudgetUsd) blockers.push('budget_exceeded');
-    const creditsNeeded = Math.max(options.config.customerCreditCost, estimatedProviderCredits(resolved.providerId, resolved.quality));
-    if (readCredits(options.db, options.userId).balance < creditsNeeded) blockers.push('insufficient_credits');
+    const creditsNeeded = options.config.customerCreditCost;
+    if (creditsNeeded > 0 && readCredits(options.db, options.userId).balance < creditsNeeded) {
+      blockers.push('insufficient_credits');
+    }
   }
-  const estimatedCredits = live
-    ? Math.max(options.config.customerCreditCost, estimatedProviderCredits(resolved.providerId, resolved.quality))
-    : 0;
+  const estimatedCredits = live ? options.config.customerCreditCost : 0;
   return {
     ok: blockers.length === 0,
     providerId: resolved.providerId,
@@ -567,8 +566,8 @@ export function createTryOnJob(options: {
   let creditReservationId: string | null = null;
   let creditOperationId: string | null = null;
   let creditsReserved: number | null = null;
-  if (live) {
-    const credits = Math.max(options.config.customerCreditCost, estimatedProviderCredits(providerId, quality));
+  if (live && options.config.customerCreditCost > 0) {
+    const credits = options.config.customerCreditCost;
     const reserved = reserveCredits(options.db, {
       userId: options.userId,
       amount: credits,

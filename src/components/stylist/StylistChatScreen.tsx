@@ -25,6 +25,7 @@ import { Button } from '../common/Button';
 import { Sparkles, MessageCircle } from 'lucide-react';
 import { AccountApiError, type StylistServerMessage } from '../../services/accountApi';
 import { toChatMessage } from '../../services/stylistView';
+import type { PreloadedGarment } from '../../types/shop';
 
 export interface StylistConnection {
   aiConsent: boolean;
@@ -42,6 +43,7 @@ interface StylistChatScreenProps {
   onNavigate: (tab: NavigationTab) => void;
   onClearState: () => void;
   onOpenDiscover?: () => void;
+  onSendToTryOn?: (garment: PreloadedGarment) => void;
   connection?: StylistConnection;
 }
 
@@ -52,6 +54,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   onNavigate,
   onClearState,
   onOpenDiscover,
+  onSendToTryOn,
   connection,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
@@ -277,6 +280,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
             profile={profile}
             photos={photos}
             onNavigateToShop={() => onNavigate('shop')}
+            onSendToTryOn={onSendToTryOn}
             onSelectPrompt={handleSelectPrompt}
           />
         ))}

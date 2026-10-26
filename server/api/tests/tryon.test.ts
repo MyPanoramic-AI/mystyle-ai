@@ -486,6 +486,9 @@ test('live try-on is blocked when ai.image entitlement is missing', async () => 
     const ada = await register(api.base, 'tryon-noentitle@example.com');
     const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
     await grant(api.base, ada.cookie, ada.body.csrfToken, 'external_photo_ai');
+    api.db.prepare(
+      `UPDATE subscription_entitlements SET feature_keys_json = '["account.basic"]' WHERE user_id = ? AND status = 'active'`,
+    ).run(ada.body.userId);
     await fetch(`${api.base}/api/admin/credits/allocate`, {
       method: 'POST',
       headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },

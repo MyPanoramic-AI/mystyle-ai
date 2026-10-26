@@ -37,7 +37,7 @@ test('plan definitions stay provisional and a new account is free', async () => 
     assert.equal(body.paid, false);
     assert.equal(body.current.planCode, 'FREE');
     assert.equal(body.current.status, 'active');
-    assert.deepEqual(body.current.featureKeys, ['account.basic']);
+    assert.deepEqual(body.current.featureKeys, ['account.basic', 'ai.image']);
   } finally {
     await api.close();
   }
@@ -147,8 +147,8 @@ test('expired, cancelled, and unpaid features cannot spend, and accounts stay is
     const otherBody = await other.json() as { balance: number; entries: unknown[] };
     assert.equal(otherBody.balance, 0);
     assert.equal(otherBody.entries.length, 0);
-    const image = await admin(api.base, '/api/admin/credits/reserve', { userId: first.body.userId, amount: 1, idempotencyKey: 'image', operationType: 'image', featureKey: 'ai.image', reason: 'Image' });
-    assert.equal(image.response.status, 403);
+    const textAi = await admin(api.base, '/api/admin/credits/reserve', { userId: first.body.userId, amount: 1, idempotencyKey: 'text-ai', operationType: 'text', featureKey: 'ai.text', reason: 'Text AI' });
+    assert.equal(textAi.response.status, 403);
     const child = await admin(api.base, '/api/admin/credits/reserve', { userId: first.body.userId, amount: 1, idempotencyKey: 'child', operationType: 'text', featureKey: 'family.dependent', reason: 'Child' });
     assert.equal(child.response.status, 403);
     assert.equal(child.payload.code, 'dependent_forbidden');
@@ -222,7 +222,7 @@ test('invalid credit values are rejected and a failed mock does not leave a char
     }
     const negative = await admin(api.base, '/api/admin/credits/adjust', { userId, amount: -9, idempotencyKey: 'too-low', reason: 'Would go negative' });
     assert.equal(negative.response.status, 409);
-    const image = await admin(api.base, '/api/admin/credits/mock', { userId, credits: 2, idempotencyKey: 'mock-image', outcome: 'failed', featureKey: 'ai.image', operationType: 'image' });
+    const image = await admin(api.base, '/api/admin/credits/mock', { userId, credits: 2, idempotencyKey: 'mock-image', outcome: 'failed', featureKey: 'ai.text', operationType: 'text' });
     assert.equal(image.response.status, 403);
     const text = await admin(api.base, '/api/admin/credits/mock', { userId, credits: 2, idempotencyKey: 'mock-fail-text', outcome: 'failed', featureKey: 'account.basic', operationType: 'text' });
     assert.equal((text.payload.settled as { status: string }).status, 'released');

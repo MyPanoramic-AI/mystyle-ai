@@ -5,27 +5,37 @@
 
 import React, { useState } from 'react';
 import { StylistOutfitRecommendation, TemporaryPhotos, UserProfile } from '../../types';
+import { PreloadedGarment } from '../../types/shop';
 import { ImageWithFallback } from '../common/ImageWithFallback';
-import { Button } from '../common/Button';
-import { Sparkles, Camera, ShoppingBag, Heart, Check, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { TryOnPreviewModal } from './TryOnPreviewModal';
+import { Sparkles, Camera, ShoppingBag, Heart, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface OutfitRecommendationCardProps {
   outfit: StylistOutfitRecommendation;
-  profile: UserProfile;
-  photos: TemporaryPhotos;
+  profile?: UserProfile;
+  photos?: TemporaryPhotos;
   onNavigateToShop: () => void;
+  onSendToTryOn?: (garment: PreloadedGarment) => void;
   onSelectPrompt?: (prompt: string) => void;
+}
+
+function garmentFromOutfit(outfit: StylistOutfitRecommendation): PreloadedGarment {
+  const primary = outfit.pieces.find((piece) => piece.category === 'tops' || piece.category === 'dress' || piece.category === 'outerwear')
+    || outfit.pieces[0];
+  return {
+    productId: outfit.id,
+    productName: primary?.name || outfit.title,
+    retailer: primary?.retailer || 'Stylist recommendation',
+    priceZar: primary?.priceZar ?? outfit.totalEstimatedZar,
+    imageUrl: outfit.imageUrl,
+    category: primary?.category || outfit.occasion || 'tops',
+  };
 }
 
 export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> = ({
   outfit,
-  profile,
-  photos,
   onNavigateToShop,
-  onSelectPrompt,
+  onSendToTryOn,
 }) => {
-  const [isTryOnModalOpen, setIsTryOnModalOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showAllPieces, setShowAllPieces] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -157,15 +167,17 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#242326]/10">
-          {outfit.conceptOnly ? (
+          {outfit.conceptOnly || !onSendToTryOn ? (
             <span className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
               <Camera className="w-3.5 h-3.5" />
               <span>Try-on is not connected</span>
             </span>
           ) : (
             <button
-              onClick={() => setIsTryOnModalOpen(true)}
+              type="button"
+              onClick={() => onSendToTryOn(garmentFromOutfit(outfit))}
               className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#9C6A61] hover:bg-[#83554D] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              data-testid="stylist-virtual-try-on"
             >
               <Camera className="w-3.5 h-3.5" />
               <span>Virtual Try-On</span>
@@ -201,18 +213,6 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
           </button>
         </div>
       </div>
-
-      {/* Virtual Try-On Modal */}
-      {outfit.conceptOnly ? null : (
-        <TryOnPreviewModal
-          isOpen={isTryOnModalOpen}
-          onClose={() => setIsTryOnModalOpen(false)}
-          outfit={outfit}
-          profile={profile}
-          photos={photos}
-          onNavigateToShop={onNavigateToShop}
-        />
-      )}
 
       {/* Floating toast */}
       {toastMessage && (

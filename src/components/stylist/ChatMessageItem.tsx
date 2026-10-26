@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { ChatMessage, TemporaryPhotos, UserProfile } from '../../types';
+import { PreloadedGarment } from '../../types/shop';
 import { OutfitRecommendationCard } from './OutfitRecommendationCard';
 import { BeautyTipCard } from './BeautyTipCard';
 import { Sparkles, User, Paperclip } from 'lucide-react';
@@ -15,6 +16,7 @@ interface ChatMessageItemProps {
   profile: UserProfile;
   photos: TemporaryPhotos;
   onNavigateToShop: () => void;
+  onSendToTryOn?: (garment: PreloadedGarment) => void;
   onSelectPrompt: (prompt: string) => void;
 }
 
@@ -23,6 +25,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   profile,
   photos,
   onNavigateToShop,
+  onSendToTryOn,
   onSelectPrompt,
 }) => {
   const isStylist = message.sender === 'stylist';
@@ -136,6 +139,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             profile={profile}
             photos={photos}
             onNavigateToShop={onNavigateToShop}
+            onSendToTryOn={onSendToTryOn}
             onSelectPrompt={onSelectPrompt}
           />
         )}

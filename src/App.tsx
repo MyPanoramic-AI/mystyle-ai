@@ -616,6 +616,7 @@ export default function App({ account }: { account: ReadyAccount }) {
           onNavigate={handleNavigate}
           onClearState={handleClearStylistState}
           onOpenDiscover={() => handleOpenDiscover()}
+          onSendToTryOn={handleSendToTryOnFromShop}
           connection={account.stylist ? {
             aiConsent: account.aiConsent,
             onEnableConsent: () => account.setAiConsent(true),

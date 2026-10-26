@@ -39,7 +39,7 @@ export function loadTryOnConfig(env: NodeJS.ProcessEnv = process.env): TryOnConf
     fashnApiKey: env.FASHN_API_KEY?.trim() || null,
     fashnBaseUrl: (env.FASHN_API_BASE_URL?.trim() || 'https://api.fashn.ai/v1').replace(/\/$/, ''),
     spentUsd: 0,
-    customerCreditCost: Math.max(1, Math.floor(numberOr(env.TRYON_CUSTOMER_CREDIT_COST, 1))),
+    customerCreditCost: Math.max(0, Math.floor(numberOr(env.TRYON_CUSTOMER_CREDIT_COST, 1))),
     defaultLiveProviderId: 'fashn-tryon-v1.6',
   };
 }
