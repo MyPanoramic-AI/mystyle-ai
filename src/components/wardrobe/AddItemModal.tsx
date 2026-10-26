@@ -85,16 +85,59 @@ const PRESET_GARMENT_PHOTOS = [
 ];
 
 const COLOR_SWATCH_PRESETS = [
-  { name: 'Pure White', hex: '#FFFFFF' },
-  { name: 'Ivory Cream', hex: '#F5F2EB' },
-  { name: 'Oatmeal Natural', hex: '#D6C9B6' },
-  { name: 'Camel Tan', hex: '#9E7453' },
-  { name: 'Terracotta Rust', hex: '#B85848' },
-  { name: 'Forest Pine', hex: '#253B30' },
-  { name: 'Navy Midnight', hex: '#1D2A44' },
-  { name: 'Onyx Black', hex: '#1E1D20' },
-  { name: 'Gold Champagne', hex: '#CCA762' },
+  { name: 'Pure White', hex: '#FFFFFF', border: true },
+  { name: 'Ivory Cream', hex: '#F5F2EB', border: true },
+  { name: 'Warm Ivory', hex: '#F6F2EC', border: true },
+  { name: 'Soft Blush', hex: '#E5CDBE', border: false },
+  { name: 'Oatmeal Natural', hex: '#D6C9B6', border: false },
+  { name: 'Sand Stone', hex: '#C8B8A8', border: false },
+  { name: 'Camel Tan', hex: '#9E7453', border: false },
+  { name: 'Camel / Tan', hex: '#C49A6C', border: false },
+  { name: 'Burnished Tan', hex: '#7C4623', border: false },
+  { name: 'Terracotta Rust', hex: '#B85848', border: false },
+  { name: 'Muted Rose', hex: '#9C6A61', border: false },
+  { name: 'Soft Coral', hex: '#D9896C', border: false },
+  { name: 'Burgundy Wine', hex: '#5E1914', border: false },
+  { name: 'Deep Plum Wine', hex: '#4C1D2A', border: false },
+  { name: 'Forest Pine', hex: '#253B30', border: false },
+  { name: 'Forest Emerald', hex: '#1B382B', border: false },
+  { name: 'Deep Olive', hex: '#4B5320', border: false },
+  { name: 'Sage Soft', hex: '#8A9A84', border: false },
+  { name: 'Navy Midnight', hex: '#1D2A44', border: false },
+  { name: 'Navy Blue', hex: '#1B263B', border: false },
+  { name: 'Slate Blue', hex: '#4E6B8A', border: false },
+  { name: 'Charcoal Grey', hex: '#242326', border: false },
+  { name: 'Onyx Black', hex: '#1E1D20', border: false },
+  { name: 'Rich Chocolate', hex: '#3E2723', border: false },
+  { name: 'Chocolate Espresso', hex: '#38281F', border: false },
+  { name: 'Gold Champagne', hex: '#CCA762', border: false },
+  { name: 'Soft Gold', hex: '#B49361', border: false },
+  { name: 'Silver Mist', hex: '#B9AFA1', border: false },
 ];
+
+type ColourSwatch = { name: string; hex: string };
+
+function parseInitialColours(initial?: WardrobeItem | null): ColourSwatch[] {
+  if (!initial) return [{ name: 'Ivory Cream', hex: '#F5F2EB' }];
+  const names = initial.color.split(',').map((part) => part.trim()).filter(Boolean);
+  if (names.length === 0) return [{ name: 'Ivory Cream', hex: initial.colorHex || '#F5F2EB' }];
+  return names.map((name, index) => {
+    const preset = COLOR_SWATCH_PRESETS.find((swatch) => swatch.name.toLowerCase() === name.toLowerCase());
+    return {
+      name,
+      hex: index === 0 ? (initial.colorHex || preset?.hex || '#F5F2EB') : (preset?.hex || initial.colorHex || '#F5F2EB'),
+    };
+  });
+}
+
+function needsLightCheck(hex: string): boolean {
+  const value = hex.replace('#', '');
+  if (value.length !== 6) return false;
+  const r = Number.parseInt(value.slice(0, 2), 16);
+  const g = Number.parseInt(value.slice(2, 4), 16);
+  const b = Number.parseInt(value.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 170;
+}
 
 export const AddItemModal: React.FC<AddItemModalProps> = ({
   isOpen,
@@ -108,8 +151,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [subcategory, setSubcategory] = useState(initial?.subcategory ?? 'Blouse');
   const [brand, setBrand] = useState(initial?.brand ?? 'Woolworths Studio W');
   const [sizeLabel, setSizeLabel] = useState(initial?.sizeLabel ?? '');
-  const [color, setColor] = useState(initial?.color ?? 'Ivory Cream');
-  const [colorHex, setColorHex] = useState(initial?.colorHex ?? '#F5F2EB');
+  const [selectedColours, setSelectedColours] = useState<ColourSwatch[]>(() => parseInitialColours(initial));
+  const [customHex, setCustomHex] = useState('#9C6A61');
   const [seasons, setSeasons] = useState<WardrobeSeason[]>(initial?.seasons ?? ['all-season']);
   const [occasions, setOccasions] = useState<WardrobeOccasion[]>(initial?.occasions ?? ['work', 'casual']);
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl || 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=700&q=80');
@@ -123,17 +166,41 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   if (!isOpen) return null;
 
+  const primaryColour = selectedColours[0] ?? { name: 'Ivory Cream', hex: '#F5F2EB' };
+  const colourLabel = selectedColours.map((swatch) => swatch.name).join(', ');
+
   const handleApplyPreset = (preset: typeof PRESET_GARMENT_PHOTOS[0]) => {
     setName(preset.name);
     setCategory(preset.category);
     setSubcategory(preset.subcategory);
     setBrand(preset.brand);
-    setColor(preset.color);
-    setColorHex(preset.colorHex);
+    setSelectedColours([{ name: preset.color, hex: preset.colorHex }]);
     setSeasons(preset.seasons);
     setOccasions(preset.occasions);
     setImageUrl(preset.imageUrl);
     setFabric(preset.fabric);
+  };
+
+  const handleToggleColour = (swatch: ColourSwatch) => {
+    setSelectedColours((prev) => {
+      const exists = prev.some((item) => item.name === swatch.name);
+      if (exists) {
+        if (prev.length === 1) return prev;
+        return prev.filter((item) => item.name !== swatch.name);
+      }
+      if (prev.length >= 6) return prev;
+      return [...prev, swatch];
+    });
+  };
+
+  const handleAddCustomColour = () => {
+    const hex = customHex.toUpperCase();
+    const label = `Custom ${hex}`;
+    setSelectedColours((prev) => {
+      if (prev.some((item) => item.hex.toUpperCase() === hex)) return prev;
+      if (prev.length >= 6) return prev;
+      return [...prev, { name: label, hex }];
+    });
   };
 
   const handleToggleSeason = (season: WardrobeSeason) => {
@@ -168,8 +235,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       subcategory: subcategory.trim() || 'Garment',
       brand: brand.trim() || 'Wardrobe Classic',
       sizeLabel: sizeLabel.trim() || undefined,
-      color,
-      colorHex,
+      color: colourLabel || primaryColour.name,
+      colorHex: primaryColour.hex,
       seasons,
       occasions,
       imageUrl,
@@ -369,27 +436,72 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             </div>
           </div>
 
-          {/* Color Swatches */}
+          {/* Color Swatches — multi-select for prints, colour-blocked, and tonal pieces */}
           <div>
-            <label className="text-xs font-semibold text-[#242326] block mb-1.5">
-              Primary Colour Palette: <span className="font-normal text-[#5C585E]">({color})</span>
-            </label>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <label className="text-xs font-semibold text-[#242326]">
+                Colour Palette
+              </label>
+              <span className="text-[10px] text-[#5C585E]">
+                Select up to 6 · first is primary
+              </span>
+            </div>
+            <p className="text-[11px] text-[#5C585E] mb-2 leading-relaxed">
+              Selected: <span className="font-medium text-[#242326]">{colourLabel}</span>
+            </p>
             <div className="flex flex-wrap items-center gap-2">
-              {COLOR_SWATCH_PRESETS.map((swatch) => (
-                <button
-                  type="button"
-                  key={swatch.name}
-                  onClick={() => {
-                    setColor(swatch.name);
-                    setColorHex(swatch.hex);
-                  }}
-                  className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer shadow-xs ${
-                    color === swatch.name ? 'ring-2 ring-[#9C6A61] scale-110 border-white' : 'border-black/10'
-                  }`}
-                  style={{ backgroundColor: swatch.hex }}
-                  title={swatch.name}
-                />
-              ))}
+              {COLOR_SWATCH_PRESETS.map((swatch) => {
+                const isSelected = selectedColours.some((item) => item.name === swatch.name);
+                const isPrimary = selectedColours[0]?.name === swatch.name;
+                return (
+                  <button
+                    type="button"
+                    key={swatch.name}
+                    onClick={() => handleToggleColour({ name: swatch.name, hex: swatch.hex })}
+                    className={`relative w-8 h-8 rounded-full border-2 transition-all cursor-pointer shadow-xs ${
+                      isSelected
+                        ? 'ring-2 ring-[#9C6A61] scale-110 border-white'
+                        : swatch.border
+                          ? 'border-[#242326]/25'
+                          : 'border-black/10'
+                    }`}
+                    style={{ backgroundColor: swatch.hex }}
+                    title={`${swatch.name}${isPrimary ? ' (primary)' : ''}`}
+                    aria-pressed={isSelected}
+                    aria-label={swatch.name}
+                  >
+                    {isSelected && (
+                      <Check
+                        className={`absolute inset-0 m-auto w-3.5 h-3.5 ${
+                          needsLightCheck(swatch.hex) ? 'text-[#242326]' : 'text-white'
+                        }`}
+                        strokeWidth={3}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <label className="text-[10px] font-medium text-[#5C585E] uppercase tracking-wide">
+                Custom
+              </label>
+              <input
+                type="color"
+                value={customHex}
+                onChange={(event) => setCustomHex(event.target.value)}
+                className="w-8 h-8 rounded-lg border border-[#242326]/15 cursor-pointer bg-transparent p-0.5"
+                title="Pick a custom colour"
+                aria-label="Custom colour"
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomColour}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-[#F6F2EC] text-[#242326] hover:bg-[#E5CDBE]/50 border border-[#242326]/10 cursor-pointer"
+              >
+                <Plus className="w-3 h-3" />
+                Add custom colour
+              </button>
             </div>
           </div>
 
