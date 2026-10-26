@@ -37,6 +37,7 @@ import { AccountApiError, accountApi, type ProfilePhotoSlot } from '../../servic
 import { fromApiProfile } from '../../services/profileContract';
 import { formatHeight } from '../../utils/measurements';
 import { estimateSilhouetteFromCm, SILHOUETTE_OPTIONS } from '../../utils/silhouette';
+import { estimateSilhouetteFromPhotoUrls } from '../../utils/silhouetteFromPhoto';
 import type { StylingSilhouetteId } from '../../types';
 
 interface ProfileDashboardProps {
@@ -98,6 +99,78 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
     setSilhouetteBusy(true);
     setSilhouetteMessage(null);
     try {
+      const photoUrls = [photos.fullBodyFrontUrl, photos.fullBodyAdditionalUrl].filter(
+        (url): url is string => Boolean(url),
+      );
+
+      if (photoUrls.length) {
+        const scanned = await estimateSilhouetteFromPhotoUrls(photoUrls);
+        let fused = scanned;
+        if (hasBodyMeasures) {
+          const fromMeasures = estimateSilhouetteFromCm(
+            Number(profile.sizes.bustCm),
+            Number(profile.sizes.waistCm),
+            Number(profile.sizes.hipCm),
+          );
+          if (fromMeasures.id === scanned.id) {
+            fused = { ...scanned, confidence: 'high' };
+          }
+        }
+
+        if (usesAccount) {
+          const result = await accountApi.estimateSilhouette(true, {
+            id: fused.id,
+            confidence: fused.confidence,
+          });
+          if (result.profile) {
+            await onUpdateProfile(fromApiProfile(result.profile));
+          } else {
+            await onUpdateProfile({
+              ...profile,
+              personal: {
+                ...profile.personal,
+                bodyShape: fused.id,
+                bodyShapeLabel: fused.label,
+                bodyShapeNote: fused.note,
+                bodyShapeSource: 'photo_scan',
+              },
+            });
+          }
+          setSilhouetteMessage(
+            result.estimate.disclaimer
+            || 'Scanned your full-body photograph for styling proportions. Photos stayed on this device for the scan.',
+          );
+          return;
+        }
+
+        await onUpdateProfile({
+          ...profile,
+          personal: {
+            ...profile.personal,
+            bodyShape: fused.id,
+            bodyShapeLabel: fused.label,
+            bodyShapeNote: fused.note,
+            bodyShapeSource: 'photo_scan',
+          },
+        });
+        setSilhouetteMessage(
+          'Scanned your full-body photograph for shoulder, waist, and hip proportions. Photos were not uploaded to an external AI.',
+        );
+        return;
+      }
+
+      if (!hasBodyMeasures) {
+        setSilhouetteMessage('Add a full-body front photograph to scan your silhouette, or enter bust, waist, and hip in Sizes.');
+        setActiveEditSection('photos');
+        return;
+      }
+
+      const estimated = estimateSilhouetteFromCm(
+        Number(profile.sizes.bustCm),
+        Number(profile.sizes.waistCm),
+        Number(profile.sizes.hipCm),
+      );
+
       if (usesAccount) {
         const result = await accountApi.estimateSilhouette(true);
         if (result.profile) {
@@ -107,26 +180,19 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
             ...profile,
             personal: {
               ...profile.personal,
-              bodyShape: result.estimate.id as StylingSilhouetteId,
-              bodyShapeLabel: result.estimate.label,
-              bodyShapeNote: result.estimate.note,
-              bodyShapeSource: result.estimate.source,
+              bodyShape: estimated.id,
+              bodyShapeLabel: estimated.label,
+              bodyShapeNote: estimated.note,
+              bodyShapeSource: 'measurements',
             },
           });
         }
-        setSilhouetteMessage(result.estimate.disclaimer);
+        setSilhouetteMessage(
+          `${result.estimate.disclaimer} Tip: add a full-body front photo to scan proportions from the image instead.`,
+        );
         return;
       }
-      if (!hasBodyMeasures) {
-        setSilhouetteMessage('Add bust, waist, and hip measurements in Sizes first, then estimate your styling silhouette.');
-        setActiveEditSection('sizes');
-        return;
-      }
-      const estimated = estimateSilhouetteFromCm(
-        Number(profile.sizes.bustCm),
-        Number(profile.sizes.waistCm),
-        Number(profile.sizes.hipCm),
-      );
+
       await onUpdateProfile({
         ...profile,
         personal: {
@@ -138,9 +204,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
         },
       });
       setSilhouetteMessage(
-        hasFullBodyPhoto
-          ? 'Estimated from your measurements. Full-body photographs stay private and were not sent to an external AI.'
-          : 'Estimated from your bust, waist, and hip measurements for styling suggestions only.',
+        'Estimated from bust, waist, and hip measurements. Add a full-body front photo to scan the image directly.',
       );
     } catch (error) {
       const message = error instanceof AccountApiError
@@ -154,6 +218,8 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
         && (error.code === 'measurements_required' || /bust, waist, and hip/i.test(error.message))
       ) {
         setActiveEditSection('sizes');
+      } else if (!hasFullBodyPhoto) {
+        setActiveEditSection('photos');
       }
     } finally {
       setSilhouetteBusy(false);
@@ -614,7 +680,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                     : 'No fitting photos selected yet'}
                 </span>
                 <span className="block text-[10px] text-[#9C6A61] mt-0.5">
-                  Full-body photos power Virtual Try-On. Silhouette estimates use bust/waist/hip — photographs are not sent to external AI from Profile.
+                  Full-body photos power Virtual Try-On and on-device silhouette scanning. Scan reads proportions from your photo — it is not sent to external AI from Profile.
                 </span>
               </div>
             </div>
@@ -632,7 +698,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                     </p>
                   ) : (
                     <p className="text-[11px] text-[#5C585E] mt-1 leading-relaxed max-w-xl">
-                      Hourglass, pear, inverted triangle, apple, or rectangle — used for cut and proportion suggestions only.
+                      Scan a full-body front photo to estimate hourglass, pear, inverted triangle, apple, or rectangle for cut suggestions.
                     </p>
                   )}
                 </div>
@@ -643,7 +709,9 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-[#9C6A61] text-white hover:bg-[#8A5B53] disabled:opacity-60 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  {silhouetteBusy ? 'Estimating…' : 'Estimate silhouette'}
+                  {silhouetteBusy
+                    ? (hasFullBodyPhoto ? 'Scanning photo…' : 'Estimating…')
+                    : (hasFullBodyPhoto ? 'Scan photograph' : 'Estimate silhouette')}
                 </button>
               </div>
 
@@ -668,14 +736,27 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 })}
               </div>
 
-              {!hasBodyMeasures && (
+              {!hasFullBodyPhoto && (
                 <button
                   type="button"
-                  onClick={() => setActiveEditSection('sizes')}
+                  onClick={() => setActiveEditSection('photos')}
                   className="text-[11px] font-medium text-[#9C6A61] hover:text-[#794E46] cursor-pointer"
                 >
-                  Add bust, waist &amp; hip measurements for automatic estimate →
+                  Add a full-body front photograph to scan your silhouette →
                 </button>
+              )}
+              {hasFullBodyPhoto && !hasBodyMeasures && (
+                <p className="text-[11px] text-[#5C585E]">
+                  Optional:{' '}
+                  <button
+                    type="button"
+                    onClick={() => setActiveEditSection('sizes')}
+                    className="font-medium text-[#9C6A61] hover:text-[#794E46] cursor-pointer"
+                  >
+                    add bust, waist &amp; hip
+                  </button>
+                  {' '}to cross-check the photo scan.
+                </p>
               )}
               {silhouetteMessage && (
                 <p className="text-[11px] text-[#5C585E] leading-relaxed" role="status">

@@ -33,10 +33,11 @@ export interface SilhouetteEstimate {
   id: SilhouetteId;
   label: string;
   note: string;
-  source: 'measurements' | 'manual' | 'photos_unavailable';
+  source: 'measurements' | 'manual' | 'photo_scan' | 'photos_unavailable';
   confidence: 'high' | 'medium' | 'low';
   photosReady: boolean;
-  usedPhotoAi: false;
+  /** True only when photographs were sent to an external vision provider. Local photo scans stay false. */
+  usedPhotoAi: boolean;
   disclaimer: string;
 }
 

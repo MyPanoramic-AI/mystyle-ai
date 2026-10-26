@@ -131,7 +131,9 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
         `UPDATE customer_profiles SET body_shape = NULL, body_shape_source = NULL, body_shape_updated_at = NULL, updated_at = ? WHERE user_id = ?`,
       ).run(stamp, userId);
     } else {
-      const source = body.bodyShapeSource === 'measurements' || body.bodyShapeSource === 'manual'
+      const source = body.bodyShapeSource === 'measurements'
+        || body.bodyShapeSource === 'manual'
+        || body.bodyShapeSource === 'photo_scan'
         ? body.bodyShapeSource
         : 'manual';
       saveSilhouette(db, userId, assertSilhouetteId(body.bodyShape), source, now);

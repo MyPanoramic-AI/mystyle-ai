@@ -83,6 +83,22 @@ test('silhouette estimate requires measurements and never claims photo AI', asyn
     assert.equal(manual.status, 200);
     assert.equal(manualBody.bodyShape, 'hourglass');
     assert.equal(manualBody.bodyShapeSource, 'manual');
+
+    const fromPhoto = await fetch(`${api.base}/api/profile/silhouette/estimate`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ save: true, photoScan: { id: 'inverted-triangle', confidence: 'high' } }),
+    });
+    const photoBody = await fromPhoto.json() as {
+      estimate: { id: string; source: string; usedPhotoAi: boolean };
+      profile: { bodyShape: string; bodyShapeSource: string };
+    };
+    assert.equal(fromPhoto.status, 200);
+    assert.equal(photoBody.estimate.id, 'inverted-triangle');
+    assert.equal(photoBody.estimate.source, 'photo_scan');
+    assert.equal(photoBody.estimate.usedPhotoAi, false);
+    assert.equal(photoBody.profile.bodyShape, 'inverted-triangle');
+    assert.equal(photoBody.profile.bodyShapeSource, 'photo_scan');
   } finally {
     await api.close();
   }

@@ -39,7 +39,7 @@ export interface AccountApi {
   devMailboxAction(id: string): Promise<{ id: string; kind: string; path: string }>;
   getProfile(): Promise<Record<string, unknown>>;
   saveProfile(body: Record<string, unknown>): Promise<Record<string, unknown>>;
-  estimateSilhouette(save?: boolean): Promise<{
+  estimateSilhouette(save?: boolean, photoScan?: { id: string; confidence?: string }): Promise<{
     estimate: {
       id: string;
       label: string;
@@ -471,9 +471,9 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     devMailboxAction: (id) => request(`/api/dev/mailbox/${id}/action`),
     getProfile: () => request('/api/profile'),
     saveProfile: (body) => request('/api/profile', { method: 'PUT', body, csrf: true }),
-    estimateSilhouette: (save = true) => request('/api/profile/silhouette/estimate', {
+    estimateSilhouette: (save = true, photoScan) => request('/api/profile/silhouette/estimate', {
       method: 'POST',
-      body: { save },
+      body: { save, photoScan: photoScan ?? undefined },
       csrf: true,
     }),
     silhouetteOptions: () => request('/api/profile/silhouette/options'),

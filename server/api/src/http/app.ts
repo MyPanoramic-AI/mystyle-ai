@@ -21,7 +21,7 @@ import { createCaptureMailer, createDisabledMailer, listCapturedEmails, readCapt
 import type { Mailer } from '../email/types.js';
 import { getPreferences, getProfile, updatePreferences, updateProfile } from '../domain/profiles.js';
 import { assertPhotoSlot, deleteProfilePhotoSlot, readProfilePhotoSlots, uploadProfilePhotoSlot } from '../domain/profilePhotos.js';
-import { estimateSilhouetteForUser, listSilhouetteOptions, saveSilhouette } from '../domain/silhouette.js';
+import { assertSilhouetteId, estimateSilhouetteForUser, listSilhouetteOptions, saveSilhouette } from '../domain/silhouette.js';
 import { createFamilyEvent, createFamilyMember, deleteFamilyEvent, deleteFamilyMember, getFamilyEvent, getFamilyMember, listFamily, listFamilyEvents, updateFamilyEvent, updateFamilyMember } from '../domain/family.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
@@ -339,10 +339,33 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.post('/api/profile/silhouette/estimate', route((req, res) => {
     const session = requireUser(req);
-    const estimated = estimateSilhouetteForUser(deps.db, session.userId);
+    const photoScan = req.body?.photoScan;
+    let estimated;
+    let source: 'measurements' | 'photo_scan' = 'measurements';
+    if (photoScan && typeof photoScan === 'object') {
+      const id = assertSilhouetteId(photoScan.id);
+      const match = listSilhouetteOptions().find((item) => item.id === id)!;
+      const confidence = photoScan.confidence === 'high' || photoScan.confidence === 'low' || photoScan.confidence === 'medium'
+        ? photoScan.confidence
+        : 'medium';
+      estimated = {
+        id,
+        label: match.label,
+        note: match.note,
+        source: 'photo_scan' as const,
+        confidence,
+        photosReady: true,
+        usedPhotoAi: false,
+        disclaimer: 'Styling silhouette estimated by scanning your full-body photograph on this device — not a medical assessment. Photographs were not sent to an external AI.',
+      };
+      source = 'photo_scan';
+    } else {
+      estimated = estimateSilhouetteForUser(deps.db, session.userId);
+      source = estimated.source === 'photo_scan' ? 'photo_scan' : 'measurements';
+    }
     const persist = req.body?.save === true;
     const saved = persist
-      ? saveSilhouette(deps.db, session.userId, estimated.id, 'measurements', deps.now())
+      ? saveSilhouette(deps.db, session.userId, estimated.id, source, deps.now())
       : null;
     res.json({
       estimate: estimated,
