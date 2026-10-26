@@ -99,6 +99,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
   const explain = (error: unknown): string => {
     if (error instanceof AccountApiError && error.status === 401) return 'Session expired.';
     if (error instanceof AccountApiError && error.message.toLowerCase().includes('image')) return 'Image upload failed.';
+    if (error instanceof AccountApiError && error.message.trim()) return error.message;
     return 'Unable to save. Please retry.';
   };
 

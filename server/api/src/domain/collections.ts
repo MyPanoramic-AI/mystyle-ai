@@ -84,7 +84,8 @@ function itemValues(body: Record<string, unknown>, current: Record<string, unkno
   return {
     name: body.name === undefined && current ? String(current.name) : requiredText(body.name, 'name', 120),
     category,
-    colour: body.colour === undefined && current ? optionalText(current.colour, 40) : optionalText(body.colour, 40),
+    // Multi-colour wardrobe pieces store joined names (up to 6); keep headroom for long labels.
+    colour: body.colour === undefined && current ? optionalText(current.colour, 240) : optionalText(body.colour, 240),
     sizeLabel: body.sizeLabel === undefined && current ? optionalText(current.sizeLabel, 16) : optionalText(body.sizeLabel, 16),
     brand: body.brand === undefined && current ? optionalText(current.brand, 80) : optionalText(body.brand, 80),
     subcategory: body.subcategory === undefined && current ? optionalText(current.subcategory, 80) : optionalText(body.subcategory, 80),

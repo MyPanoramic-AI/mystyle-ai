@@ -249,7 +249,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       onClose();
     }).catch((error: unknown) => {
       const status = typeof error === 'object' && error && 'status' in error ? Number((error as { status: number }).status) : 0;
-      setFormError(status === 401 ? 'Session expired.' : 'Unable to save. Please retry.');
+      const message = error instanceof Error && error.message.trim() ? error.message : 'Unable to save. Please retry.';
+      setFormError(status === 401 ? 'Session expired.' : message);
       setSaving(false);
     });
   };

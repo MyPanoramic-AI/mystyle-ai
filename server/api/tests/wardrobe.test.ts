@@ -162,3 +162,21 @@ test('a wardrobe row survives reopening the database and stays out of another ac
   assert.equal(JSON.stringify(authorisedWardrobe(second, 'ada')).includes('media'), false);
   second.close();
 });
+
+test('multi-colour wardrobe labels are accepted within the expanded colour limit', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mystyle-wardrobe-colours-'));
+  const file = path.join(dir, 'account.sqlite');
+  const config = loadConfig();
+  const db = openDatabase(file);
+  migrate(db, config.migrationsDir);
+  const colour = 'Navy Midnight, Ivory Cream, Camel Tan, Forest Pine, Soft Blush';
+  assert.ok(colour.length > 40);
+  const created = createWardrobeItem(db, 'ada', {
+    name: 'Printed blouse',
+    category: 'tops',
+    colour,
+    colourHex: '#1D2A44',
+  }, Date.parse('2026-10-26T00:00:00Z'));
+  assert.equal(created.colour, colour);
+  db.close();
+});
