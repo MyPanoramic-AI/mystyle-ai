@@ -416,6 +416,198 @@ test('fittings list and delete remove private result media', async () => {
   }
 });
 
+test('live try-on is blocked when customer credits are insufficient', async () => {
+  const TOKEN = 'admin-token-for-tests-only';
+  const api = await startApi({ adminToken: TOKEN }, {
+    tryOnConfig: {
+      ...loadTryOnConfig(),
+      allowLive: true,
+      maxBudgetUsd: 10,
+      fashnApiKey: 'test-key-not-used',
+      customerCreditCost: 1,
+    },
+  });
+  try {
+    const ada = await register(api.base, 'tryon-nocredits@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    await grant(api.base, ada.cookie, ada.body.csrfToken, 'external_photo_ai');
+    const entitled = await fetch(`${api.base}/api/admin/entitlements`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ userId: ada.body.userId, planCode: 'PERSONAL', status: 'active' }),
+    });
+    assert.equal(entitled.status, 200);
+
+    const prepared = await fetch(`${api.base}/api/tryon/prepare`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'fashn-tryon-v1.6',
+      }),
+    });
+    assert.equal(prepared.status, 200);
+    const prep = await prepared.json() as { ok: boolean; blockers: string[] };
+    assert.equal(prep.ok, false);
+    assert.ok(prep.blockers.includes('insufficient_credits'));
+
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'fashn-tryon-v1.6',
+        idempotencyKey: 'no-credits-1',
+      }),
+    });
+    assert.equal(created.status, 409);
+    const body = await created.json() as { code: string };
+    assert.equal(body.code, 'insufficient_credits');
+  } finally {
+    await api.close();
+  }
+});
+
+test('live try-on is blocked when ai.image entitlement is missing', async () => {
+  const TOKEN = 'admin-token-for-tests-only';
+  const api = await startApi({ adminToken: TOKEN }, {
+    tryOnConfig: {
+      ...loadTryOnConfig(),
+      allowLive: true,
+      maxBudgetUsd: 10,
+      fashnApiKey: 'test-key-not-used',
+    },
+  });
+  try {
+    const ada = await register(api.base, 'tryon-noentitle@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    await grant(api.base, ada.cookie, ada.body.csrfToken, 'external_photo_ai');
+    await fetch(`${api.base}/api/admin/credits/allocate`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        userId: ada.body.userId,
+        amount: 20,
+        periodKey: '2026-10',
+        idempotencyKey: 'tryon-entitle-alloc',
+        reason: 'Entitlement blocker test',
+      }),
+    });
+
+    const prepared = await fetch(`${api.base}/api/tryon/prepare`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'fashn-tryon-v1.6',
+      }),
+    });
+    const prep = await prepared.json() as { ok: boolean; blockers: string[] };
+    assert.equal(prep.ok, false);
+    assert.ok(prep.blockers.includes('feature_unavailable'));
+
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'fashn-tryon-v1.6',
+        idempotencyKey: 'no-entitle-1',
+      }),
+    });
+    assert.equal(created.status, 403);
+    const body = await created.json() as { code: string };
+    assert.equal(body.code, 'feature_unavailable');
+  } finally {
+    await api.close();
+  }
+});
+
+test('completed result media is distinct from the garment input and survives refresh', async () => {
+  const api = await startApi();
+  try {
+    const ada = await register(api.base, 'tryon-result-bind@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'mock',
+        idempotencyKey: 'result-bind-1',
+      }),
+    });
+    assert.equal(created.status, 201);
+    const job = await created.json() as { id: string };
+    const done = await pollJob(api.base, ada.cookie, job.id) as {
+      status: string;
+      demonstration: boolean;
+      resultMediaId: string;
+      garmentMediaId: string;
+      personMediaId: string;
+    };
+    assert.equal(done.status, 'succeeded');
+    assert.equal(done.demonstration, true);
+    assert.ok(done.resultMediaId);
+    assert.notEqual(done.resultMediaId, done.garmentMediaId);
+    assert.notEqual(done.resultMediaId, done.personMediaId);
+
+    const refreshed = await fetch(`${api.base}/api/tryon/jobs/${job.id}`, { headers: { cookie: ada.cookie } });
+    assert.equal(refreshed.status, 200);
+    const again = await refreshed.json() as { resultMediaId: string; garmentMediaId: string };
+    assert.equal(again.resultMediaId, done.resultMediaId);
+    assert.notEqual(again.resultMediaId, again.garmentMediaId);
+
+    const fittings = await fetch(`${api.base}/api/tryon/fittings`, { headers: { cookie: ada.cookie } });
+    const listed = await fittings.json() as { fittings: { id: string; resultMediaId: string }[] };
+    assert.equal(listed.fittings[0]?.resultMediaId, done.resultMediaId);
+  } finally {
+    await api.close();
+  }
+});
+
+test('failed generation leaves no result media for the UI to render', async () => {
+  const api = await startApi();
+  try {
+    const ada = await register(api.base, 'tryon-fail-norslt@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'outerwear',
+        providerId: 'mock',
+        mockScenario: 'provider_error',
+        idempotencyKey: 'fail-no-result-2',
+      }),
+    });
+    assert.equal(created.status, 201);
+    const job = await created.json() as { id: string };
+    assert.ok(job.id);
+    const done = await pollJob(api.base, ada.cookie, job.id);
+    assert.equal(done.status, 'failed');
+    assert.equal(done.resultMediaId, null);
+
+    const fittings = await fetch(`${api.base}/api/tryon/fittings`, { headers: { cookie: ada.cookie } });
+    const listed = await fittings.json() as { fittings: unknown[] };
+    assert.equal(listed.fittings.length, 0);
+  } finally {
+    await api.close();
+  }
+});
+
 test('authorised mocked FASHN path stores a provider result without calling the real API', async () => {
   const TOKEN = 'admin-token-for-tests-only';
   const providerPng = Buffer.from(

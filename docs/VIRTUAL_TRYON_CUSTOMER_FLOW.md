@@ -6,13 +6,14 @@ Date: 26 October 2026.
 
 1. Signed-in adult selects clothing from **Digital Wardrobe / saved garments** (preferred), **Shop** (Try It On preload; demonstration catalogue labelling), or **upload**.
 2. Photograph step uses privately stored `full_body_front` when present; otherwise prompts Manage Photos.
-3. Confirm step shows garment, photograph, category, estimated internal credits, and consent state.
-4. Generate:
+3. **Confirm (pre-generation only):** labelled “Your selected photo” + “Selected garment” as inputs — not a finished result. Precise blockers when consent / credits / entitlement / live mode are missing.
+4. **Progress:** loading + provider status; no catalogue image presented as output.
+5. Generate:
    - **Live** (`generationMode: live`): `fashn-tryon-v1.6` with consent, entitlement, credits, budget, and key.
-   - **Local mock** (`local_mock`): clearly labelled development/test demonstration — never presented as real FASHN.
-   - **Unavailable**: honest message that photographs were not sent for AI processing. No striped fake success.
-5. Result shows before/after; provider results use `resultKind: provider`.
-6. **My Virtual Fittings** lists saved successes; delete removes the job and private result media.
+   - **Local mock** (`local_mock`): clearly labelled “Demonstration output — not a real virtual try-on.”
+   - **Unavailable / blocked:** precise CTA; no fake result image.
+6. **Result:** Before = customer photo; After = `mediaDisplayUrl(job.resultMediaId)` only (never shop/garment preview). Provider jobs use `resultKind: provider`.
+7. **My Virtual Fittings** lists saved successes; delete removes the job and private result media.
 
 ## Endpoints
 

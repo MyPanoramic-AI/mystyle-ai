@@ -87,6 +87,30 @@ async function urlToBase64(url: string): Promise<string> {
   return btoa(binary);
 }
 
+/** Precise customer-facing blockers — never imply a result was generated. */
+function generationBlockers(availability: TryOnAvailabilityResponse | null, usesAccount: boolean): string[] {
+  if (!usesAccount) return ['Sign in with an adult account to use Virtual Try-On.'];
+  if (!availability) return ['Checking try-on availability…'];
+  const blockers: string[] = [];
+  const checks = availability.readiness?.checks || {};
+  if (!availability.privatePhotoStorageConsent && !checks.privatePhotoStorageConsent) {
+    blockers.push('Grant private photograph storage consent before using saved photos.');
+  }
+  if (availability.generationMode === 'unavailable') {
+    if (!availability.liveEnabled) blockers.push('Live virtual try-on is currently unavailable on this server.');
+    if (!availability.externalPhotoAiConsent) blockers.push('Grant external AI consent to continue.');
+    if (availability.aiImageEntitlement === false) blockers.push('This plan does not include virtual try-on (ai.image entitlement required).');
+    if (typeof availability.creditBalance === 'number' && typeof availability.estimatedCustomerCredits === 'number'
+      && availability.creditBalance < availability.estimatedCustomerCredits) {
+      blockers.push('You need available try-on credits.');
+    }
+    if (checks.fashnApiKeyConfigured === false) blockers.push('A server-side provider key is not configured.');
+    if (checks.nonzeroBudget === false) blockers.push('The server provider budget is zero.');
+    if (blockers.length === 0) blockers.push(availability.note || 'Virtual try-on is currently unavailable.');
+  }
+  return blockers;
+}
+
 export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   onNavigate,
   preloadedOutfit,
@@ -201,7 +225,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         } else if (next.status === 'failed' || next.status === 'cancelled') {
           stopPolling();
           setBusy(false);
-          setStep('confirm');
+          setStep(next.status === 'failed' ? 'result' : 'confirm');
           showStatus(next.errorMessage || (next.status === 'cancelled' ? 'Try-on cancelled.' : 'Try-on failed.'));
         }
       }).catch((error) => {
@@ -360,15 +384,27 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     }
   };
 
-  const resultUrl = job?.resultMediaId ? mediaDisplayUrl(job.resultMediaId) : undefined;
+  // Final “After” image MUST come from the job’s private result media — never garmentPreview / shop image.
+  const hasCompletedResult = Boolean(job?.status === 'succeeded' && job.resultMediaId);
+  const resultUrl = hasCompletedResult && job?.resultMediaId ? mediaDisplayUrl(job.resultMediaId) : undefined;
+  const blockers = generationBlockers(availability, usesAccount);
   const generateLabel = generationMode === 'live'
     ? 'Generate Virtual Try-On'
     : generationMode === 'local_mock'
       ? 'Run Local Development Demo'
       : 'Virtual Try-On Unavailable';
 
+  const goToStep = (next: Step) => {
+    if (next === 'result' && !hasCompletedResult && job?.status !== 'failed') {
+      showStatus('No generated try-on result yet. Confirm your selections and generate first.');
+      setStep('confirm');
+      return;
+    }
+    setStep(next);
+  };
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6 text-left">
+    <div className="max-w-3xl mx-auto space-y-6 text-left" data-testid="tryon-page">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <button
           type="button"
@@ -405,20 +441,27 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
             ['confirm', '3 · Confirm'],
             ['result', '4 · Result'],
             ['fittings', 'My Fittings'],
-          ] as const).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setStep(id)}
-              className={`px-3 py-1.5 rounded-full border transition-colors cursor-pointer ${
-                step === id || (step === 'progress' && id === 'confirm')
-                  ? 'bg-[#9C6A61] text-white border-[#9C6A61]'
-                  : 'bg-[#FAF7F2] text-[#5C585E] border-[#242326]/10 hover:text-[#242326]'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+          ] as const).map(([id, label]) => {
+            const resultLocked = id === 'result' && !hasCompletedResult;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => goToStep(id)}
+                disabled={resultLocked}
+                title={resultLocked ? 'Available after a successful generation' : undefined}
+                className={`px-3 py-1.5 rounded-full border transition-colors ${
+                  resultLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                } ${
+                  step === id || (step === 'progress' && id === 'confirm')
+                    ? 'bg-[#9C6A61] text-white border-[#9C6A61]'
+                    : 'bg-[#FAF7F2] text-[#5C585E] border-[#242326]/10 hover:text-[#242326]'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {statusMessage && (
@@ -428,12 +471,20 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         )}
 
         {generationMode === 'unavailable' && (
-          <div className="p-4 rounded-2xl bg-[#F6F2EC] border border-[#242326]/10 text-xs text-[#5C585E] space-y-2">
-            <p className="font-semibold text-[#242326]">Virtual Try-On is currently unavailable.</p>
-            <p>{availability?.note || 'Your photographs have not been sent for AI processing.'}</p>
-            {!availability?.externalPhotoAiConsent && (
+          <div className="p-4 rounded-2xl bg-[#F6F2EC] border border-[#242326]/10 text-xs text-[#5C585E] space-y-2" data-testid="tryon-unavailable">
+            <p className="font-semibold text-[#242326]">Live virtual try-on is currently unavailable</p>
+            {blockers.length > 0 ? (
+              <ul className="list-disc pl-4 space-y-1">
+                {blockers.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>{availability?.note || 'Your photographs have not been sent for AI processing.'}</p>
+            )}
+            {!availability?.externalPhotoAiConsent && usesAccount && (
               <Button type="button" variant="secondary" size="sm" onClick={() => void handleGrantExternalConsent()}>
-                Record external-photo-AI consent
+                Grant external AI consent to continue
               </Button>
             )}
           </div>
@@ -616,69 +667,141 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           </div>
         )}
 
-        {(step === 'confirm' || step === 'progress') && usesAccount && personMediaId && (
-          <div className="space-y-4">
-            <h2 className="font-serif text-lg font-semibold text-[#242326]">Confirm fitting</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-[#242326]/10 overflow-hidden bg-[#FAF7F2]">
-                <div className="aspect-[3/4] bg-white">
-                  {activePhoto && <img src={activePhoto} alt="Selected photograph" className="w-full h-full object-cover" />}
-                </div>
-                <p className="text-[11px] p-2 text-[#5C585E]">Your photograph</p>
-              </div>
-              <div className="rounded-2xl border border-[#242326]/10 overflow-hidden bg-[#FAF7F2]">
-                <div className="aspect-[3/4] bg-white">
-                  {garmentPreview && <img src={garmentPreview} alt="Selected garment" className="w-full h-full object-cover" />}
-                </div>
-                <p className="text-[11px] p-2 text-[#5C585E]">Garment · {category}</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-2xl bg-[#F6F2EC] border border-[#242326]/8 text-xs text-[#5C585E] space-y-2">
-              <p>
-                Estimated customer credits: <span className="font-semibold text-[#242326]">{generationMode === 'live' ? (availability?.estimatedCustomerCredits ?? 1) : 0}</span>
-                {typeof availability?.creditBalance === 'number' ? ` · Balance: ${availability.creditBalance}` : ''}
-              </p>
-              <p>
-                External AI consent: {availability?.externalPhotoAiConsent ? 'granted' : 'not granted'}.
-                Live generation also needs plan entitlement and a server-side budget.
-              </p>
-              {!availability?.externalPhotoAiConsent && (
-                <Button type="button" variant="secondary" size="sm" onClick={() => void handleGrantExternalConsent()}>
-                  Record external-photo-AI consent
-                </Button>
-              )}
-              <p className="flex items-start gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#9C6A61] shrink-0 mt-0.5" />
-                <span>Results are AI visualisations, not a guarantee of physical fit, colour accuracy, or stock availability.</span>
+        {step === 'confirm' && usesAccount && personMediaId && (
+          <div className="space-y-4" data-testid="tryon-confirm">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B49361]">Before generation</p>
+              <h2 className="font-serif text-lg font-semibold text-[#242326] mt-1">Ready to generate virtual try-on</h2>
+              <p className="text-xs text-[#5C585E] mt-1">
+                These are your inputs only — not a finished try-on result.
               </p>
             </div>
+            <div className="grid grid-cols-2 gap-3" data-testid="tryon-confirm-inputs">
+              <div className="rounded-xl border border-dashed border-[#242326]/20 overflow-hidden bg-[#FAF7F2]">
+                <div className="aspect-square max-h-40 bg-white">
+                  {activePhoto && (
+                    <img src={activePhoto} alt="Your selected photo" className="w-full h-full object-cover" data-testid="tryon-confirm-photo" />
+                  )}
+                </div>
+                <p className="text-[11px] p-2 text-[#5C585E]">Your selected photo</p>
+              </div>
+              <div className="rounded-xl border border-dashed border-[#242326]/20 overflow-hidden bg-[#FAF7F2]">
+                <div className="aspect-square max-h-40 bg-white">
+                  {garmentPreview && (
+                    <img src={garmentPreview} alt="Selected garment" className="w-full h-full object-cover" data-testid="tryon-confirm-garment" />
+                  )}
+                </div>
+                <p className="text-[11px] p-2 text-[#5C585E]">Selected garment · {category}</p>
+              </div>
+            </div>
+
+            {blockers.length > 0 && (
+              <div
+                className="p-4 rounded-2xl bg-[#FDF6F4] border border-[#9C6A61]/30 text-xs text-[#5C585E] space-y-2"
+                data-testid="tryon-blockers"
+                role="alert"
+              >
+                <p className="font-semibold text-[#242326]">Generation cannot run yet</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  {blockers.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+                {!availability?.externalPhotoAiConsent && usesAccount && (
+                  <Button type="button" variant="secondary" size="sm" onClick={() => void handleGrantExternalConsent()}>
+                    Grant external AI consent to continue
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {blockers.length === 0 && (
+              <div className="p-4 rounded-2xl bg-[#F6F2EC] border border-[#242326]/8 text-xs text-[#5C585E] space-y-2">
+                <p>
+                  Estimated customer credits:{' '}
+                  <span className="font-semibold text-[#242326]">
+                    {generationMode === 'live' ? (availability?.estimatedCustomerCredits ?? 1) : 0}
+                  </span>
+                  {typeof availability?.creditBalance === 'number' ? ` · Balance: ${availability.creditBalance}` : ''}
+                </p>
+                <p className="flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#9C6A61] shrink-0 mt-0.5" />
+                  <span>Results are AI visualisations, not a guarantee of physical fit, colour accuracy, or stock availability.</span>
+                </p>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-3">
               <Button type="button" variant="secondary" size="md" onClick={() => setStep('photo')} disabled={busy}>Back</Button>
-              <Button type="button" variant="primary" size="md" disabled={busy || !garmentReady || generationMode === 'unavailable'} onClick={() => void handleGenerate()}>
-                {busy ? 'Generating…' : generateLabel}
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                disabled={busy || !garmentReady || blockers.length > 0 || generationMode === 'unavailable'}
+                onClick={() => void handleGenerate()}
+                data-testid="tryon-generate"
+              >
+                {generateLabel}
               </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'progress' && (
+          <div className="space-y-4" data-testid="tryon-progress" role="status">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B49361]">Generating</p>
+              <h2 className="font-serif text-lg font-semibold text-[#242326] mt-1">Virtual try-on in progress</h2>
+              <p className="text-xs text-[#5C585E] mt-1">
+                {job?.status === 'queued' || job?.status === 'running'
+                  ? `Provider status: ${job.status}. Please wait — this is not a finished result yet.`
+                  : 'Submitting your request…'}
+              </p>
+            </div>
+            <div className="p-6 rounded-2xl border border-[#242326]/10 bg-[#FAF7F2] flex flex-col items-center gap-3 text-center">
+              <RefreshCw className="w-8 h-8 text-[#9C6A61] animate-spin" aria-hidden />
+              <p className="text-sm text-[#5C585E]">
+                Do not treat the garment catalogue image as your result. The finished output will appear on the Result step.
+              </p>
               {busy && job && (job.status === 'queued' || job.status === 'running') && (
                 <Button type="button" variant="secondary" size="md" onClick={() => void handleCancel()}>Cancel</Button>
               )}
             </div>
-            {step === 'progress' && (
-              <p className="text-xs text-[#5C585E]" role="status">
-                {job?.status === 'queued' || job?.status === 'running'
-                  ? `Job ${job.status}… Please wait.`
-                  : 'Preparing generation…'}
-              </p>
-            )}
           </div>
         )}
 
-        {step === 'result' && job?.status === 'succeeded' && resultUrl && (
-          <div className="space-y-4">
+        {step === 'result' && job?.status === 'failed' && (
+          <div className="space-y-4" data-testid="tryon-failed" role="alert">
+            <h2 className="font-serif text-lg font-semibold text-[#242326]">Generation failed</h2>
+            <p className="text-xs text-[#5C585E]">
+              {job.errorMessage || 'The try-on could not be completed. No result image was saved.'}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button type="button" variant="secondary" size="md" onClick={() => { setJob(null); setStep('confirm'); }}>
+                Back to confirm
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'result' && hasCompletedResult && resultUrl && job && (
+          <div className="space-y-4" data-testid="tryon-result">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h2 className="font-serif text-lg font-semibold text-[#242326]">
-                {job.demonstration ? 'Development demonstration result' : 'Virtual try-on result'}
-              </h2>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B49361]">
+                  {job.demonstration ? 'Demonstration output — not a real virtual try-on' : 'Provider try-on result'}
+                </p>
+                <h2 className="font-serif text-lg font-semibold text-[#242326] mt-1">
+                  {job.demonstration ? 'Development demonstration result' : 'Virtual try-on result'}
+                </h2>
+              </div>
               <span className="text-[11px] text-[#5C585E]">{job.label}</span>
             </div>
+            {job.demonstration && (
+              <p className="text-xs p-3 rounded-xl bg-[#F6F2EC] border border-[#242326]/8 text-[#5C585E]" data-testid="tryon-mock-banner">
+                Demonstration output — not a real virtual try-on. The image below is a local mock, not a FASHN provider result.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant={compare === 'both' ? 'primary' : 'secondary'} size="sm" icon={<Columns2 className="w-4 h-4" />} onClick={() => setCompare('both')}>
                 Before / After
@@ -688,20 +811,29 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
             </div>
             <div className={`grid gap-3 ${compare === 'both' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
               {(compare === 'before' || compare === 'both') && activePhoto && (
-                <div className="rounded-2xl border border-[#242326]/10 overflow-hidden bg-white">
-                  <img src={activePhoto} alt="Before" className="w-full h-auto object-cover" />
-                  <p className="text-[11px] p-2 text-[#5C585E]">Before</p>
+                <div className="rounded-2xl border border-[#242326]/10 overflow-hidden bg-white" data-testid="tryon-before">
+                  <img src={activePhoto} alt="Before — your original photo" className="w-full h-auto object-cover" />
+                  <p className="text-[11px] p-2 text-[#5C585E]">Before · your original photo</p>
                 </div>
               )}
               {(compare === 'after' || compare === 'both') && (
-                <div className="rounded-2xl border border-[#B49361]/40 overflow-hidden bg-white">
-                  <img src={resultUrl} alt={job.label} className="w-full h-auto object-cover" />
-                  <p className="text-[11px] p-2 text-[#5C585E]">After · {job.demonstration ? 'Local demo' : 'Provider result'}</p>
+                <div className="rounded-2xl border border-[#B49361]/40 overflow-hidden bg-white" data-testid="tryon-after">
+                  <img
+                    src={resultUrl}
+                    alt={job.demonstration ? 'Demonstration try-on output' : 'Provider try-on result'}
+                    className="w-full h-auto object-cover"
+                    data-testid="tryon-result-image"
+                    data-result-media-id={job.resultMediaId}
+                  />
+                  <p className="text-[11px] p-2 text-[#5C585E]">
+                    After · {job.demonstration ? 'Demonstration output — not a real virtual try-on' : 'Provider try-on result'}
+                  </p>
                 </div>
               )}
             </div>
             <p className="text-xs text-[#5C585E]">
-              This image is already saved privately on your account. It is an AI visualisation, not a precise physical fit guarantee.
+              The After image is the stored try-on result media for this job — not the shop garment preview.
+              It is saved privately on your account and is an AI visualisation, not a precise physical fit guarantee.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button type="button" variant="secondary" size="md" onClick={() => setStep('fittings')}>View previous results</Button>
@@ -712,6 +844,16 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                 Delete result
               </Button>
             </div>
+          </div>
+        )}
+
+        {step === 'result' && !hasCompletedResult && job?.status !== 'failed' && (
+          <div className="space-y-3" data-testid="tryon-result-empty">
+            <h2 className="font-serif text-lg font-semibold text-[#242326]">No result yet</h2>
+            <p className="text-xs text-[#5C585E]">
+              Generate a virtual try-on from the Confirm step. The garment preview is never shown as a finished result.
+            </p>
+            <Button type="button" variant="primary" size="md" onClick={() => setStep('confirm')}>Go to confirm</Button>
           </div>
         )}
 
