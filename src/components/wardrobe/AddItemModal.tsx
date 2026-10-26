@@ -10,7 +10,12 @@ import {
   WardrobeOccasion,
   WardrobeItem,
 } from '../../types/wardrobe';
-import { X, Camera, Plus, Check, Sparkles } from 'lucide-react';
+import { X, Plus, Check } from 'lucide-react';
+import turtleneckImg from '../../assets/images/fashion_weekend_casual_1791978401075.jpg';
+import skirtImg from '../../assets/images/fashion_date_night_1791978397788.jpg';
+import blazerImg from '../../assets/images/fashion_work_office_1791978399975.jpg';
+import gownImg from '../../assets/images/fashion_special_gala_1791978474099.jpg';
+import loafersImg from '../../assets/images/style_classic_tailored_1791980329558.jpg';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -20,7 +25,7 @@ interface AddItemModalProps {
   onSave: (item: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'> & { id?: string }, file?: File | null) => Promise<void> | void;
 }
 
-// Preset demonstration garment photos to make adding items effortless
+// Preset demonstration garments — local assets so populate works without external image hosts.
 const PRESET_GARMENT_PHOTOS = [
   {
     name: 'Fine Gauge Merino Turtleneck',
@@ -31,7 +36,7 @@ const PRESET_GARMENT_PHOTOS = [
     colorHex: '#F3EFE6',
     seasons: ['autumn', 'winter', 'spring'] as WardrobeSeason[],
     occasions: ['work', 'casual'] as WardrobeOccasion[],
-    imageUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=700&q=80',
+    imageUrl: turtleneckImg,
     fabric: '100% Merino Wool',
   },
   {
@@ -39,11 +44,11 @@ const PRESET_GARMENT_PHOTOS = [
     category: 'bottoms' as WardrobeCategory,
     subcategory: 'Skirt',
     brand: 'Country Road',
-    color: 'Burnt Sienna',
-    colorHex: '#9E4E39',
+    color: 'Terracotta Rust',
+    colorHex: '#B85848',
     seasons: ['all-season', 'autumn'] as WardrobeSeason[],
     occasions: ['cocktail', 'evening', 'work'] as WardrobeOccasion[],
-    imageUrl: 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=700&q=80',
+    imageUrl: skirtImg,
     fabric: 'Fluid Satin Twill',
   },
   {
@@ -55,7 +60,7 @@ const PRESET_GARMENT_PHOTOS = [
     colorHex: '#38281F',
     seasons: ['autumn', 'winter', 'all-season'] as WardrobeSeason[],
     occasions: ['work', 'cocktail'] as WardrobeOccasion[],
-    imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=700&q=80',
+    imageUrl: blazerImg,
     fabric: 'Wool Suiting Crepe',
   },
   {
@@ -67,7 +72,7 @@ const PRESET_GARMENT_PHOTOS = [
     colorHex: '#4C1D2A',
     seasons: ['all-season', 'winter'] as WardrobeSeason[],
     occasions: ['evening', 'formal'] as WardrobeOccasion[],
-    imageUrl: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=700&q=80',
+    imageUrl: gownImg,
     fabric: 'Silk Georgette',
   },
   {
@@ -79,7 +84,7 @@ const PRESET_GARMENT_PHOTOS = [
     colorHex: '#7C4623',
     seasons: ['all-season'] as WardrobeSeason[],
     occasions: ['work', 'weekend'] as WardrobeOccasion[],
-    imageUrl: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=80',
+    imageUrl: loafersImg,
     fabric: 'Calfskin Leather',
   },
 ];
@@ -155,7 +160,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [customHex, setCustomHex] = useState('#9C6A61');
   const [seasons, setSeasons] = useState<WardrobeSeason[]>(initial?.seasons ?? ['all-season']);
   const [occasions, setOccasions] = useState<WardrobeOccasion[]>(initial?.occasions ?? ['work', 'casual']);
-  const [imageUrl, setImageUrl] = useState(initial?.imageUrl || 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=700&q=80');
+  const [imageUrl, setImageUrl] = useState(initial?.imageUrl || turtleneckImg);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -163,13 +168,15 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [careNote, setCareNote] = useState(initial?.careNote ?? 'Gentle wash, cool iron');
   const [pairingNotes, setPairingNotes] = useState(initial?.pairingNotes ?? '');
   const [isCapsuleStaple, setIsCapsuleStaple] = useState(initial?.isCapsuleStaple ?? true);
+  const [activePresetIndex, setActivePresetIndex] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
   const primaryColour = selectedColours[0] ?? { name: 'Ivory Cream', hex: '#F5F2EB' };
   const colourLabel = selectedColours.map((swatch) => swatch.name).join(', ');
 
-  const handleApplyPreset = (preset: typeof PRESET_GARMENT_PHOTOS[0]) => {
+  const handleApplyPreset = (preset: typeof PRESET_GARMENT_PHOTOS[0], index: number) => {
+    setActivePresetIndex(index);
     setName(preset.name);
     setCategory(preset.category);
     setSubcategory(preset.subcategory);
@@ -178,7 +185,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     setSeasons(preset.seasons);
     setOccasions(preset.occasions);
     setImageUrl(preset.imageUrl);
+    setPhotoFile(null);
     setFabric(preset.fabric);
+    setFormError(null);
+  };
+
+  const handlePopulateNext = () => {
+    const nextIndex = activePresetIndex == null
+      ? 0
+      : (activePresetIndex + 1) % PRESET_GARMENT_PHOTOS.length;
+    const preset = PRESET_GARMENT_PHOTOS[nextIndex];
+    if (preset) handleApplyPreset(preset, nextIndex);
   };
 
   const handleToggleColour = (swatch: ColourSwatch) => {
@@ -283,29 +300,55 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         <form onSubmit={handleSubmit} className="overflow-y-auto p-6 space-y-5">
           {/* Preset Photo Quick Picker */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between gap-2 mb-2">
               <label className="text-xs font-mono uppercase text-[#5C585E] font-medium">
-                Quick Preset Garment Inspiration:
+                Quick Preset Garment Inspiration
               </label>
-              <span className="text-[10px] text-[#B49361] font-medium">Click to populate</span>
+              <button
+                type="button"
+                onClick={handlePopulateNext}
+                className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-[#B49361] bg-[#B49361]/10 hover:bg-[#B49361]/20 border border-[#B49361]/25 cursor-pointer transition-colors"
+              >
+                Click to populate
+              </button>
             </div>
+            <p className="text-[11px] text-[#5C585E] mb-2">
+              Tap a thumbnail or use populate to fill name, colour, seasons, and photo.
+            </p>
             <div className="grid grid-cols-5 gap-2">
-              {PRESET_GARMENT_PHOTOS.map((preset, idx) => (
-                <button
-                  type="button"
-                  key={idx}
-                  onClick={() => handleApplyPreset(preset)}
-                  className="aspect-square rounded-xl overflow-hidden border border-[#242326]/12 hover:border-[#9C6A61] transition-all relative group cursor-pointer"
-                  title={preset.name}
-                >
-                  <img
-                    src={preset.imageUrl}
-                    alt={preset.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
-                </button>
-              ))}
+              {PRESET_GARMENT_PHOTOS.map((preset, idx) => {
+                const isActive = activePresetIndex === idx;
+                return (
+                  <button
+                    type="button"
+                    key={preset.name}
+                    onClick={() => handleApplyPreset(preset, idx)}
+                    className={`aspect-square rounded-xl overflow-hidden border-2 transition-all relative group cursor-pointer ${
+                      isActive
+                        ? 'border-[#9C6A61] ring-2 ring-[#9C6A61]/30'
+                        : 'border-[#242326]/12 hover:border-[#9C6A61]'
+                    }`}
+                    title={`Use preset: ${preset.name}`}
+                    aria-pressed={isActive}
+                    aria-label={`Populate form with ${preset.name}`}
+                  >
+                    <img
+                      src={preset.imageUrl}
+                      alt=""
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform pointer-events-none"
+                    />
+                    <div className={`absolute inset-0 transition-colors pointer-events-none ${
+                      isActive ? 'bg-[#9C6A61]/15' : 'bg-black/15 group-hover:bg-transparent'
+                    }`} />
+                    {isActive && (
+                      <span className="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-[#9C6A61] text-white flex items-center justify-center shadow-sm">
+                        <Check className="w-3 h-3" strokeWidth={3} />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
