@@ -19,7 +19,13 @@ import {
   X,
   User,
 } from 'lucide-react';
-import { AccountApiError, accountApi, type TryOnCategory, type TryOnJobRecord } from '../../services/accountApi';
+import {
+  AccountApiError,
+  accountApi,
+  type TryOnCategory,
+  type TryOnGarmentOption,
+  type TryOnJobRecord,
+} from '../../services/accountApi';
 import { fileToBase64, mediaDisplayUrl } from '../../services/profilePhotosClient';
 
 interface TryOnPlaceholderProps {
@@ -34,6 +40,7 @@ interface TryOnPlaceholderProps {
 }
 
 type PersonSlot = 'full_body_front' | 'full_body_additional' | 'portrait';
+type GarmentMode = 'existing' | 'shop' | 'upload';
 
 const CATEGORIES: { id: TryOnCategory; label: string }[] = [
   { id: 'tops', label: 'Tops' },
@@ -56,11 +63,11 @@ function personOptions(photos?: TemporaryPhotos): { slot: PersonSlot; mediaId: s
   return options;
 }
 
-function categoryFromPreload(garment?: PreloadedGarment | null): TryOnCategory {
-  const raw = (garment?.category || '').toLowerCase();
-  if (raw.includes('bottom') || raw.includes('pant') || raw.includes('skirt')) return 'bottoms';
-  if (raw.includes('dress') || raw.includes('jumpsuit') || raw.includes('one')) return 'one-pieces';
-  if (raw.includes('outer') || raw.includes('coat') || raw.includes('jacket')) return 'outerwear';
+function categoryFromText(raw?: string | null): TryOnCategory {
+  const value = (raw || '').toLowerCase();
+  if (value.includes('bottom') || value.includes('pant') || value.includes('skirt') || value.includes('jean')) return 'bottoms';
+  if (value.includes('dress') || value.includes('jumpsuit') || value.includes('one')) return 'one-pieces';
+  if (value.includes('outer') || value.includes('coat') || value.includes('jacket') || value.includes('blazer')) return 'outerwear';
   return 'tops';
 }
 
@@ -86,11 +93,16 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
 }) => {
   const options = useMemo(() => personOptions(photos), [photos]);
   const [personMediaId, setPersonMediaId] = useState<string | undefined>(options[0]?.mediaId);
-  const [category, setCategory] = useState<TryOnCategory>(categoryFromPreload(preloadedGarment));
+  const [category, setCategory] = useState<TryOnCategory>(categoryFromText(preloadedGarment?.category));
+  const [garmentMode, setGarmentMode] = useState<GarmentMode>('existing');
+  const [accountGarments, setAccountGarments] = useState<TryOnGarmentOption[]>([]);
+  const [selectedGarmentId, setSelectedGarmentId] = useState<string>('');
+  const [shopNote, setShopNote] = useState('MyStyle AI Shop demonstration listings are not verified retailer products.');
   const [garmentFile, setGarmentFile] = useState<File | null>(null);
   const [garmentPreview, setGarmentPreview] = useState<string | undefined>(preloadedGarment?.imageUrl);
   const [externalConsent, setExternalConsent] = useState(false);
   const [liveEnabled, setLiveEnabled] = useState(false);
+  const [liveReady, setLiveReady] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [job, setJob] = useState<TryOnJobRecord | null>(null);
@@ -98,6 +110,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const pollRef = useRef<number | null>(null);
 
   const activePhoto = options.find((item) => item.mediaId === personMediaId)?.url || options[0]?.url;
+  const selectedGarment = accountGarments.find((item) => item.id === selectedGarmentId);
 
   useEffect(() => {
     if (!options.some((item) => item.mediaId === personMediaId)) {
@@ -106,25 +119,42 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   }, [options, personMediaId]);
 
   useEffect(() => {
-    setCategory(categoryFromPreload(preloadedGarment));
-    setGarmentPreview(preloadedGarment?.imageUrl);
-    setGarmentFile(null);
+    setCategory(categoryFromText(preloadedGarment?.category));
+    if (preloadedGarment?.imageUrl) {
+      setGarmentMode('shop');
+      setGarmentPreview(preloadedGarment.imageUrl);
+      setGarmentFile(null);
+    }
   }, [preloadedGarment]);
 
   useEffect(() => {
     if (!usesAccount) return;
     let cancelled = false;
-    void accountApi.tryOnAvailability().then((availability) => {
+    void Promise.all([
+      accountApi.tryOnAvailability(),
+      accountApi.listTryOnGarments(),
+    ]).then(([availability, garments]) => {
       if (cancelled) return;
       setLiveEnabled(availability.liveEnabled);
       setExternalConsent(availability.externalPhotoAiConsent);
+      setLiveReady(Boolean(availability.readiness?.liveReady));
+      setAccountGarments(garments.garments);
+      setShopNote(garments.shop.note);
+      if (!preloadedGarment && garments.garments.length > 0) {
+        setGarmentMode('existing');
+        setSelectedGarmentId(garments.garments[0]!.id);
+        setGarmentPreview(mediaDisplayUrl(garments.garments[0]!.mediaId));
+        setCategory(categoryFromText(garments.garments[0]!.category));
+      } else if (!preloadedGarment) {
+        setGarmentMode(garments.preferredSource === 'upload' ? 'upload' : 'existing');
+      }
     }).catch(() => {
       // Availability is informational; the Simulate Fit path still surfaces errors.
     });
     return () => {
       cancelled = true;
     };
-  }, [usesAccount]);
+  }, [usesAccount, preloadedGarment]);
 
   useEffect(() => () => {
     if (pollRef.current) window.clearInterval(pollRef.current);
@@ -167,8 +197,20 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    setGarmentMode('upload');
     setGarmentFile(file);
     setGarmentPreview(URL.createObjectURL(file));
+  };
+
+  const handleSelectExisting = (garmentId: string) => {
+    const garment = accountGarments.find((item) => item.id === garmentId);
+    setSelectedGarmentId(garmentId);
+    setGarmentMode('existing');
+    setGarmentFile(null);
+    if (garment) {
+      setGarmentPreview(mediaDisplayUrl(garment.mediaId));
+      setCategory(categoryFromText(garment.category));
+    }
   };
 
   const handleSimulateFit = async () => {
@@ -180,25 +222,46 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       showStatus('Add a private full-body photograph in My Profile → Manage Photos first.');
       return;
     }
-    if (!garmentFile && !preloadedGarment?.imageUrl) {
-      showStatus('Choose a garment image or load one from Shop before simulating a fit.');
-      return;
-    }
 
     setBusy(true);
     setJob(null);
     showStatus('Starting demonstration fit…');
     try {
-      const garmentImageBase64 = garmentFile
-        ? await fileToBase64(garmentFile)
-        : await urlToBase64(preloadedGarment!.imageUrl);
-      const created = await accountApi.createTryOnJob({
+      const body: Parameters<typeof accountApi.createTryOnJob>[0] = {
         personMediaId,
-        garmentImageBase64,
         category,
         providerId: 'mock',
         idempotencyKey: `ui-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      };
+
+      if (garmentMode === 'existing' && selectedGarment) {
+        if (selectedGarment.wardrobeItemId) body.wardrobeItemId = selectedGarment.wardrobeItemId;
+        else body.garmentMediaId = selectedGarment.mediaId;
+      } else if (garmentMode === 'shop' && preloadedGarment?.imageUrl) {
+        body.garmentImageBase64 = await urlToBase64(preloadedGarment.imageUrl);
+      } else if (garmentMode === 'upload' && garmentFile) {
+        body.garmentImageBase64 = await fileToBase64(garmentFile);
+      } else {
+        setBusy(false);
+        showStatus('Select a wardrobe garment, a Shop demonstration listing, or upload a garment image.');
+        return;
+      }
+
+      const prepared = await accountApi.prepareTryOnJob({
+        personMediaId,
+        category,
+        providerId: 'mock',
+        ...(body.wardrobeItemId ? { wardrobeItemId: body.wardrobeItemId } : {}),
+        ...(body.garmentMediaId ? { garmentMediaId: body.garmentMediaId } : {}),
+        ...(body.garmentImageBase64 ? { garmentImageBase64: body.garmentImageBase64 } : {}),
       });
+      if (!prepared.ok) {
+        setBusy(false);
+        showStatus(`Preparation blocked: ${prepared.blockers.join(', ') || prepared.note}`);
+        return;
+      }
+
+      const created = await accountApi.createTryOnJob(body);
       setJob(created);
       if (created.status === 'succeeded') {
         setBusy(false);
@@ -254,7 +317,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         </button>
 
         <span className="text-xs font-semibold uppercase tracking-wider text-[#B49361]">
-          Virtual Fitting Room · {liveEnabled ? 'Live providers available' : 'Demonstration ready'}
+          Virtual Fitting Room · {liveEnabled && liveReady ? 'Live providers available' : 'Demonstration ready'}
         </span>
       </div>
 
@@ -268,7 +331,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               Virtual Fitting Room
             </h1>
             <p className="text-xs sm:text-sm text-[#5C585E] mt-1">
-              Run a private demonstration fit with your account photograph and an authorised garment. Live FASHN calls stay disabled until explicitly approved.
+              Choose an existing wardrobe or Shop garment by default, or upload a reference. Live FASHN calls stay disabled until explicitly approved.
             </p>
           </div>
         </div>
@@ -282,7 +345,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           </div>
         )}
 
-        {preloadedGarment && (
+        {preloadedGarment && garmentMode === 'shop' && (
           <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-[#B49361]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in">
             <div className="flex items-center gap-3">
               <div className="w-16 h-20 rounded-xl overflow-hidden shrink-0 border border-[#242326]/10 bg-white">
@@ -296,17 +359,17 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] uppercase font-bold tracking-wider text-[#9C6A61] flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
-                    {familyMemberName ? `Fitting for ${familyMemberName}` : 'Garment Loaded'}
+                    {familyMemberName ? `Fitting for ${familyMemberName}` : 'Shop garment loaded'}
                   </span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#242326]/10 text-[#242326] font-medium">
-                    {preloadedGarment.retailer}
+                    Demonstration catalogue
                   </span>
                 </div>
                 <h4 className="font-serif text-base font-semibold text-[#242326] mt-0.5">
                   {preloadedGarment.productName}
                 </h4>
                 <p className="text-xs text-[#5C585E] mt-0.5">
-                  Category: {preloadedGarment.category} · Demo price: R{preloadedGarment.priceZar}
+                  {preloadedGarment.retailer} · Demo price: R{preloadedGarment.priceZar}. Not a verified retailer offer.
                 </p>
               </div>
             </div>
@@ -391,31 +454,99 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="text-xs text-[#5C585E]">
-                Garment category
-                <select
-                  className="mt-1 block w-full rounded-xl border border-[#242326]/12 bg-white px-3 py-2 text-[#242326]"
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value as TryOnCategory)}
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={garmentMode === 'existing' ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => {
+                    setGarmentMode('existing');
+                    if (selectedGarment) setGarmentPreview(mediaDisplayUrl(selectedGarment.mediaId));
+                  }}
                 >
-                  {CATEGORIES.map((item) => (
-                    <option key={item.id} value={item.id}>{item.label}</option>
-                  ))}
-                </select>
-              </label>
-              <div className="text-xs text-[#5C585E]">
-                Garment image
-                <div className="mt-1 flex items-center gap-2">
-                  <Button type="button" variant="secondary" size="sm" icon={<Upload className="w-4 h-4" />} onClick={() => garmentInputRef.current?.click()}>
-                    Choose garment
-                  </Button>
-                  <input ref={garmentInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleGarmentFile} />
-                  {garmentPreview && (
-                    <div className="w-10 h-12 rounded-lg overflow-hidden border border-[#242326]/10">
-                      <img src={garmentPreview} alt="Garment" className="w-full h-full object-cover" />
-                    </div>
-                  )}
+                  Wardrobe / saved
+                </Button>
+                <Button
+                  type="button"
+                  variant={garmentMode === 'shop' ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => {
+                    if (preloadedGarment) {
+                      setGarmentMode('shop');
+                      setGarmentFile(null);
+                      setGarmentPreview(preloadedGarment.imageUrl);
+                      setCategory(categoryFromText(preloadedGarment.category));
+                      return;
+                    }
+                    onNavigate('shop');
+                  }}
+                >
+                  Shop
+                </Button>
+                <Button
+                  type="button"
+                  variant={garmentMode === 'upload' ? 'primary' : 'secondary'}
+                  size="sm"
+                  icon={<Upload className="w-4 h-4" />}
+                  onClick={() => {
+                    setGarmentMode('upload');
+                    garmentInputRef.current?.click();
+                  }}
+                >
+                  Upload
+                </Button>
+                <input ref={garmentInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleGarmentFile} />
+              </div>
+              <p className="text-[11px] text-[#5C585E]">{shopNote}</p>
+
+              {garmentMode === 'existing' && (
+                accountGarments.length > 0 ? (
+                  <label className="text-xs text-[#5C585E] block">
+                    Existing garment
+                    <select
+                      className="mt-1 block w-full rounded-xl border border-[#242326]/12 bg-white px-3 py-2 text-[#242326]"
+                      value={selectedGarmentId}
+                      onChange={(event) => handleSelectExisting(event.target.value)}
+                    >
+                      {accountGarments.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.source === 'wardrobe' ? 'Wardrobe' : 'Uploaded'} · {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="text-xs text-[#5C585E]">
+                    No authorised wardrobe photographs yet. Add items in Digital Wardrobe, choose a Shop demonstration listing, or upload a garment image.
+                  </p>
+                )
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="text-xs text-[#5C585E]">
+                  Garment category
+                  <select
+                    className="mt-1 block w-full rounded-xl border border-[#242326]/12 bg-white px-3 py-2 text-[#242326]"
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value as TryOnCategory)}
+                  >
+                    {CATEGORIES.map((item) => (
+                      <option key={item.id} value={item.id}>{item.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="text-xs text-[#5C585E]">
+                  Preview
+                  <div className="mt-1 h-12 flex items-center">
+                    {garmentPreview ? (
+                      <div className="w-10 h-12 rounded-lg overflow-hidden border border-[#242326]/10">
+                        <img src={garmentPreview} alt="Garment" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <span className="text-[11px]">No garment selected</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -423,7 +554,8 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
             <div className="p-4 rounded-2xl bg-[#F6F2EC] border border-[#242326]/8 text-xs text-[#5C585E] space-y-2">
               <p>
                 Demonstration fits stay on this account service and do not consume purchased credits.
-                Live FASHN also requires external photograph AI consent{externalConsent ? ' (granted)' : ''}.
+                Live FASHN also requires external photograph AI consent{externalConsent ? ' (granted)' : ''}
+                {liveEnabled ? '' : ' and a server-side live budget'}.
               </p>
               {!externalConsent && (
                 <Button type="button" variant="secondary" size="sm" onClick={() => void handleGrantExternalConsent()}>

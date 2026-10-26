@@ -53,7 +53,15 @@ import { listRetentionPolicies, retentionDryRun, runRetentionCleanup } from '../
 import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
 import { createConversation, deleteConversation, listConversations, readConversation, recommendationsFor, sendMessage, stylistAvailability, usageFor } from '../ai/service.js';
 import { loadTryOnConfig, type TryOnConfig } from '../tryon/tryonConfig.js';
-import { cancelTryOnJob, createTryOnJob, getTryOnJob, listTryOnJobs, tryOnAvailability } from '../tryon/service.js';
+import {
+  cancelTryOnJob,
+  createTryOnJob,
+  getTryOnJob,
+  listTryOnGarments,
+  listTryOnJobs,
+  prepareTryOnJob,
+  tryOnAvailability,
+} from '../tryon/service.js';
 
 export interface AppDeps {
   db: Sql;
@@ -632,6 +640,22 @@ export function createApp(deps: AppDeps): express.Express {
   const tryOnConfig = deps.tryOnConfig ?? loadTryOnConfig();
   app.get('/api/tryon/availability', route((req, res) => {
     res.json(tryOnAvailability(deps.db, requireUser(req).userId, tryOnConfig));
+  }));
+  app.get('/api/tryon/garments', route((req, res) => {
+    res.json(listTryOnGarments(deps.db, requireUser(req).userId));
+  }));
+  app.post('/api/tryon/prepare', route((req, res) => {
+    const session = requireUser(req);
+    res.json(prepareTryOnJob({
+      db: deps.db,
+      mediaDir: deps.config.mediaDir,
+      userId: session.userId,
+      body: req.body ?? {},
+      now: deps.now(),
+      maxBytes: deps.config.mediaMaxBytes,
+      retentionMs: deps.config.retentionMs,
+      config: tryOnConfig,
+    }));
   }));
   app.get('/api/tryon/jobs', route((req, res) => {
     res.json({ jobs: listTryOnJobs(deps.db, requireUser(req).userId) });

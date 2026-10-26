@@ -270,3 +270,187 @@ test('waitForTryOnJob helper resolves demonstration jobs', async () => {
     await api.close();
   }
 });
+
+test('garment list prefers wardrobe items and prepare reports live blockers without spending', async () => {
+  const api = await startApi();
+  try {
+    const ada = await register(api.base, 'tryon-garments@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    const media = await fetch(`${api.base}/api/media`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ purpose: 'wardrobe', imageBase64: PNG }),
+    });
+    assert.equal(media.status, 201);
+    const mediaBody = await media.json() as { id: string };
+    const wardrobe = await fetch(`${api.base}/api/wardrobe`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        name: 'Linen shirt',
+        category: 'tops',
+        mediaId: mediaBody.id,
+      }),
+    });
+    assert.equal(wardrobe.status, 201);
+    const item = await wardrobe.json() as { id: string };
+
+    const listed = await fetch(`${api.base}/api/tryon/garments`, { headers: { cookie: ada.cookie } });
+    assert.equal(listed.status, 200);
+    const garments = await listed.json() as {
+      preferredSource: string;
+      garments: { wardrobeItemId: string | null; source: string }[];
+      shop: { note: string };
+    };
+    assert.equal(garments.preferredSource, 'wardrobe');
+    assert.equal(garments.garments[0]?.wardrobeItemId, item.id);
+    assert.match(garments.shop.note, /not verified retailer/i);
+
+    const prepared = await fetch(`${api.base}/api/tryon/prepare`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        wardrobeItemId: item.id,
+        category: 'tops',
+        providerId: 'fashn-tryon-v1.6',
+      }),
+    });
+    assert.equal(prepared.status, 200);
+    const prep = await prepared.json() as { ok: boolean; live: boolean; blockers: string[]; estimatedCostUsd: number };
+    assert.equal(prep.ok, false);
+    assert.equal(prep.live, true);
+    assert.ok(prep.blockers.includes('live_tryon_disabled'));
+    assert.ok(prep.estimatedCostUsd > 0);
+
+    const credits = await fetch(`${api.base}/api/credits`, { headers: { cookie: ada.cookie } });
+    const balance = await credits.json() as { balance: number };
+    assert.equal(balance.balance, 0);
+
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        wardrobeItemId: item.id,
+        category: 'tops',
+        providerId: 'mock',
+        idempotencyKey: 'wardrobe-mock-1',
+      }),
+    });
+    assert.equal(created.status, 201);
+    const job = await created.json() as { id: string };
+    const done = await pollJob(api.base, ada.cookie, job.id);
+    assert.equal(done.status, 'succeeded');
+    assert.equal(done.demonstration, true);
+  } finally {
+    await api.close();
+  }
+});
+
+test('authorised mocked FASHN path stores a provider result without calling the real API', async () => {
+  const TOKEN = 'admin-token-for-tests-only';
+  const providerPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mP8z8BQz0AEYBxVSF+FAP5IAv8m4n6cAAAAAElFTkSuQmCC',
+    'base64',
+  );
+  const mockFetch: typeof fetch = async (input) => {
+    const url = String(input);
+    if (url.includes('/run')) {
+      return new Response(JSON.stringify({ id: 'mock-fashn-job' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json', 'x-fashn-credits-used': '1' },
+      });
+    }
+    if (url.includes('/status/')) {
+      return new Response(JSON.stringify({
+        status: 'completed',
+        output: [`data:image/png;base64,${providerPng.toString('base64')}`],
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json', 'x-fashn-credits-used': '1' },
+      });
+    }
+    throw new Error(`unexpected provider fetch: ${url}`);
+  };
+
+  const api = await startApi({ adminToken: TOKEN }, {
+    tryOnConfig: {
+      ...loadTryOnConfig(),
+      allowLive: true,
+      maxBudgetUsd: 1,
+      fashnApiKey: 'test-key-local-only',
+      fashnBaseUrl: 'https://api.fashn.ai/v1',
+    },
+    tryOnFetch: mockFetch,
+  });
+  try {
+    const ada = await register(api.base, 'tryon-fashn-mock@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    await grant(api.base, ada.cookie, ada.body.csrfToken, 'external_photo_ai');
+    const entitled = await fetch(`${api.base}/api/admin/entitlements`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ userId: ada.body.userId, planCode: 'PERSONAL', status: 'active' }),
+    });
+    assert.equal(entitled.status, 200);
+    const allocated = await fetch(`${api.base}/api/admin/credits/allocate`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        userId: ada.body.userId,
+        amount: 10,
+        periodKey: '2026-10',
+        idempotencyKey: 'tryon-fashn-alloc',
+        reason: 'Mocked FASHN path test',
+      }),
+    });
+    assert.equal(allocated.status, 200);
+
+    const availability = await fetch(`${api.base}/api/tryon/availability`, { headers: { cookie: ada.cookie } });
+    const avail = await availability.json() as { readiness: { liveReady: boolean }; liveEnabled: boolean };
+    assert.equal(avail.liveEnabled, true);
+    assert.equal(avail.readiness.liveReady, true);
+
+    const prepared = await fetch(`${api.base}/api/tryon/prepare`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'fashn-tryon-v1.6',
+      }),
+    });
+    const prep = await prepared.json() as { ok: boolean; blockers: string[] };
+    assert.equal(prep.ok, true);
+    assert.deepEqual(prep.blockers, []);
+
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'fashn-tryon-v1.6',
+        idempotencyKey: 'fashn-mock-path-1',
+      }),
+    });
+    assert.equal(created.status, 201);
+    const job = await created.json() as { id: string };
+    const done = await pollJob(api.base, ada.cookie, job.id);
+    assert.equal(done.status, 'succeeded');
+    assert.equal(done.demonstration, false);
+    assert.equal(done.resultKind, 'provider');
+    assert.match(String(done.label), /Provider try-on result/i);
+    assert.ok(done.resultMediaId);
+
+    const media = await fetch(`${api.base}/api/media/${done.resultMediaId}`, { headers: { cookie: ada.cookie } });
+    assert.equal(media.status, 200);
+    const bytes = Buffer.from(await media.arrayBuffer());
+    assert.ok(bytes.equals(providerPng));
+  } finally {
+    await api.close();
+  }
+});

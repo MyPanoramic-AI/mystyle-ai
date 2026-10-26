@@ -6,11 +6,11 @@ Date: 26 October 2026. Local only. No push. No Render deploy. No paid FASHN call
 
 | Suite | Result |
 | --- | --- |
-| `npm run lint` / `lint:api` | Pass |
-| `npm run test:api` (includes `tryon.test.ts`) | Pass (67) |
+| `npm run lint` | Pass |
+| `npm run lint:api` | Pass |
+| `npm run test:api` (includes `tryon.test.ts`) | Pass (69) |
 | `npm run test:ai` | Pass (16) |
 | `npm run test:tryon` (lab) | Pass (16) |
-| Playwright `tryon-simulate`, shop-stylist try-on, manage-photos | Pass (8) |
 
 ## Coverage added
 
@@ -22,10 +22,14 @@ Date: 26 October 2026. Local only. No push. No Render deploy. No paid FASHN call
 - Duplicate idempotency key
 - Cross-account job isolation
 - Mock does not change credit balance
-- E2E Simulate Fit demonstration without FASHN network hosts
+- Wardrobe garment listing + `wardrobeItemId` job create
+- `POST /api/tryon/prepare` reports live blockers without spending
+- Authorised mocked FASHN path (`tryOnFetch`) stores `resultKind: 'provider'` (not demonstration stripes)
+- Live readiness includes `ai.image` entitlement + credit balance checks
 
 ## Still disabled
 
-- `TRYON_ALLOW_LIVE` (and production refuses enabling it)
+- `TRYON_ALLOW_LIVE` (and production/Render refuse enabling it)
 - Provider budget defaults to `0`
 - No browser API keys
+- No real FASHN credit spend; image quality of live FASHN has **not** been validated

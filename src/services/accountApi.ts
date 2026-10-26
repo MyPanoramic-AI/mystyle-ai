@@ -101,6 +101,8 @@ export interface AccountApi {
   privacyRetentionPreview(): Promise<Record<string, unknown>>;
   deleteMedia(id: string): Promise<void>;
   tryOnAvailability(): Promise<TryOnAvailabilityResponse>;
+  listTryOnGarments(): Promise<TryOnGarmentsResponse>;
+  prepareTryOnJob(body: TryOnPrepareBody): Promise<TryOnPrepareResponse>;
   createTryOnJob(body: TryOnJobCreateBody): Promise<TryOnJobRecord>;
   getTryOnJob(id: string): Promise<TryOnJobRecord>;
   listTryOnJobs(): Promise<{ jobs: TryOnJobRecord[] }>;
@@ -113,6 +115,8 @@ export type TryOnProviderId = 'mock' | 'fashn-tryon-v1.6' | 'fashn-tryon-max';
 export interface TryOnAvailabilityResponse {
   liveEnabled: boolean;
   maxBudgetUsd: number;
+  spentUsd?: number;
+  remainingBudgetUsd?: number;
   externalPhotoAiConsent: boolean;
   privatePhotoStorageConsent: boolean;
   providers: {
@@ -123,12 +127,62 @@ export interface TryOnAvailabilityResponse {
     liveCapable: boolean;
     note: string;
   }[];
+  readiness?: {
+    mockReady: boolean;
+    liveReady: boolean;
+    checks: Record<string, boolean>;
+  };
+  estimatedLiveCostUsd?: Record<string, number>;
+  note: string;
+}
+
+export interface TryOnGarmentOption {
+  id: string;
+  source: 'wardrobe' | 'garment_reference';
+  wardrobeItemId: string | null;
+  name: string;
+  category: string | null;
+  mediaId: string;
+  previewUrl: string;
+  authorised: true;
+  note: string;
+}
+
+export interface TryOnGarmentsResponse {
+  garments: TryOnGarmentOption[];
+  preferredSource: 'wardrobe' | 'garment_reference' | 'upload';
+  shop: { selection: 'client_preload'; note: string };
+}
+
+export interface TryOnPrepareBody {
+  personMediaId: string;
+  garmentMediaId?: string;
+  wardrobeItemId?: string;
+  garmentImageBase64?: string;
+  category: TryOnCategory;
+  providerId?: TryOnProviderId;
+  quality?: 'draft' | 'standard' | 'high';
+}
+
+export interface TryOnPrepareResponse {
+  ok: boolean;
+  providerId: TryOnProviderId;
+  live: boolean;
+  demonstration: boolean;
+  estimatedCredits: number;
+  estimatedCostUsd: number;
+  personMediaId: string;
+  garmentMediaId: string;
+  category: TryOnCategory;
+  quality: string;
+  blockers: string[];
   note: string;
 }
 
 export interface TryOnJobCreateBody {
   personMediaId: string;
   garmentMediaId?: string;
+  wardrobeItemId?: string;
   garmentImageBase64?: string;
   category: TryOnCategory;
   providerId?: TryOnProviderId;
@@ -466,6 +520,8 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     privacyRetentionPreview: () => request('/api/privacy/retention/preview'),
     deleteMedia: (id) => request(`/api/media/${id}`, { method: 'DELETE', csrf: true }),
     tryOnAvailability: () => request('/api/tryon/availability'),
+    listTryOnGarments: () => request('/api/tryon/garments'),
+    prepareTryOnJob: (body) => request('/api/tryon/prepare', { method: 'POST', body, csrf: true }),
     createTryOnJob: (body) => request('/api/tryon/jobs', { method: 'POST', body, csrf: true }),
     getTryOnJob: (id) => request(`/api/tryon/jobs/${id}`),
     listTryOnJobs: () => request('/api/tryon/jobs'),

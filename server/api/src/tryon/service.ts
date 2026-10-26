@@ -3,7 +3,7 @@ import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
 import { inspectImage, readOwnedMedia, saveMedia } from '../media/store.js';
 import { hasGrantedConsent } from '../privacy/consent.js';
-import { reserveCredits, settleOperation } from '../domain/membership.js';
+import { readCredits, readEntitlement, reserveCredits, settleOperation } from '../domain/membership.js';
 import {
   estimatedProviderCredits,
   estimatedProviderUsd,
@@ -178,16 +178,189 @@ function readJobRow(db: Sql, userId: string, id: string): JobRow {
   return row;
 }
 
+function spentLiveUsd(db: Sql): number {
+  const row = db.prepare(
+    `SELECT COALESCE(SUM(COALESCE(credits_reserved, 0)), 0) AS credits
+     FROM tryon_jobs
+     WHERE provider_id IN ('fashn-tryon-v1.6', 'fashn-tryon-max')
+       AND status IN ('queued', 'running', 'succeeded')`,
+  ).get() as { credits: number };
+  return Number(row.credits || 0) * 0.075;
+}
+
+function hasAiImageFeature(db: Sql, userId: string, now = Date.now()): boolean {
+  const { entitlement } = readEntitlement(db, userId, now) as {
+    entitlement: { status?: string; featureKeys?: string[] } | null;
+  };
+  if (!entitlement || entitlement.status !== 'active') return false;
+  const keys = Array.isArray(entitlement.featureKeys) ? entitlement.featureKeys : [];
+  return keys.includes('ai.image');
+}
+
 export function tryOnAvailability(db: Sql, userId: string, config: TryOnConfig) {
+  const externalPhotoAiConsent = hasGrantedConsent(db, userId, 'external_photo_ai');
+  const privatePhotoStorageConsent = hasGrantedConsent(db, userId, 'private_photo_storage');
+  const spentUsd = spentLiveUsd(db);
+  const keyConfigured = Boolean(config.fashnApiKey);
+  const budgetOk = config.maxBudgetUsd > 0;
+  const aiImageEntitlement = hasAiImageFeature(db, userId);
+  const creditBalance = readCredits(db, userId).balance;
   return {
     liveEnabled: config.allowLive,
     maxBudgetUsd: config.maxBudgetUsd,
-    externalPhotoAiConsent: hasGrantedConsent(db, userId, 'external_photo_ai'),
-    privatePhotoStorageConsent: hasGrantedConsent(db, userId, 'private_photo_storage'),
+    spentUsd: Math.round(spentUsd * 1000) / 1000,
+    remainingBudgetUsd: Math.max(0, Math.round((config.maxBudgetUsd - spentUsd) * 1000) / 1000),
+    externalPhotoAiConsent,
+    privatePhotoStorageConsent,
+    aiImageEntitlement,
+    creditBalance,
     providers: listAccountProviders(config),
+    readiness: {
+      mockReady: privatePhotoStorageConsent,
+      liveReady: config.allowLive && keyConfigured && budgetOk && externalPhotoAiConsent && aiImageEntitlement,
+      checks: {
+        tryonAllowLive: config.allowLive,
+        fashnApiKeyConfigured: keyConfigured,
+        nonzeroBudget: budgetOk,
+        externalPhotoAiConsent,
+        privatePhotoStorageConsent,
+        aiImageEntitlement,
+      },
+    },
+    estimatedLiveCostUsd: {
+      'fashn-tryon-v1.6': estimatedProviderUsd('fashn-tryon-v1.6', 'standard'),
+      'fashn-tryon-max': estimatedProviderUsd('fashn-tryon-max', 'standard'),
+    },
     note: config.allowLive
-      ? 'Live provider calls may leave this environment when external-photo-AI consent is granted.'
-      : 'Only the local demonstration provider is available. Live FASHN stays disabled until TRYON_ALLOW_LIVE is approved.',
+      ? 'Live provider calls may leave this environment when external-photo-AI consent is granted. Public Render production refuses TRYON_ALLOW_LIVE at startup.'
+      : 'Only the local demonstration provider is available. Live FASHN stays disabled until TRYON_ALLOW_LIVE is approved in a safe non-production environment.',
+  };
+}
+
+export function listTryOnGarments(db: Sql, userId: string): {
+  garments: {
+    id: string;
+    source: 'wardrobe' | 'garment_reference';
+    wardrobeItemId: string | null;
+    name: string;
+    category: string | null;
+    mediaId: string;
+    previewUrl: string;
+    authorised: true;
+    note: string;
+  }[];
+  preferredSource: 'wardrobe' | 'garment_reference' | 'upload';
+  shop: {
+    selection: 'client_preload';
+    note: string;
+  };
+} {
+  const wardrobe = db.prepare(
+    `SELECT id, name, category, media_id AS mediaId
+     FROM wardrobe_items
+     WHERE user_id = ? AND media_id IS NOT NULL
+     ORDER BY updated_at DESC
+     LIMIT 40`,
+  ).all(userId) as { id: string; name: string; category: string | null; mediaId: string }[];
+  const references = db.prepare(
+    `SELECT id AS mediaId, purpose, created_at AS createdAt
+     FROM media_assets
+     WHERE user_id = ? AND deleted_at IS NULL AND purpose = 'garment_reference'
+     ORDER BY created_at DESC
+     LIMIT 20`,
+  ).all(userId) as { mediaId: string; purpose: string; createdAt: string }[];
+
+  const garments = [
+    ...wardrobe.map((item) => ({
+      id: `wardrobe:${item.id}`,
+      source: 'wardrobe' as const,
+      wardrobeItemId: item.id,
+      name: item.name,
+      category: item.category,
+      mediaId: item.mediaId,
+      previewUrl: `/api/media/${item.mediaId}`,
+      authorised: true as const,
+      note: 'Private wardrobe photograph stored on this account.',
+    })),
+    ...references.map((item, index) => ({
+      id: `garment_reference:${item.mediaId}`,
+      source: 'garment_reference' as const,
+      wardrobeItemId: null,
+      name: `Uploaded garment ${index + 1}`,
+      category: null,
+      mediaId: item.mediaId,
+      previewUrl: `/api/media/${item.mediaId}`,
+      authorised: true as const,
+      note: 'Private garment reference uploaded for try-on.',
+    })),
+  ];
+  const preferredSource = wardrobe.length > 0
+    ? 'wardrobe' as const
+    : references.length > 0
+      ? 'garment_reference' as const
+      : 'upload' as const;
+  return {
+    garments,
+    preferredSource,
+    shop: {
+      selection: 'client_preload',
+      note: 'MyStyle AI Shop demonstration listings are chosen in Shop and arrive here as a preloaded garment image. They are demonstration catalogue references, not verified retailer products.',
+    },
+  };
+}
+
+export function prepareTryOnJob(options: {
+  db: Sql;
+  mediaDir: string;
+  userId: string;
+  body: Record<string, unknown>;
+  now: number;
+  maxBytes: number;
+  retentionMs: number;
+  config: TryOnConfig;
+}): {
+  ok: boolean;
+  providerId: TryOnProviderId;
+  live: boolean;
+  demonstration: boolean;
+  estimatedCredits: number;
+  estimatedCostUsd: number;
+  personMediaId: string;
+  garmentMediaId: string;
+  category: GarmentCategory;
+  quality: Quality;
+  blockers: string[];
+  note: string;
+} {
+  const resolved = resolveTryOnInputs({ ...options, persistGarmentUpload: false });
+  const live = resolved.providerId !== 'mock';
+  const blockers: string[] = [];
+  if (live && !options.config.allowLive) blockers.push('live_tryon_disabled');
+  if (live && !hasGrantedConsent(options.db, options.userId, 'external_photo_ai')) blockers.push('external_photo_ai_consent_required');
+  if (live && !options.config.fashnApiKey) blockers.push('missing_api_key');
+  if (live && !hasAiImageFeature(options.db, options.userId, options.now)) blockers.push('feature_unavailable');
+  if (live) {
+    const cost = estimatedProviderUsd(resolved.providerId, resolved.quality);
+    const spent = spentLiveUsd(options.db);
+    if (options.config.maxBudgetUsd <= 0 || spent + cost > options.config.maxBudgetUsd) blockers.push('budget_exceeded');
+    const creditsNeeded = estimatedProviderCredits(resolved.providerId, resolved.quality);
+    if (readCredits(options.db, options.userId).balance < creditsNeeded) blockers.push('insufficient_credits');
+  }
+  return {
+    ok: blockers.length === 0,
+    providerId: resolved.providerId,
+    live,
+    demonstration: !live,
+    estimatedCredits: estimatedProviderCredits(resolved.providerId, resolved.quality),
+    estimatedCostUsd: estimatedProviderUsd(resolved.providerId, resolved.quality),
+    personMediaId: resolved.personMediaId,
+    garmentMediaId: resolved.garmentMediaId,
+    category: resolved.category,
+    quality: resolved.quality,
+    blockers,
+    note: live
+      ? 'Preparation only. No FASHN request was sent and no credits were reserved.'
+      : 'Preparation only. A demonstration job would not call FASHN or consume purchased credits.',
   };
 }
 
@@ -208,6 +381,95 @@ export function listTryOnJobs(db: Sql, userId: string, limit = 20): TryOnJobView
 
 export function getTryOnJob(db: Sql, userId: string, id: string): TryOnJobView {
   return toView(readJobRow(db, userId, id));
+}
+
+function resolveTryOnInputs(options: {
+  db: Sql;
+  mediaDir: string;
+  userId: string;
+  body: Record<string, unknown>;
+  now: number;
+  maxBytes: number;
+  retentionMs: number;
+  config: TryOnConfig;
+  persistGarmentUpload: boolean;
+}): {
+  providerId: TryOnProviderId;
+  quality: Quality;
+  category: GarmentCategory;
+  scenario: MockScenario | null;
+  personMediaId: string;
+  garmentMediaId: string;
+} {
+  const providerId = assertProvider(options.body.providerId);
+  const quality = assertQuality(options.body.quality);
+  const category = assertCategory(options.body.category);
+  const scenario = assertScenario(options.body.mockScenario);
+  if (scenario && providerId !== 'mock') {
+    throw new ApiError('invalid_mock_scenario', 'Demonstration scenarios apply only to the demonstration provider.', 400);
+  }
+
+  const personMediaId = text(options.body.personMediaId, 'personMediaId', 8, 80);
+  const personMeta = ownedMediaMeta(options.db, options.userId, personMediaId);
+  if (!PERSON_PURPOSES.has(personMeta.purpose)) {
+    throw new ApiError('invalid_person_media', 'Select a privately stored full-body or portrait photograph from your account.', 400);
+  }
+
+  let garmentMediaId = typeof options.body.garmentMediaId === 'string' ? options.body.garmentMediaId.trim() : '';
+  const wardrobeItemId = typeof options.body.wardrobeItemId === 'string' ? options.body.wardrobeItemId.trim() : '';
+  if (!garmentMediaId && wardrobeItemId) {
+    const item = options.db.prepare(
+      `SELECT media_id AS mediaId FROM wardrobe_items WHERE id = ? AND user_id = ?`,
+    ).get(wardrobeItemId, options.userId) as { mediaId: string | null } | undefined;
+    if (!item) throw new ApiError('not_found', 'That wardrobe item was not found.', 404);
+    if (!item.mediaId) {
+      throw new ApiError('invalid_garment_media', 'That wardrobe item has no private photograph authorised for try-on.', 400);
+    }
+    garmentMediaId = item.mediaId;
+  }
+  if (!garmentMediaId) {
+    if (!hasGrantedConsent(options.db, options.userId, 'private_photo_storage')) {
+      throw new ApiError(
+        'private_photo_consent_required',
+        'Grant private photograph storage consent before uploading a garment reference.',
+        403,
+      );
+    }
+    const encoded = typeof options.body.garmentImageBase64 === 'string' ? options.body.garmentImageBase64 : '';
+    if (!/^[A-Za-z0-9+/=\r\n]+$/.test(encoded)) {
+      throw new ApiError('invalid_garment', 'Provide a wardrobe item, garmentMediaId, or garmentImageBase64 payload.', 400);
+    }
+    if (options.persistGarmentUpload) {
+      const saved = saveMedia({
+        db: options.db,
+        mediaDir: options.mediaDir,
+        userId: options.userId,
+        bytes: Buffer.from(encoded, 'base64'),
+        purpose: 'garment_reference',
+        now: options.now,
+        maxBytes: options.maxBytes,
+        retentionMs: options.retentionMs,
+      });
+      garmentMediaId = saved.id;
+    } else {
+      inspectImage(Buffer.from(encoded, 'base64'));
+      garmentMediaId = 'pending-upload';
+    }
+  } else {
+    const garmentMeta = ownedMediaMeta(options.db, options.userId, garmentMediaId);
+    if (!GARMENT_PURPOSES.has(garmentMeta.purpose)) {
+      throw new ApiError('invalid_garment_media', 'Select an authorised garment reference or wardrobe photograph.', 400);
+    }
+  }
+
+  const person = readOwnedMedia(options.db, options.mediaDir, options.userId, personMediaId);
+  inspectImage(person.bytes);
+  if (garmentMediaId !== 'pending-upload') {
+    const garment = readOwnedMedia(options.db, options.mediaDir, options.userId, garmentMediaId);
+    inspectImage(garment.bytes);
+  }
+
+  return { providerId, quality, category, scenario, personMediaId, garmentMediaId };
 }
 
 export function createTryOnJob(options: {
@@ -231,56 +493,10 @@ export function createTryOnJob(options: {
   ).get(options.userId, idempotencyKey) as { id: string } | undefined;
   if (prior) return toView(readJobRow(options.db, options.userId, prior.id), true);
 
-  const providerId = assertProvider(options.body.providerId);
-  const quality = assertQuality(options.body.quality);
-  const category = assertCategory(options.body.category);
-  const scenario = assertScenario(options.body.mockScenario);
-  if (scenario && providerId !== 'mock') {
-    throw new ApiError('invalid_mock_scenario', 'Demonstration scenarios apply only to the demonstration provider.', 400);
-  }
-
-  const personMediaId = text(options.body.personMediaId, 'personMediaId', 8, 80);
-  const personMeta = ownedMediaMeta(options.db, options.userId, personMediaId);
-  if (!PERSON_PURPOSES.has(personMeta.purpose)) {
-    throw new ApiError('invalid_person_media', 'Select a privately stored full-body or portrait photograph from your account.', 400);
-  }
-
-  let garmentMediaId = typeof options.body.garmentMediaId === 'string' ? options.body.garmentMediaId.trim() : '';
-  if (!garmentMediaId) {
-    if (!hasGrantedConsent(options.db, options.userId, 'private_photo_storage')) {
-      throw new ApiError(
-        'private_photo_consent_required',
-        'Grant private photograph storage consent before uploading a garment reference.',
-        403,
-      );
-    }
-    const encoded = typeof options.body.garmentImageBase64 === 'string' ? options.body.garmentImageBase64 : '';
-    if (!/^[A-Za-z0-9+/=\r\n]+$/.test(encoded)) {
-      throw new ApiError('invalid_garment', 'Provide a garmentMediaId or a garmentImageBase64 payload.', 400);
-    }
-    const saved = saveMedia({
-      db: options.db,
-      mediaDir: options.mediaDir,
-      userId: options.userId,
-      bytes: Buffer.from(encoded, 'base64'),
-      purpose: 'garment_reference',
-      now: options.now,
-      maxBytes: options.maxBytes,
-      retentionMs: options.retentionMs,
-    });
-    garmentMediaId = saved.id;
-  } else {
-    const garmentMeta = ownedMediaMeta(options.db, options.userId, garmentMediaId);
-    if (!GARMENT_PURPOSES.has(garmentMeta.purpose)) {
-      throw new ApiError('invalid_garment_media', 'Select an authorised garment reference or wardrobe photograph.', 400);
-    }
-  }
-
-  // Touch images early so invalid payloads fail before the job row is created.
-  const person = readOwnedMedia(options.db, options.mediaDir, options.userId, personMediaId);
-  const garment = readOwnedMedia(options.db, options.mediaDir, options.userId, garmentMediaId);
-  inspectImage(person.bytes);
-  inspectImage(garment.bytes);
+  const { providerId, quality, category, scenario, personMediaId, garmentMediaId } = resolveTryOnInputs({
+    ...options,
+    persistGarmentUpload: true,
+  });
 
   const live = providerId !== 'mock';
   if (live) {
@@ -298,7 +514,8 @@ export function createTryOnJob(options: {
       throw new ApiError('missing_api_key', 'FASHN_API_KEY is not configured on the server.', 400);
     }
     const cost = estimatedProviderUsd(providerId, quality);
-    if (options.config.maxBudgetUsd <= 0 || options.config.spentUsd + cost > options.config.maxBudgetUsd) {
+    const spent = spentLiveUsd(options.db);
+    if (options.config.maxBudgetUsd <= 0 || spent + cost > options.config.maxBudgetUsd) {
       throw new ApiError('budget_exceeded', 'The virtual try-on provider budget would be exceeded.', 402);
     }
   }
