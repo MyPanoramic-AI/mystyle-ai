@@ -21,4 +21,4 @@ Date: 26 October 2026.
 
 ## Live prerequisites
 
-Documented in `FASHN_PROVIDER_CONFIGURATION.md` and `VIRTUAL_TRYON_PRODUCTION_INTEGRATION.md`. Production/Render refuse `TRYON_ALLOW_LIVE` at startup until a separate override is approved.
+Documented in `FASHN_PROVIDER_CONFIGURATION.md` and `VIRTUAL_TRYON_PRODUCTION_INTEGRATION.md`. Production/Render require `TRYON_ALLOW_LIVE=true` plus `TRYON_LIVE_APPROVAL_ACK=i-approve-paid-fashn-tryon`, a provider key, budget, customer `ai.image` entitlement, credits, and `external_photo_ai` consent.

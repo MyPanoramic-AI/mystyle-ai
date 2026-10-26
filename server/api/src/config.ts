@@ -102,6 +102,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     allowedOrigins,
     liveAiEnabled,
     liveTryOnEnabled,
+    liveTryOnApprovalAck: env.TRYON_LIVE_APPROVAL_ACK ?? null,
     paymentsEnabled: env.PAYMENTS_ENABLED === 'true',
   });
 

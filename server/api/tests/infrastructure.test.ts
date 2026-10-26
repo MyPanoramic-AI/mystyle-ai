@@ -300,6 +300,19 @@ test('cleanup and paid external services stay disabled by default in production 
   const config = loadConfig(productionEnv());
   assert.equal(config.retentionCleanupEnabled, false);
   assert.throws(() => loadConfig(productionEnv({ AI_ALLOW_LIVE: 'true' })), /AI_ALLOW_LIVE/);
-  assert.throws(() => loadConfig(productionEnv({ TRYON_ALLOW_LIVE: 'true' })), /TRYON_ALLOW_LIVE/);
+  assert.throws(() => loadConfig(productionEnv({ TRYON_ALLOW_LIVE: 'true' })), /TRYON_ALLOW_LIVE|TRYON_LIVE_APPROVAL_ACK/);
   assert.throws(() => loadConfig(productionEnv({ PAYMENTS_ENABLED: 'true' })), /Payments/);
+});
+
+test('production accepts live try-on only with explicit approval acknowledgement', () => {
+  assert.throws(
+    () => loadConfig(productionEnv({ TRYON_ALLOW_LIVE: 'true', TRYON_LIVE_APPROVAL_ACK: 'wrong' })),
+    /TRYON_LIVE_APPROVAL_ACK/,
+  );
+  const config = loadConfig(productionEnv({
+    TRYON_ALLOW_LIVE: 'true',
+    TRYON_LIVE_APPROVAL_ACK: 'i-approve-paid-fashn-tryon',
+    TRYON_MAX_BUDGET_USD: '5',
+  }));
+  assert.equal(config.appEnv, 'production');
 });

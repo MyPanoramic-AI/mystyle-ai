@@ -81,6 +81,8 @@ export function assertProductionSafeConfig(input: {
   allowedOrigins: string[];
   liveAiEnabled: boolean;
   liveTryOnEnabled?: boolean;
+  /** Must equal i-approve-paid-fashn-tryon when live try-on is enabled in staging/production. */
+  liveTryOnApprovalAck?: string | null;
   paymentsEnabled?: boolean;
 }): void {
   const profile = profileFor(input.envName);
@@ -104,7 +106,11 @@ export function assertProductionSafeConfig(input: {
     throw new Error('Staging/production refuse AI_ALLOW_LIVE=true until a separate live-provider approval sets an override.');
   }
   if (!profile.allowLiveAiDefault && input.liveTryOnEnabled) {
-    throw new Error('Staging/production refuse TRYON_ALLOW_LIVE=true until a separate live try-on approval sets an override.');
+    if (input.liveTryOnApprovalAck !== 'i-approve-paid-fashn-tryon') {
+      throw new Error(
+        'Staging/production refuse TRYON_ALLOW_LIVE=true until TRYON_LIVE_APPROVAL_ACK=i-approve-paid-fashn-tryon is set.',
+      );
+    }
   }
   if (input.paymentsEnabled) {
     throw new Error('Payments are not enabled in this revision.');
