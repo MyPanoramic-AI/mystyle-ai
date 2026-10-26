@@ -208,7 +208,7 @@ test('migrations upgrade from an early schema fixture and remain idempotent', ()
       prior.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(file, new Date().toISOString());
     }
     const upgraded = migrate(prior, migrationsDir);
-    assert.deepEqual(upgraded, ['006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql', '010_email_account_security.sql', '011_profile_photo_slots.sql']);
+    assert.deepEqual(upgraded, ['006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql', '010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql']);
     assert.deepEqual(migrate(prior, migrationsDir), []);
     prior.prepare('PRAGMA foreign_key_check').all();
     prior.close();
@@ -300,5 +300,6 @@ test('cleanup and paid external services stay disabled by default in production 
   const config = loadConfig(productionEnv());
   assert.equal(config.retentionCleanupEnabled, false);
   assert.throws(() => loadConfig(productionEnv({ AI_ALLOW_LIVE: 'true' })), /AI_ALLOW_LIVE/);
+  assert.throws(() => loadConfig(productionEnv({ TRYON_ALLOW_LIVE: 'true' })), /TRYON_ALLOW_LIVE/);
   assert.throws(() => loadConfig(productionEnv({ PAYMENTS_ENABLED: 'true' })), /Payments/);
 });

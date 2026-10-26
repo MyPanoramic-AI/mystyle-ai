@@ -79,7 +79,7 @@ test('a new account receives a free entitlement and no credits', async () => {
     assert.equal(entitlementBody.current.planCode, 'FREE');
     assert.equal(entitlementBody.current.status, 'active');
     const boundary = await integrations.json() as { tryOn: { status: string }; billing: { status: string } };
-    assert.equal(boundary.tryOn.status, 'not_connected');
+    assert.equal(boundary.tryOn.status, 'mock_ready');
     assert.equal(boundary.billing.status, 'not_connected');
   } finally {
     await api.close();

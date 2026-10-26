@@ -52,6 +52,8 @@ import { cleanupExpiredExports, createDataExport, downloadExport, readExportJob 
 import { listRetentionPolicies, retentionDryRun, runRetentionCleanup } from '../privacy/retention.js';
 import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
 import { createConversation, deleteConversation, listConversations, readConversation, recommendationsFor, sendMessage, stylistAvailability, usageFor } from '../ai/service.js';
+import { loadTryOnConfig, type TryOnConfig } from '../tryon/tryonConfig.js';
+import { cancelTryOnJob, createTryOnJob, getTryOnJob, listTryOnJobs, tryOnAvailability } from '../tryon/service.js';
 
 export interface AppDeps {
   db: Sql;
@@ -60,6 +62,8 @@ export interface AppDeps {
   rateLimiter: RateLimiter;
   aiConfig?: AiConfig;
   aiFetch?: typeof fetch;
+  tryOnConfig?: TryOnConfig;
+  tryOnFetch?: typeof fetch;
   mailer?: Mailer;
 }
 
@@ -623,6 +627,35 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/integrations', route((req, res) => {
     requireUser(req);
     res.json(integrationBoundaries);
+  }));
+
+  const tryOnConfig = deps.tryOnConfig ?? loadTryOnConfig();
+  app.get('/api/tryon/availability', route((req, res) => {
+    res.json(tryOnAvailability(deps.db, requireUser(req).userId, tryOnConfig));
+  }));
+  app.get('/api/tryon/jobs', route((req, res) => {
+    res.json({ jobs: listTryOnJobs(deps.db, requireUser(req).userId) });
+  }));
+  app.post('/api/tryon/jobs', route((req, res) => {
+    const session = requireUser(req);
+    const created = createTryOnJob({
+      db: deps.db,
+      mediaDir: deps.config.mediaDir,
+      userId: session.userId,
+      body: req.body ?? {},
+      now: deps.now(),
+      maxBytes: deps.config.mediaMaxBytes,
+      retentionMs: deps.config.retentionMs,
+      config: tryOnConfig,
+      fetchImpl: deps.tryOnFetch,
+    });
+    res.status(created.duplicate ? 200 : 201).json(created);
+  }));
+  app.get('/api/tryon/jobs/:id', route((req, res) => {
+    res.json(getTryOnJob(deps.db, requireUser(req).userId, String(req.params.id)));
+  }));
+  app.post('/api/tryon/jobs/:id/cancel', route((req, res) => {
+    res.json(cancelTryOnJob(deps.db, requireUser(req).userId, String(req.params.id), deps.now()));
   }));
 
   const aiConfig = deps.aiConfig ?? loadAiConfig();

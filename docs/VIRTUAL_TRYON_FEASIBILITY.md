@@ -17,7 +17,7 @@ Before MyStyle AI spends money at production scale, one specialist provider must
 7. Report processing time and the actual cost of that call.
 8. Fail visibly on policy errors, timeouts, and poor inputs, without substituting a stock photo.
 
-The current Try On screen does none of the generation steps. `TryOnPlaceholder.tsx` ends in a browser `alert`.
+Customer Try On now runs a **local demonstration** job through `/api/tryon/jobs` (see `VIRTUAL_TRYON_CUSTOMER_FLOW.md`). Live FASHN remains disabled by default. The isolated lab under `server/tryon-lab` is unchanged.
 
 ## Providers reviewed from public documentation
 

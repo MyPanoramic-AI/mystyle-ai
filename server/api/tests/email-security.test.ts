@@ -267,7 +267,7 @@ test('existing accounts stay unverified after migration 010 and mailbox hides to
        VALUES (?, ?, ?, 'active', ?, ?)`,
     ).run('legacy-user', 'legacy@example.com', 'scrypt$not$real', new Date().toISOString(), new Date().toISOString());
     const applied = migrate(db, migrationsDir);
-    assert.deepEqual(applied, ['010_email_account_security.sql', '011_profile_photo_slots.sql']);
+    assert.deepEqual(applied, ['010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql']);
     const row = db.prepare(`SELECT email_verified_at AS verifiedAt FROM users WHERE id = ?`).get('legacy-user') as { verifiedAt: string | null };
     assert.equal(row.verifiedAt, null);
     db.close();
@@ -288,7 +288,11 @@ test('existing accounts stay unverified after migration 010 and mailbox hides to
       await api.close();
     }
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    try {
+      rmSync(root, { recursive: true, force: true });
+    } catch {
+      // Windows may briefly lock WAL companions after close.
+    }
   }
 });
 

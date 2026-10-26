@@ -100,6 +100,63 @@ export interface AccountApi {
   confirmPrivacyDeletion(password: string): Promise<Record<string, unknown>>;
   privacyRetentionPreview(): Promise<Record<string, unknown>>;
   deleteMedia(id: string): Promise<void>;
+  tryOnAvailability(): Promise<TryOnAvailabilityResponse>;
+  createTryOnJob(body: TryOnJobCreateBody): Promise<TryOnJobRecord>;
+  getTryOnJob(id: string): Promise<TryOnJobRecord>;
+  listTryOnJobs(): Promise<{ jobs: TryOnJobRecord[] }>;
+  cancelTryOnJob(id: string): Promise<TryOnJobRecord>;
+}
+
+export type TryOnCategory = 'tops' | 'bottoms' | 'one-pieces' | 'outerwear';
+export type TryOnProviderId = 'mock' | 'fashn-tryon-v1.6' | 'fashn-tryon-max';
+
+export interface TryOnAvailabilityResponse {
+  liveEnabled: boolean;
+  maxBudgetUsd: number;
+  externalPhotoAiConsent: boolean;
+  privatePhotoStorageConsent: boolean;
+  providers: {
+    id: string;
+    label: string;
+    model: string;
+    availability: string;
+    liveCapable: boolean;
+    note: string;
+  }[];
+  note: string;
+}
+
+export interface TryOnJobCreateBody {
+  personMediaId: string;
+  garmentMediaId?: string;
+  garmentImageBase64?: string;
+  category: TryOnCategory;
+  providerId?: TryOnProviderId;
+  quality?: 'draft' | 'standard' | 'high';
+  idempotencyKey: string;
+}
+
+export interface TryOnJobRecord {
+  id: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+  providerId: string;
+  model: string;
+  category: TryOnCategory;
+  quality: string;
+  personMediaId: string;
+  garmentMediaId: string;
+  resultMediaId: string | null;
+  resultKind: 'demonstration' | 'provider' | null;
+  demonstration: boolean;
+  label: string;
+  errorCode: string | null;
+  errorMessage: string | null;
+  creditsReserved: number | null;
+  createdAt: string;
+  updatedAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  duplicate?: boolean;
 }
 
 export interface ConsentStateResponse {
@@ -408,6 +465,11 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     confirmPrivacyDeletion: (password) => request('/api/privacy/deletion/confirm', { method: 'POST', body: { password }, csrf: true }),
     privacyRetentionPreview: () => request('/api/privacy/retention/preview'),
     deleteMedia: (id) => request(`/api/media/${id}`, { method: 'DELETE', csrf: true }),
+    tryOnAvailability: () => request('/api/tryon/availability'),
+    createTryOnJob: (body) => request('/api/tryon/jobs', { method: 'POST', body, csrf: true }),
+    getTryOnJob: (id) => request(`/api/tryon/jobs/${id}`),
+    listTryOnJobs: () => request('/api/tryon/jobs'),
+    cancelTryOnJob: (id) => request(`/api/tryon/jobs/${id}/cancel`, { method: 'POST', csrf: true }),
   };
 }
 

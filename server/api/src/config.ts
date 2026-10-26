@@ -90,6 +90,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const serveStatic = onRender || env.API_SERVE_STATIC === 'true' || appEnv === 'staging' || appEnv === 'production';
   const retentionCleanupEnabled = env.API_RETENTION_CLEANUP_ENABLED === 'true';
   const liveAiEnabled = env.AI_ALLOW_LIVE === 'true';
+  const liveTryOnEnabled = env.TRYON_ALLOW_LIVE === 'true';
 
   assertProductionSafeConfig({
     envName: appEnv,
@@ -100,6 +101,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     retentionCleanupAck: env.API_RETENTION_CLEANUP_ACK ?? null,
     allowedOrigins,
     liveAiEnabled,
+    liveTryOnEnabled,
     paymentsEnabled: env.PAYMENTS_ENABLED === 'true',
   });
 

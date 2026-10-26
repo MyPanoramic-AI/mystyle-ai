@@ -50,22 +50,14 @@ test('shop filters, product details, and saved products stay labelled as demonst
   await expect(page.getByText('Demo Listing').first()).toBeVisible();
 });
 
-test('try-on controls explain that generation is inactive', async ({ page }) => {
+test('try-on screen explains demonstration fits and stays offline from FASHN', async ({ page }) => {
   const external = watchExternal(page);
   await register(page, `qa-tryon-${Date.now()}@example.com`);
   await skipToApp(page);
   await page.getByRole('button', { name: 'Try On' }).first().click();
-  await expect(page.getByText('Real try-on generation is not active')).toBeVisible();
-  page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('Phase 2');
-    await dialog.accept();
-  });
-  await page.getByRole('button', { name: 'Take Photo' }).click();
-  page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain('Phase 2');
-    await dialog.accept();
-  });
-  await page.getByRole('button', { name: 'Choose from Gallery' }).click();
+  await expect(page.getByRole('heading', { name: 'Virtual Fitting Room' })).toBeVisible();
+  await expect(page.getByText(/demonstration fit|Live FASHN calls stay disabled/i).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open My Profile' })).toBeVisible();
   await expect(page.getByText(/completed transformation|fitting result ready/i)).toHaveCount(0);
   expect(external).toEqual([]);
 });

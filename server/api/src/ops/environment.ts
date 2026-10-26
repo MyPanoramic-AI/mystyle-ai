@@ -80,6 +80,7 @@ export function assertProductionSafeConfig(input: {
   retentionCleanupAck?: string | null;
   allowedOrigins: string[];
   liveAiEnabled: boolean;
+  liveTryOnEnabled?: boolean;
   paymentsEnabled?: boolean;
 }): void {
   const profile = profileFor(input.envName);
@@ -101,6 +102,9 @@ export function assertProductionSafeConfig(input: {
   }
   if (!profile.allowLiveAiDefault && input.liveAiEnabled) {
     throw new Error('Staging/production refuse AI_ALLOW_LIVE=true until a separate live-provider approval sets an override.');
+  }
+  if (!profile.allowLiveAiDefault && input.liveTryOnEnabled) {
+    throw new Error('Staging/production refuse TRYON_ALLOW_LIVE=true until a separate live try-on approval sets an override.');
   }
   if (input.paymentsEnabled) {
     throw new Error('Payments are not enabled in this revision.');
