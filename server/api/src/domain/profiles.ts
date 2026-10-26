@@ -2,6 +2,7 @@ import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
 import { recordConsent } from '../privacy/consent.js';
 import { readProfilePhotoSlots } from './profilePhotos.js';
+import { assertSilhouetteId, readSilhouette, saveSilhouette } from './silhouette.js';
 
 const ONBOARDING = new Set(['pending', 'deferred', 'completed']);
 const BUDGETS = new Set(['under-300', '300-600', '600-1000', '1000-2000', '2000-plus', 'flexible']);
@@ -44,6 +45,7 @@ export function getProfile(db: Sql, userId: string): Record<string, unknown> {
   const measurements = db.prepare('SELECT height_cm AS heightCm, bust_cm AS bustCm, waist_cm AS waistCm, hip_cm AS hipCm FROM profile_measurements WHERE user_id = ?').get(userId) as
     | Record<string, number | null>
     | undefined;
+  const silhouette = readSilhouette(db, userId);
   return {
     displayName: profile.display_name,
     styles: JSON.parse(String(profile.style_preferences_json)),
@@ -67,6 +69,11 @@ export function getProfile(db: Sql, userId: string): Record<string, unknown> {
     onboardingStatus: profile.onboarding_status ?? 'pending',
     completionStatus: profile.completion_status,
     measurements: measurements ?? null,
+    bodyShape: silhouette.bodyShape,
+    bodyShapeLabel: silhouette.bodyShapeLabel,
+    bodyShapeSource: silhouette.bodyShapeSource,
+    bodyShapeUpdatedAt: silhouette.bodyShapeUpdatedAt,
+    bodyShapeNote: silhouette.note,
     photos: readProfilePhotoSlots(db, userId),
   };
 }
@@ -116,6 +123,18 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
         `INSERT INTO profile_measurements (user_id, height_cm, bust_cm, waist_cm, hip_cm) VALUES (?, ?, ?, ?, ?)
          ON CONFLICT(user_id) DO UPDATE SET height_cm=excluded.height_cm, bust_cm=excluded.bust_cm, waist_cm=excluded.waist_cm, hip_cm=excluded.hip_cm`,
       ).run(userId, height ?? null, bust ?? null, waist ?? null, hip ?? null);
+    }
+  }
+  if (body.bodyShape !== undefined) {
+    if (body.bodyShape === null || body.bodyShape === '') {
+      db.prepare(
+        `UPDATE customer_profiles SET body_shape = NULL, body_shape_source = NULL, body_shape_updated_at = NULL, updated_at = ? WHERE user_id = ?`,
+      ).run(stamp, userId);
+    } else {
+      const source = body.bodyShapeSource === 'measurements' || body.bodyShapeSource === 'manual'
+        ? body.bodyShapeSource
+        : 'manual';
+      saveSilhouette(db, userId, assertSilhouetteId(body.bodyShape), source, now);
     }
   }
   return getProfile(db, userId);

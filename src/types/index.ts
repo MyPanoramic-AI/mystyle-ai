@@ -50,12 +50,24 @@ export interface StylistNavigationState {
   timestamp?: number;
 }
 
+export type StylingSilhouetteId =
+  | 'hourglass'
+  | 'pear'
+  | 'inverted-triangle'
+  | 'apple'
+  | 'rectangle';
+
 export interface PersonalDetails {
   firstName: string;
   ageRange?: string;
   heightCm?: number | string;
   country: string;
   currency: string;
+  /** Styling silhouette preference (hourglass, pear, …) — not a medical assessment. */
+  bodyShape?: StylingSilhouetteId;
+  bodyShapeLabel?: string;
+  bodyShapeNote?: string;
+  bodyShapeSource?: string;
 }
 
 export interface ClothingSizes {

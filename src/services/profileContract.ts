@@ -85,6 +85,7 @@ export function fromApiProfile(body: Record<string, unknown>): UserProfile {
     ? body.onboardingStatus
     : 'pending';
   const height = measurements?.heightCm;
+  const bodyShape = typeof body.bodyShape === 'string' ? body.bodyShape : undefined;
   return {
     personal: {
       firstName: typeof body.displayName === 'string' ? body.displayName : '',
@@ -92,6 +93,10 @@ export function fromApiProfile(body: Record<string, unknown>): UserProfile {
       heightCm: typeof height === 'number' ? height : undefined,
       country: typeof body.country === 'string' ? body.country : 'South Africa',
       currency: typeof body.currency === 'string' ? body.currency : 'ZAR (R)',
+      bodyShape: bodyShape as UserProfile['personal']['bodyShape'],
+      bodyShapeLabel: typeof body.bodyShapeLabel === 'string' ? body.bodyShapeLabel : undefined,
+      bodyShapeNote: typeof body.bodyShapeNote === 'string' ? body.bodyShapeNote : undefined,
+      bodyShapeSource: typeof body.bodyShapeSource === 'string' ? body.bodyShapeSource : undefined,
     },
     sizes: {
       topsSize: typeof sizes.tops === 'string' ? sizes.tops : '',
@@ -155,6 +160,8 @@ export function toApiProfile(profile: UserProfile): Record<string, unknown> {
       waistCm: optionalCm(profile.sizes.waistCm),
       hipCm: optionalCm(profile.sizes.hipCm),
     },
+    bodyShape: profile.personal.bodyShape ?? null,
+    bodyShapeSource: profile.personal.bodyShapeSource ?? null,
   };
 }
 

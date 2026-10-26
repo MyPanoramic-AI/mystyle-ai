@@ -21,6 +21,7 @@ import { createCaptureMailer, createDisabledMailer, listCapturedEmails, readCapt
 import type { Mailer } from '../email/types.js';
 import { getPreferences, getProfile, updatePreferences, updateProfile } from '../domain/profiles.js';
 import { assertPhotoSlot, deleteProfilePhotoSlot, readProfilePhotoSlots, uploadProfilePhotoSlot } from '../domain/profilePhotos.js';
+import { estimateSilhouetteForUser, listSilhouetteOptions, saveSilhouette } from '../domain/silhouette.js';
 import { createFamilyEvent, createFamilyMember, deleteFamilyEvent, deleteFamilyMember, getFamilyEvent, getFamilyMember, listFamily, listFamilyEvents, updateFamilyEvent, updateFamilyMember } from '../domain/family.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
@@ -332,6 +333,22 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.put('/api/profile', route((req, res) => {
     res.json(updateProfile(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
+  }));
+  app.get('/api/profile/silhouette/options', route((_req, res) => {
+    res.json({ options: listSilhouetteOptions() });
+  }));
+  app.post('/api/profile/silhouette/estimate', route((req, res) => {
+    const session = requireUser(req);
+    const estimated = estimateSilhouetteForUser(deps.db, session.userId);
+    const persist = req.body?.save === true;
+    const saved = persist
+      ? saveSilhouette(deps.db, session.userId, estimated.id, 'measurements', deps.now())
+      : null;
+    res.json({
+      estimate: estimated,
+      saved,
+      profile: persist ? getProfile(deps.db, session.userId) : undefined,
+    });
   }));
   app.get('/api/profile/photos', route((req, res) => {
     res.json({

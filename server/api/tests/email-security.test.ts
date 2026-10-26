@@ -267,7 +267,7 @@ test('existing accounts stay unverified after migration 010 and mailbox hides to
        VALUES (?, ?, ?, 'active', ?, ?)`,
     ).run('legacy-user', 'legacy@example.com', 'scrypt$not$real', new Date().toISOString(), new Date().toISOString());
     const applied = migrate(db, migrationsDir);
-    assert.deepEqual(applied, ['010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql', '013_tryon_free_ai_image.sql']);
+    assert.deepEqual(applied, ['010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql', '013_tryon_free_ai_image.sql', '014_body_silhouette.sql']);
     const row = db.prepare(`SELECT email_verified_at AS verifiedAt FROM users WHERE id = ?`).get('legacy-user') as { verifiedAt: string | null };
     assert.equal(row.verifiedAt, null);
     db.close();

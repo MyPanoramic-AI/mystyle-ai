@@ -33,8 +33,11 @@ import { getSavedBeautyLooks } from '../../services/beautyService';
 import { getMembership, getCreditBalance } from '../../services/membershipService';
 import { MembershipSubpageTab } from '../../types/membership';
 import { Crown, Coins, Shield, Bell, Settings } from 'lucide-react';
-import type { ProfilePhotoSlot } from '../../services/accountApi';
+import { AccountApiError, accountApi, type ProfilePhotoSlot } from '../../services/accountApi';
+import { fromApiProfile } from '../../services/profileContract';
 import { formatHeight } from '../../utils/measurements';
+import { estimateSilhouetteFromCm, SILHOUETTE_OPTIONS } from '../../utils/silhouette';
+import type { StylingSilhouetteId } from '../../types';
 
 interface ProfileDashboardProps {
   profile: UserProfile;
@@ -80,8 +83,98 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   onDeletePhotoSlot,
 }) => {
   const [activeEditSection, setActiveEditSection] = useState<EditableSection | null>(null);
+  const [silhouetteBusy, setSilhouetteBusy] = useState(false);
+  const [silhouetteMessage, setSilhouetteMessage] = useState<string | null>(null);
 
   const completeness = profileService.calculateCompleteness(profile);
+  const hasFullBodyPhoto = Boolean(photos.fullBodyFrontUrl || photos.fullBodyAdditionalUrl);
+  const hasBodyMeasures = Boolean(
+    Number(profile.sizes.bustCm) > 0
+    && Number(profile.sizes.waistCm) > 0
+    && Number(profile.sizes.hipCm) > 0,
+  );
+
+  const handleEstimateSilhouette = async () => {
+    setSilhouetteBusy(true);
+    setSilhouetteMessage(null);
+    try {
+      if (usesAccount) {
+        const result = await accountApi.estimateSilhouette(true);
+        if (result.profile) {
+          await onUpdateProfile(fromApiProfile(result.profile));
+        } else {
+          await onUpdateProfile({
+            ...profile,
+            personal: {
+              ...profile.personal,
+              bodyShape: result.estimate.id as StylingSilhouetteId,
+              bodyShapeLabel: result.estimate.label,
+              bodyShapeNote: result.estimate.note,
+              bodyShapeSource: result.estimate.source,
+            },
+          });
+        }
+        setSilhouetteMessage(result.estimate.disclaimer);
+        return;
+      }
+      if (!hasBodyMeasures) {
+        setSilhouetteMessage('Add bust, waist, and hip measurements in Sizes first, then estimate your styling silhouette.');
+        setActiveEditSection('sizes');
+        return;
+      }
+      const estimated = estimateSilhouetteFromCm(
+        Number(profile.sizes.bustCm),
+        Number(profile.sizes.waistCm),
+        Number(profile.sizes.hipCm),
+      );
+      await onUpdateProfile({
+        ...profile,
+        personal: {
+          ...profile.personal,
+          bodyShape: estimated.id,
+          bodyShapeLabel: estimated.label,
+          bodyShapeNote: estimated.note,
+          bodyShapeSource: 'measurements',
+        },
+      });
+      setSilhouetteMessage(
+        hasFullBodyPhoto
+          ? 'Estimated from your measurements. Full-body photographs stay private and were not sent to an external AI.'
+          : 'Estimated from your bust, waist, and hip measurements for styling suggestions only.',
+      );
+    } catch (error) {
+      const message = error instanceof AccountApiError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'Silhouette could not be estimated.';
+      setSilhouetteMessage(message);
+      if (
+        error instanceof AccountApiError
+        && (error.code === 'measurements_required' || /bust, waist, and hip/i.test(error.message))
+      ) {
+        setActiveEditSection('sizes');
+      }
+    } finally {
+      setSilhouetteBusy(false);
+    }
+  };
+
+  const handlePickSilhouette = async (id: StylingSilhouetteId) => {
+    const option = SILHOUETTE_OPTIONS.find((item) => item.id === id);
+    if (!option) return;
+    setSilhouetteMessage(null);
+    await onUpdateProfile({
+      ...profile,
+      personal: {
+        ...profile.personal,
+        bodyShape: option.id,
+        bodyShapeLabel: option.label,
+        bodyShapeNote: option.note,
+        bodyShapeSource: 'manual',
+      },
+    });
+  };
   const familyMembers = usesAccount ? [] : familyService.getFamilyMembers();
   const wardrobeItems = usesAccount ? [] : getWardrobeItems();
   const wardrobeOutfits = usesAccount ? [] : getWardrobeOutfits();
@@ -469,8 +562,8 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
           </div>
         </div>
 
-        {/* CARD 6: PHOTO MANAGEMENT */}
-        <div className="rounded-3xl bg-white border border-[#242326]/10 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+        {/* CARD 6: PHOTO MANAGEMENT + SILHOUETTE */}
+        <div className="rounded-3xl bg-white border border-[#242326]/10 p-5 sm:p-6 shadow-xs flex flex-col justify-between md:col-span-2">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -478,7 +571,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                   <Camera className="w-4 h-4" />
                 </div>
                 <h3 className="font-serif text-base font-semibold text-[#242326]">
-                  Styling Photographs
+                  Styling Photographs & Silhouette
                 </h3>
               </div>
               <button
@@ -492,7 +585,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
               </button>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-4">
               <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
                 {photos.profilePhotoUrl ? (
                   <img src={photos.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
@@ -514,18 +607,81 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                   <Camera className="w-5 h-5 text-[#5C585E]" />
                 )}
               </div>
-              <div className="text-xs text-[#5C585E] leading-snug">
+              <div className="text-xs text-[#5C585E] leading-snug min-w-0">
                 <span>
                   {photos.profilePhotoUrl || photos.fullBodyFrontUrl || photos.fullBodyAdditionalUrl
                     ? (usesAccount ? 'Private styling photographs on this account' : 'Photos active in temporary browser memory')
                     : 'No fitting photos selected yet'}
                 </span>
                 <span className="block text-[10px] text-[#9C6A61] mt-0.5">
-                  {usesAccount
-                    ? 'Stored privately for this account. Not sent to external AI from Profile.'
-                    : 'Stored locally for session only'}
+                  Full-body photos power Virtual Try-On. Silhouette estimates use bust/waist/hip — photographs are not sent to external AI from Profile.
                 </span>
               </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#242326]/8 bg-[#F6F2EC]/50 p-4 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#B49361]">Styling silhouette</p>
+                  <p className="font-serif text-lg text-[#242326]">
+                    {profile.personal.bodyShapeLabel || 'Not estimated yet'}
+                  </p>
+                  {profile.personal.bodyShapeNote ? (
+                    <p className="text-[11px] text-[#5C585E] mt-1 leading-relaxed max-w-xl">
+                      {profile.personal.bodyShapeNote}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-[#5C585E] mt-1 leading-relaxed max-w-xl">
+                      Hourglass, pear, inverted triangle, apple, or rectangle — used for cut and proportion suggestions only.
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={silhouetteBusy}
+                  onClick={() => { void handleEstimateSilhouette(); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-[#9C6A61] text-white hover:bg-[#8A5B53] disabled:opacity-60 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {silhouetteBusy ? 'Estimating…' : 'Estimate silhouette'}
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {SILHOUETTE_OPTIONS.map((option) => {
+                  const selected = profile.personal.bodyShape === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      title={option.note}
+                      onClick={() => { void handlePickSilhouette(option.id); }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border cursor-pointer transition-colors ${
+                        selected
+                          ? 'bg-[#242326] text-white border-[#242326]'
+                          : 'bg-white text-[#5C585E] border-[#242326]/10 hover:border-[#9C6A61]/40'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {!hasBodyMeasures && (
+                <button
+                  type="button"
+                  onClick={() => setActiveEditSection('sizes')}
+                  className="text-[11px] font-medium text-[#9C6A61] hover:text-[#794E46] cursor-pointer"
+                >
+                  Add bust, waist &amp; hip measurements for automatic estimate →
+                </button>
+              )}
+              {silhouetteMessage && (
+                <p className="text-[11px] text-[#5C585E] leading-relaxed" role="status">
+                  {silhouetteMessage}
+                </p>
+              )}
             </div>
           </div>
         </div>

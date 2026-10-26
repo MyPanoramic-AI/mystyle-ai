@@ -39,6 +39,21 @@ export interface AccountApi {
   devMailboxAction(id: string): Promise<{ id: string; kind: string; path: string }>;
   getProfile(): Promise<Record<string, unknown>>;
   saveProfile(body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  estimateSilhouette(save?: boolean): Promise<{
+    estimate: {
+      id: string;
+      label: string;
+      note: string;
+      source: string;
+      confidence: string;
+      photosReady: boolean;
+      usedPhotoAi: boolean;
+      disclaimer: string;
+    };
+    saved: Record<string, unknown> | null;
+    profile?: Record<string, unknown>;
+  }>;
+  silhouetteOptions(): Promise<{ options: { id: string; label: string; note: string }[] }>;
   getPreferences(): Promise<Record<string, unknown>>;
   savePreferences(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   stylistAvailability(): Promise<StylistAvailability>;
@@ -456,6 +471,12 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     devMailboxAction: (id) => request(`/api/dev/mailbox/${id}/action`),
     getProfile: () => request('/api/profile'),
     saveProfile: (body) => request('/api/profile', { method: 'PUT', body, csrf: true }),
+    estimateSilhouette: (save = true) => request('/api/profile/silhouette/estimate', {
+      method: 'POST',
+      body: { save },
+      csrf: true,
+    }),
+    silhouetteOptions: () => request('/api/profile/silhouette/options'),
     getPreferences: () => request('/api/preferences'),
     savePreferences: (body) => request('/api/preferences', { method: 'PUT', body, csrf: true }),
     stylistAvailability: () => request('/api/stylist/availability'),
