@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import { authHeaders, register, startApi } from './harness.js';
 import { waitForTryOnJob } from '../src/tryon/service.js';
@@ -713,6 +716,44 @@ test('authorised mocked FASHN path stores a provider result without calling the 
     assert.equal(media.status, 200);
     const bytes = Buffer.from(await media.arrayBuffer());
     assert.ok(bytes.equals(providerPng));
+  } finally {
+    await api.close();
+  }
+});
+
+test('catalogue garmentImageUrl is loaded from static assets without client base64', async () => {
+  const staticRoot = mkdtempSync(path.join(tmpdir(), 'mystyle-static-'));
+  const assetsDir = path.join(staticRoot, 'assets');
+  mkdirSync(assetsDir, { recursive: true });
+  const pngBytes = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  writeFileSync(path.join(assetsDir, 'shop-garment.png'), pngBytes);
+
+  const api = await startApi({ staticDir: staticRoot, appPublicUrl: 'http://127.0.0.1:4173' });
+  try {
+    const ada = await register(api.base, 'tryon-catalogue-url@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageUrl: '/assets/shop-garment.png',
+        category: 'tops',
+        providerId: 'mock',
+        idempotencyKey: 'catalogue-url-001',
+      }),
+    });
+    const createdText = await created.text();
+    assert.equal(created.status, 201, createdText);
+    const job = JSON.parse(createdText) as { id: string };
+    const done = await pollJob(api.base, ada.cookie, job.id);
+    assert.equal(done.status, 'succeeded');
+    assert.equal(done.demonstration, true);
+    assert.ok(done.resultMediaId);
   } finally {
     await api.close();
   }

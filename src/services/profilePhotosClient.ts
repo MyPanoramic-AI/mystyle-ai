@@ -35,9 +35,18 @@ export function slotForUrlKey(key: 'profilePhotoUrl' | 'fullBodyFrontUrl' | 'ful
 }
 
 export async function fileToBase64(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]!);
-  return btoa(binary);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      if (comma < 0) {
+        reject(new Error('The image could not be encoded.'));
+        return;
+      }
+      resolve(result.slice(comma + 1));
+    };
+    reader.onerror = () => reject(new Error('The image could not be encoded.'));
+    reader.readAsDataURL(file);
+  });
 }

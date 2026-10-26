@@ -166,6 +166,7 @@ export interface TryOnPrepareBody {
   personMediaId: string;
   garmentMediaId?: string;
   wardrobeItemId?: string;
+  garmentImageUrl?: string;
   garmentImageBase64?: string;
   category: TryOnCategory;
   providerId?: TryOnProviderId;
@@ -191,6 +192,7 @@ export interface TryOnJobCreateBody {
   personMediaId: string;
   garmentMediaId?: string;
   wardrobeItemId?: string;
+  garmentImageUrl?: string;
   garmentImageBase64?: string;
   category: TryOnCategory;
   providerId?: TryOnProviderId;

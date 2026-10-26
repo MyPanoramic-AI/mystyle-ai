@@ -77,14 +77,57 @@ function categoryFromText(raw?: string | null): TryOnCategory {
   return 'tops';
 }
 
+function tryOnFailureMessage(error: unknown, fallback: string): string {
+  if (error instanceof AccountApiError) return error.message;
+  if (error instanceof Error && error.name === 'AccountApiError' && error.message) return error.message;
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
+}
+
+function mediaIdFromUrl(url: string): string | null {
+  try {
+    const pathname = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://local.invalid').pathname;
+    const match = /^\/api\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(pathname);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function sameOriginCataloguePath(url: string): string | null {
+  try {
+    const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://local.invalid');
+    if (typeof window !== 'undefined' && parsed.origin !== window.location.origin) return null;
+    if (!parsed.pathname.startsWith('/assets/') && !parsed.pathname.startsWith('/images/')) return null;
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
 async function urlToBase64(url: string): Promise<string> {
-  const response = await fetch(url);
+  let response: Response;
+  try {
+    response = await fetch(url, { credentials: 'include', mode: 'cors' });
+  } catch {
+    throw new Error('The garment preview could not be loaded. Check that the image is reachable from this browser.');
+  }
   if (!response.ok) throw new Error('The garment preview could not be loaded.');
-  const buffer = await response.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]!);
-  return btoa(binary);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      if (comma < 0) {
+        reject(new Error('The garment preview could not be encoded.'));
+        return;
+      }
+      resolve(result.slice(comma + 1));
+    };
+    reader.onerror = () => reject(new Error('The garment preview could not be encoded.'));
+    reader.readAsDataURL(blob);
+  });
 }
 
 /**
@@ -282,13 +325,23 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     || (garmentMode === 'upload' && garmentFile),
   );
 
-  const buildGarmentPayload = async (): Promise<Partial<{ wardrobeItemId: string; garmentMediaId: string; garmentImageBase64: string }>> => {
+  const buildGarmentPayload = async (): Promise<Partial<{
+    wardrobeItemId: string;
+    garmentMediaId: string;
+    garmentImageUrl: string;
+    garmentImageBase64: string;
+  }>> => {
     if (garmentMode === 'existing' && selectedGarment) {
       if (selectedGarment.wardrobeItemId) return { wardrobeItemId: selectedGarment.wardrobeItemId };
       return { garmentMediaId: selectedGarment.mediaId };
     }
     if (garmentMode === 'shop' && preloadedGarment?.imageUrl) {
-      return { garmentImageBase64: await urlToBase64(preloadedGarment.imageUrl) };
+      const imageUrl = preloadedGarment.imageUrl;
+      const mediaId = mediaIdFromUrl(imageUrl);
+      if (mediaId) return { garmentMediaId: mediaId };
+      const cataloguePath = sameOriginCataloguePath(imageUrl);
+      if (cataloguePath) return { garmentImageUrl: cataloguePath };
+      return { garmentImageBase64: await urlToBase64(imageUrl) };
     }
     if (garmentMode === 'upload' && garmentFile) {
       return { garmentImageBase64: await fileToBase64(garmentFile) };
@@ -358,7 +411,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     } catch (error) {
       setBusy(false);
       setStep('confirm');
-      showStatus(error instanceof AccountApiError ? error.message : 'The try-on could not be started.');
+      showStatus(tryOnFailureMessage(error, 'The try-on could not be started.'));
     }
   };
 

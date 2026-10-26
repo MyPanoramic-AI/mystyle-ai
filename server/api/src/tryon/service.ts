@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
 import { deleteOwnedMedia, inspectImage, readOwnedMedia, saveMedia } from '../media/store.js';
@@ -178,13 +180,82 @@ function readJobRow(db: Sql, userId: string, id: string): JobRow {
 }
 
 function spentLiveUsd(db: Sql): number {
+  // Count provider jobs, not customer membership credits_reserved (those can be 0 or unrelated).
   const row = db.prepare(
-    `SELECT COALESCE(SUM(COALESCE(credits_reserved, 0)), 0) AS credits
+    `SELECT COUNT(*) AS count
      FROM tryon_jobs
      WHERE provider_id IN ('fashn-tryon-v1.6', 'fashn-tryon-max')
        AND status IN ('queued', 'running', 'succeeded')`,
-  ).get() as { credits: number };
-  return Number(row.credits || 0) * 0.075;
+  ).get() as { count: number };
+  return Number(row.count || 0) * 0.075;
+}
+
+function isInsideDir(rootDir: string, candidate: string): boolean {
+  const root = path.resolve(rootDir);
+  const full = path.resolve(candidate);
+  return full === root || full.startsWith(root + path.sep);
+}
+
+function cataloguePathname(raw: string, appPublicUrl: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.length > 500) return null;
+  if (trimmed.startsWith('/')) {
+    try {
+      return new URL(trimmed, 'https://catalogue.invalid').pathname;
+    } catch {
+      return null;
+    }
+  }
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (!appPublicUrl) return null;
+  let allowed: URL;
+  try {
+    allowed = new URL(appPublicUrl);
+  } catch {
+    return null;
+  }
+  if (url.origin !== allowed.origin) return null;
+  return url.pathname;
+}
+
+/** Load a same-origin shop/catalogue image from the published static build (never arbitrary remote hosts). */
+function loadCatalogueGarmentBytes(options: {
+  garmentImageUrl: string;
+  staticDir: string | null;
+  appPublicUrl: string;
+  maxBytes: number;
+}): Buffer {
+  const pathname = cataloguePathname(options.garmentImageUrl, options.appPublicUrl);
+  if (!pathname || (!pathname.startsWith('/assets/') && !pathname.startsWith('/images/'))) {
+    throw new ApiError(
+      'invalid_garment_url',
+      'Shop garment images must be same-origin catalogue assets under /assets/ or /images/.',
+      400,
+    );
+  }
+  if (!options.staticDir) {
+    throw new ApiError(
+      'invalid_garment_url',
+      'Catalogue garment images are not available from this API process. Upload the garment or send garmentImageBase64.',
+      400,
+    );
+  }
+  const relative = pathname.replace(/^\/+/, '');
+  const full = path.resolve(options.staticDir, relative);
+  if (!isInsideDir(options.staticDir, full) || !existsSync(full)) {
+    throw new ApiError('invalid_garment_url', 'That catalogue garment image was not found on the server.', 404);
+  }
+  const bytes = readFileSync(full);
+  if (bytes.length === 0 || bytes.length > options.maxBytes) {
+    throw new ApiError('invalid_image', 'The image is empty or larger than the configured limit.', 400);
+  }
+  inspectImage(bytes);
+  return bytes;
 }
 
 function hasAiImageFeature(db: Sql, userId: string, now = Date.now()): boolean {
@@ -328,6 +399,8 @@ export function listTryOnGarments(db: Sql, userId: string): {
 export function prepareTryOnJob(options: {
   db: Sql;
   mediaDir: string;
+  staticDir?: string | null;
+  appPublicUrl?: string;
   userId: string;
   body: Record<string, unknown>;
   now: number;
@@ -408,6 +481,8 @@ export function getTryOnJob(db: Sql, userId: string, id: string): TryOnJobView {
 function resolveTryOnInputs(options: {
   db: Sql;
   mediaDir: string;
+  staticDir?: string | null;
+  appPublicUrl?: string;
   userId: string;
   body: Record<string, unknown>;
   now: number;
@@ -439,6 +514,7 @@ function resolveTryOnInputs(options: {
 
   let garmentMediaId = typeof options.body.garmentMediaId === 'string' ? options.body.garmentMediaId.trim() : '';
   const wardrobeItemId = typeof options.body.wardrobeItemId === 'string' ? options.body.wardrobeItemId.trim() : '';
+  const garmentImageUrl = typeof options.body.garmentImageUrl === 'string' ? options.body.garmentImageUrl.trim() : '';
   if (!garmentMediaId && wardrobeItemId) {
     const item = options.db.prepare(
       `SELECT media_id AS mediaId FROM wardrobe_items WHERE id = ? AND user_id = ?`,
@@ -449,6 +525,14 @@ function resolveTryOnInputs(options: {
     }
     garmentMediaId = item.mediaId;
   }
+  if (!garmentMediaId && garmentImageUrl) {
+    const mediaMatch = /^\/api\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(
+      cataloguePathname(garmentImageUrl, options.appPublicUrl || '') || garmentImageUrl,
+    );
+    if (mediaMatch?.[1]) {
+      garmentMediaId = mediaMatch[1];
+    }
+  }
   if (!garmentMediaId) {
     if (!hasGrantedConsent(options.db, options.userId, 'private_photo_storage')) {
       throw new ApiError(
@@ -458,15 +542,29 @@ function resolveTryOnInputs(options: {
       );
     }
     const encoded = typeof options.body.garmentImageBase64 === 'string' ? options.body.garmentImageBase64 : '';
-    if (!/^[A-Za-z0-9+/=\r\n]+$/.test(encoded)) {
-      throw new ApiError('invalid_garment', 'Provide a wardrobe item, garmentMediaId, or garmentImageBase64 payload.', 400);
+    let uploadBytes: Buffer | null = null;
+    if (/^[A-Za-z0-9+/=\r\n]+$/.test(encoded) && encoded.length > 0) {
+      uploadBytes = Buffer.from(encoded, 'base64');
+    } else if (garmentImageUrl) {
+      uploadBytes = loadCatalogueGarmentBytes({
+        garmentImageUrl,
+        staticDir: options.staticDir ?? null,
+        appPublicUrl: options.appPublicUrl || '',
+        maxBytes: options.maxBytes,
+      });
+    } else {
+      throw new ApiError(
+        'invalid_garment',
+        'Provide a wardrobe item, garmentMediaId, garmentImageUrl, or garmentImageBase64 payload.',
+        400,
+      );
     }
     if (options.persistGarmentUpload) {
       const saved = saveMedia({
         db: options.db,
         mediaDir: options.mediaDir,
         userId: options.userId,
-        bytes: Buffer.from(encoded, 'base64'),
+        bytes: uploadBytes,
         purpose: 'garment_reference',
         now: options.now,
         maxBytes: options.maxBytes,
@@ -474,7 +572,7 @@ function resolveTryOnInputs(options: {
       });
       garmentMediaId = saved.id;
     } else {
-      inspectImage(Buffer.from(encoded, 'base64'));
+      inspectImage(uploadBytes);
       garmentMediaId = 'pending-upload';
     }
   } else {
@@ -497,6 +595,8 @@ function resolveTryOnInputs(options: {
 export function createTryOnJob(options: {
   db: Sql;
   mediaDir: string;
+  staticDir?: string | null;
+  appPublicUrl?: string;
   userId: string;
   body: Record<string, unknown>;
   now: number;

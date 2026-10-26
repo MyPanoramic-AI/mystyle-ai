@@ -652,6 +652,8 @@ export function createApp(deps: AppDeps): express.Express {
     res.json(prepareTryOnJob({
       db: deps.db,
       mediaDir: deps.config.mediaDir,
+      staticDir: deps.config.staticDir,
+      appPublicUrl: deps.config.appPublicUrl,
       userId: session.userId,
       body: req.body ?? {},
       now: deps.now(),
@@ -671,6 +673,8 @@ export function createApp(deps: AppDeps): express.Express {
     const created = createTryOnJob({
       db: deps.db,
       mediaDir: deps.config.mediaDir,
+      staticDir: deps.config.staticDir,
+      appPublicUrl: deps.config.appPublicUrl,
       userId: session.userId,
       body: req.body ?? {},
       now: deps.now(),
