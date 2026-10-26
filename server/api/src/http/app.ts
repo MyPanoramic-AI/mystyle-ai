@@ -542,8 +542,24 @@ export function createApp(deps: AppDeps): express.Express {
     res.json({ entitlements: rows, current: current.entitlement, paid: false });
   }));
   app.post('/api/entitlements', route((req, res) => {
-    requireUser(req);
-    res.status(403).json({ code: 'paid_plan_forbidden', message: 'A customer cannot assign a plan.' });
+    const session = requireUser(req);
+    // Live card billing is not connected. While payments stay off, customers may activate a
+    // provisional Free / Personal / Family entitlement so the Account Hub matches the selected tier.
+    // When payments go live this route must refuse customer assignment again.
+    const paymentsEnabled = false;
+    if (paymentsEnabled) {
+      res.status(403).json({ code: 'paid_plan_forbidden', message: 'A customer cannot assign a plan.' });
+      return;
+    }
+    const assigned = assignEntitlement(deps.db, {
+      userId: session.userId,
+      planCode: text(req.body?.planCode),
+      status: typeof req.body?.status === 'string' ? req.body.status : 'active',
+      effectiveTo: typeof req.body?.effectiveTo === 'string' ? req.body.effectiveTo : null,
+      actor: 'customer_provisional',
+    }, deps.now());
+    const current = readEntitlement(deps.db, session.userId, deps.now());
+    res.json({ ...assigned, current: current.entitlement, paid: false, paymentsEnabled: false });
   }));
   app.get('/api/credits', route((req, res) => {
     res.json(readCredits(deps.db, requireUser(req).userId));

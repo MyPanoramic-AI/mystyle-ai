@@ -46,7 +46,8 @@ import {
   Bell,
   Layers,
 } from 'lucide-react';
-import { accountApi, type MembershipCreditEntry, type MembershipPlanDefinition } from '../../services/accountApi';
+import { accountApi, AccountApiError, type MembershipCreditEntry, type MembershipPlanDefinition } from '../../services/accountApi';
+import { cataloguePlanToServerCode, serverCodeToCataloguePlan } from '../../services/membershipPlanMap';
 
 interface MembershipHubScreenProps {
   initialTab?: MembershipSubpageTab;
@@ -80,24 +81,41 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
     setActiveTab(initialTab);
   }, [initialTab]);
 
-  useEffect(() => {
-    if (!usesAccount) return;
-    let cancelled = false;
-    Promise.all([
+  const applyAccountEntitlement = (
+    entitlement: Awaited<ReturnType<typeof accountApi.membershipEntitlement>>,
+    creditState: Awaited<ReturnType<typeof accountApi.membershipCredits>>,
+    plans: Awaited<ReturnType<typeof accountApi.membershipPlans>>,
+  ) => {
+    const match = plans.plans.find((plan) => plan.planCode === entitlement.current?.planCode);
+    const planCode = entitlement.current?.planCode ?? 'FREE';
+    setAccountPlan(match?.displayName ?? planCode);
+    setAccountStatus(entitlement.current?.status ?? 'none');
+    setAccountFeatures(entitlement.current?.featureKeys ?? []);
+    setTestCredits(creditState.balance);
+    setTestEntries(creditState.entries);
+    setPublishedPlans(plans.plans);
+    setMembership((prev) => ({
+      ...prev,
+      planId: serverCodeToCataloguePlan(planCode),
+      status: entitlement.current?.status === 'active' ? 'active' : prev.status,
+      billingCycle: planCode === 'FREE' ? prev.billingCycle : 'monthly',
+    }));
+    setAccountError(null);
+  };
+
+  const reloadAccountMembership = async () => {
+    const [entitlement, creditState, plans] = await Promise.all([
       accountApi.membershipEntitlement(),
       accountApi.membershipCredits(),
       accountApi.membershipPlans(),
-    ]).then(([entitlement, creditState, plans]) => {
-      if (cancelled) return;
-      const match = plans.plans.find((plan) => plan.planCode === entitlement.current?.planCode);
-      setAccountPlan(match?.displayName ?? entitlement.current?.planCode ?? 'None');
-      setAccountStatus(entitlement.current?.status ?? 'none');
-      setAccountFeatures(entitlement.current?.featureKeys ?? []);
-      setTestCredits(creditState.balance);
-      setTestEntries(creditState.entries);
-      setPublishedPlans(plans.plans);
-      setAccountError(null);
-    }).catch(() => {
+    ]);
+    applyAccountEntitlement(entitlement, creditState, plans);
+  };
+
+  useEffect(() => {
+    if (!usesAccount) return;
+    let cancelled = false;
+    reloadAccountMembership().catch(() => {
       if (cancelled) return;
       setAccountError('Account membership could not be loaded. No membership has been assumed.');
     });
@@ -114,8 +132,23 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
 
   const handleSelectPlan = (planId: SubscriptionPlanId, billingCycle: BillingCycle) => {
     if (usesAccount) {
+      const planCode = cataloguePlanToServerCode(planId);
       setPreviewPlanCode(planId);
-      setPreviewNotice('Preview only. No payment was taken and your account entitlement was not changed.');
+      setPreviewNotice(`Activating ${planCode}…`);
+      void accountApi.setMembershipEntitlement(planCode).then(async () => {
+        await reloadAccountMembership();
+        setPreviewNotice(
+          planCode === 'FREE'
+            ? 'Your account is on the Free entitlement. No payment was taken.'
+            : `Your account is now on the ${planCode === 'PERSONAL' ? 'Personal' : 'Family'} entitlement. Provisional only — no card was charged.`,
+        );
+      }).catch((error: unknown) => {
+        setPreviewNotice(
+          error instanceof AccountApiError
+            ? error.message
+            : 'That membership could not be activated.',
+        );
+      });
       return;
     }
     const updated = updateSubscriptionPlan(planId, billingCycle);
@@ -261,7 +294,11 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
               <p>Entitlement status: {accountStatus}</p>
               <p>Test credits: {testCredits}</p>
               <p>Credit balance: {testCredits} test credits (server ledger)</p>
-              <p>Not a paid subscription. Browser previews cannot assign plans or grant credits.</p>
+              <p>
+                {accountPlan && accountPlan !== 'Free'
+                  ? 'Provisional paid-tier entitlement is active on this account. Live card billing is not connected, so no payment was taken.'
+                  : 'Free entitlement is active. Choose Personal or Family under Explore Plans to activate a provisional paid tier (not billed).'}
+              </p>
               <p>Available features: {accountFeatures.length > 0 ? accountFeatures.join(', ') : 'None'}</p>
               {publishedPlans.length > 0 && (
                 <p>
@@ -292,9 +329,10 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
           <MyMembershipView
             membership={membership}
             accountMode={usesAccount}
-            accountPlanName={accountPlan ?? 'Free'}
-            accountStatus={accountStatus ?? 'active'}
+            accountPlanName={accountPlan ?? undefined}
+            accountStatus={accountStatus ?? undefined}
             accountTestCredits={testCredits}
+            publishedPlans={publishedPlans}
             previewPlanCode={previewPlanCode}
             onExplorePlans={() => setActiveTab('plans')}
             onOpenCredits={() => setActiveTab('credits')}

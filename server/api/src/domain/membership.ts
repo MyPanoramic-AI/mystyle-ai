@@ -97,8 +97,8 @@ export function assignEntitlement(
 ) {
   const planCode = assertPlan(input.planCode);
   const status = assertStatus(input.status);
-  if (PAID_PLANS.has(planCode) && input.actor !== 'admin') {
-    throw new ApiError('paid_plan_forbidden', 'A customer cannot assign a paid plan.', 403);
+  if (PAID_PLANS.has(planCode) && input.actor !== 'admin' && input.actor !== 'customer_provisional') {
+    throw new ApiError('paid_plan_forbidden', 'A customer cannot assign a paid plan while live payments are enabled.', 403);
   }
   const plan = publishedPlan(db, planCode);
   const stamp = new Date(now).toISOString();
@@ -120,16 +120,18 @@ export function assignEntitlement(
       input.effectiveTo ?? null,
       plan.version,
       status === 'active' ? plan.entitlementKeysJson : '[]',
-      input.actor === 'admin' ? 'admin_test' : 'registration',
+      input.actor === 'admin' ? 'admin_test' : input.actor === 'customer_provisional' ? 'customer_provisional' : 'registration',
       stamp,
     );
+    const source = input.actor === 'admin' ? 'admin_test' : input.actor === 'customer_provisional' ? 'customer_provisional' : 'registration';
     audit(db, 'entitlement_assigned', input.actor === 'admin' ? null : input.userId, id, {
       userId: input.userId,
       planCode,
       status,
       paid: false,
+      source,
     }, stamp);
-    return { id, planCode, status, paid: false, source: 'admin_test' };
+    return { id, planCode, status, paid: false, source };
   });
 }
 

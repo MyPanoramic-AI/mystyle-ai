@@ -99,6 +99,7 @@ export interface AccountApi {
   unlinkBeautyLook(id: string, linkId: string): Promise<Record<string, unknown>>;
   membershipPlans(): Promise<MembershipPlansResponse>;
   membershipEntitlement(): Promise<MembershipEntitlementResponse>;
+  setMembershipEntitlement(planCode: string): Promise<MembershipEntitlementResponse & { planCode: string; status: string }>;
   membershipCredits(): Promise<MembershipCreditsResponse>;
   membershipHistory(): Promise<MembershipCreditsResponse>;
   membershipUsage(): Promise<{ operations: unknown[]; note: string }>;
@@ -527,6 +528,11 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     unlinkBeautyLook: (id, linkId) => request(`/api/beauty-looks/${id}/links/${linkId}`, { method: 'DELETE', csrf: true }),
     membershipPlans: () => request('/api/plans'),
     membershipEntitlement: () => request('/api/entitlements'),
+    setMembershipEntitlement: (planCode) => request('/api/entitlements', {
+      method: 'POST',
+      body: { planCode, status: 'active' },
+      csrf: true,
+    }),
     membershipCredits: () => request('/api/credits'),
     membershipHistory: () => request('/api/credits/history'),
     membershipUsage: () => request('/api/usage/summary'),

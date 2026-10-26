@@ -25,6 +25,7 @@ interface MyMembershipViewProps {
   accountPlanName?: string;
   accountStatus?: string;
   accountTestCredits?: number | null;
+  publishedPlans?: { planCode: string; displayName: string; indicativeMonthlyZar: number | null }[];
   previewPlanCode?: string | null;
   onExplorePlans: () => void;
   onOpenCredits: () => void;
@@ -38,6 +39,7 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
   accountPlanName,
   accountStatus,
   accountTestCredits,
+  publishedPlans = [],
   previewPlanCode,
   onExplorePlans,
   onOpenCredits,
@@ -46,10 +48,18 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
 }) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const currentPlan: SubscriptionPlan =
-    SUBSCRIPTION_PLANS.find((p) => p.id === membership.planId) || SUBSCRIPTION_PLANS[1];
+    SUBSCRIPTION_PLANS.find((p) => p.id === membership.planId) || SUBSCRIPTION_PLANS[0];
 
-  const isFree = accountMode ? (accountPlanName ?? 'Free').toLowerCase().includes('free') : currentPlan.id === 'free';
-  const displayName = accountMode ? (accountPlanName ?? 'Free') : currentPlan.name;
+  const loadingAccountPlan = accountMode && !accountPlanName;
+  const isFree = accountMode
+    ? (accountPlanName ?? '').toLowerCase() === 'free' || (accountPlanName ?? '').toUpperCase() === 'FREE'
+    : currentPlan.id === 'free';
+  const displayName = accountMode
+    ? (loadingAccountPlan ? 'Loading…' : (accountPlanName ?? 'Free'))
+    : currentPlan.name;
+  const publishedPrice = publishedPlans.find(
+    (plan) => plan.displayName === accountPlanName || plan.planCode.toLowerCase() === (accountPlanName ?? '').toLowerCase(),
+  )?.indicativeMonthlyZar;
 
   return (
     <div className="space-y-6">
@@ -91,7 +101,11 @@ export const MyMembershipView: React.FC<MyMembershipViewProps> = ({
 
             <div className="text-left sm:text-right shrink-0">
               <span className="font-serif text-2xl sm:text-3xl font-bold text-white">
-                {isFree ? 'Free' : `R${membership.billingCycle === 'monthly' ? currentPlan.monthlyPriceZar : Math.round(currentPlan.yearlyPriceZar / 12)}`}
+                {loadingAccountPlan
+                  ? '—'
+                  : isFree
+                    ? 'Free'
+                    : `R${publishedPrice ?? (membership.billingCycle === 'monthly' ? currentPlan.monthlyPriceZar : Math.round(currentPlan.yearlyPriceZar / 12))}`}
               </span>
               <span className="text-xs text-[#E5CDBE]/70 block">
                 {accountMode ? 'Provisional catalogue price · not billed' : 'Demonstration price, not billed'}

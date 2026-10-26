@@ -43,16 +43,24 @@ test('plan definitions stay provisional and a new account is free', async () => 
   }
 });
 
-test('customers cannot assign plans or grant credits', async () => {
+test('customers can activate provisional plans while payments are off, but cannot grant credits', async () => {
   const api = await startApi({ adminToken: TOKEN });
   try {
     const created = await register(api.base, 'self@example.com');
     const headers = authHeaders(created.cookie, created.body.csrfToken);
     const plan = await fetch(`${api.base}/api/entitlements`, { method: 'POST', headers, body: JSON.stringify({ planCode: 'PERSONAL', status: 'active' }) });
+    const planBody = await plan.json() as { planCode: string; paid: boolean; current: { planCode: string; source: string } };
+    assert.equal(plan.status, 200);
+    assert.equal(planBody.planCode, 'PERSONAL');
+    assert.equal(planBody.paid, false);
+    assert.equal(planBody.current.planCode, 'PERSONAL');
+    assert.equal(planBody.current.source, 'customer_provisional');
+    const entitlement = await fetch(`${api.base}/api/entitlements`, { headers: { cookie: created.cookie } });
+    const entitlementBody = await entitlement.json() as { current: { planCode: string }; paid: boolean };
+    assert.equal(entitlementBody.current.planCode, 'PERSONAL');
+    assert.equal(entitlementBody.paid, false);
     const grant = await fetch(`${api.base}/api/credits/allocate`, { method: 'POST', headers, body: JSON.stringify({ amount: 20 }) });
     const hidden = await fetch(`${api.base}/api/admin/credits/allocate`, { method: 'POST', headers, body: JSON.stringify({ userId: created.body.userId, amount: 20, periodKey: '2026-10', idempotencyKey: 'nope', reason: 'self' }) });
-    assert.equal(plan.status, 403);
-    assert.equal((await plan.json() as { code: string }).code, 'paid_plan_forbidden');
     assert.equal(grant.status, 403);
     assert.equal(hidden.status, 401);
     const credits = await fetch(`${api.base}/api/credits`, { headers: { cookie: created.cookie } });
