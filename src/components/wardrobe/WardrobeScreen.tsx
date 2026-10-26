@@ -58,7 +58,7 @@ interface WardrobeScreenProps {
   onSendToTryOn: (outfit: WardrobeOutfit, pieces: WardrobeItem[]) => void;
   onTryWardrobeItem?: (item: WardrobeItem) => void;
   onSendToShop: (searchQuery: string, title?: string) => void;
-  onAskStylist: (prompt: string) => void;
+  onAskStylist: (prompt: string, lookConsultation?: import('../../types').StylistLookConsultation) => void;
   initialTab?: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps' | 'capsules';
   accountStore?: AccountWardrobe | null;
 }

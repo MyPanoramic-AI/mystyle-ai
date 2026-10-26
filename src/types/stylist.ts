@@ -63,6 +63,8 @@ export interface ChatMessage {
   quickActions?: StylistQuickAction[];
   userAttachmentUrl?: string;
   userAttachmentName?: string;
+  /** Multiple wardrobe / look piece thumbnails shown with a user message. */
+  userAttachments?: { name: string; url: string }[];
   isSaved?: boolean;
 }
 

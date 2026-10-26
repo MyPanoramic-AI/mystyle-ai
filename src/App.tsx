@@ -380,13 +380,17 @@ export default function App({ account }: { account: ReadyAccount }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Wardrobe Action: Ask Stylist advice
-  const handleAskStylistWardrobe = (prompt: string) => {
+  // Wardrobe Action: Ask Stylist advice (optional assembled-look consult with piece photos)
+  const handleAskStylistWardrobe = (
+    prompt: string,
+    lookConsultation?: import('./types').StylistLookConsultation,
+  ) => {
     setActiveSubpage(null);
     setStylistState({
-      occasionTitle: 'Wardrobe Planning',
-      suggestedPrompt: prompt,
-      origin: 'occasion',
+      occasionTitle: lookConsultation?.occasion || lookConsultation?.title || 'Wardrobe Planning',
+      suggestedPrompt: lookConsultation ? undefined : prompt,
+      lookConsultation,
+      origin: 'wardrobe',
       timestamp: Date.now(),
     });
     setCurrentTab('stylist');
@@ -622,6 +626,7 @@ export default function App({ account }: { account: ReadyAccount }) {
             onEnableConsent: () => account.setAiConsent(true),
             availability: account.stylist.availability,
             restore: account.stylist.restore,
+            startFresh: account.stylist.startFresh,
             send: account.stylist.send,
             remove: account.stylist.remove,
           } : undefined}

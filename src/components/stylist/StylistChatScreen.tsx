@@ -9,6 +9,7 @@ import {
   TemporaryPhotos,
   NavigationTab,
   StylistNavigationState,
+  StylistLookConsultation,
   ChatMessage,
   StylistFilterLens,
 } from '../../types';
@@ -32,6 +33,8 @@ export interface StylistConnection {
   onEnableConsent: () => Promise<void>;
   availability: () => Promise<{ acceptingMessages: boolean; liveEnabled: boolean; label: string }>;
   restore: () => Promise<{ id: string; messages: StylistServerMessage[] }>;
+  /** Always create an empty conversation for a focused look consult. */
+  startFresh: () => Promise<{ id: string; messages: StylistServerMessage[] }>;
   send: (id: string, text: string, idempotencyKey: string) => Promise<StylistServerMessage>;
   remove: (id: string) => Promise<void>;
 }
@@ -92,12 +95,19 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   useEffect(() => {
     if (!connection) return;
     let cancelled = false;
+    const openForLook = Boolean(state.lookConsultation?.pieces.length);
     void connection.availability().then(async (availability) => {
       if (cancelled) return;
       setServiceLabel(availability.label);
       if (!availability.acceptingMessages) {
         setServiceNotice('Live AI is switched off. You can continue with the labelled demonstration on this device.');
         setOfferLocalDemo(true);
+        setServerReady(true);
+        return;
+      }
+      // Look consults start a dedicated fresh chat — do not restore an older thread over it.
+      if (openForLook) {
+        setServiceNotice(availability.liveEnabled ? null : 'These replies come from the demonstration stylist, not a live model.');
         setServerReady(true);
         return;
       }
@@ -118,7 +128,100 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     };
   }, []);
 
-  // Handle incoming new navigation state from Home screen
+  const lookCatalogText = (look: StylistLookConsultation): string => {
+    const lines = look.pieces.map((piece, index) => {
+      const details = [piece.category, piece.brand, piece.color].filter(Boolean).join(' · ');
+      return `${index + 1}. ${piece.name}${details ? ` (${details})` : ''}`;
+    });
+    const foundation = look.base === 'dress' ? 'dress-based' : look.base === 'separates' ? 'top and bottoms' : 'assembled';
+    return [
+      `I've assembled this ${foundation} look: "${look.title}"${look.occasion ? ` for ${look.occasion}` : ''}.`,
+      '',
+      'Selected wardrobe pieces (images shown in chat for reference):',
+      ...lines,
+      '',
+      'Please keep these exact pieces in mind. I will ask questions about this specific look.',
+    ].join('\n');
+  };
+
+  const lookAckResponse = (look: StylistLookConsultation): ChatMessage => {
+    const firstName = profile.personal.firstName || 'there';
+    const pieceNames = look.pieces.map((piece) => piece.name).join(', ');
+    return {
+      id: `stylist-look-${Date.now()}`,
+      sender: 'stylist',
+      timestamp: 'Just now',
+      text: `Perfect, ${firstName} — I have your look **${look.title}** open with these pieces: ${pieceNames}.\n\nAsk me anything about this specific combination — proportion, colour harmony, shoes, outerwear, occasion fit, or how to swap one piece.`,
+      quickActions: [
+        { id: 'look-qa-1', label: 'Does this work together?', prompt: `Does this assembled look "${look.title}" work well together, and what would you tweak first?` },
+        { id: 'look-qa-2', label: 'Best shoes for this?', prompt: `What footwear would finish "${look.title}" best with these exact pieces?` },
+        { id: 'look-qa-3', label: 'Occasion check', prompt: `Is "${look.title}" appropriate for ${look.occasion || 'my occasion'}, or should I adjust formality?` },
+      ],
+    };
+  };
+
+  const sendServerText = (id: string, typed: string) => {
+    const idempotencyKey = `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    void connection!.send(id, typed, idempotencyKey).then((message) => {
+      setMessages((prev) => [...prev, toChatMessage(message)]);
+      setIsTyping(false);
+    }).catch((error: unknown) => {
+      setIsTyping(false);
+      const failed: ChatMessage = {
+        id: `failed-${Date.now()}`,
+        sender: 'stylist',
+        timestamp: 'Just now',
+        text: error instanceof AccountApiError ? error.message : 'That message could not be sent.',
+      };
+      setMessages((prev) => [...prev, failed]);
+    });
+  };
+
+  const beginLookConsultation = async (look: StylistLookConsultation) => {
+    const typed = lookCatalogText(look);
+    const userMsg: ChatMessage = {
+      id: `user-look-${Date.now()}`,
+      sender: 'user',
+      timestamp: 'Just now',
+      text: typed,
+      userAttachments: look.pieces
+        .filter((piece) => Boolean(piece.imageUrl))
+        .map((piece) => ({ name: piece.name, url: piece.imageUrl })),
+    };
+
+    setIsTyping(true);
+    setInputPrefill('');
+    setServiceNotice('Your look photos stay in this chat for reference. The stylist receives a written piece list so you can ask follow-up questions.');
+
+    if (!connection || localDemo) {
+      setConversationId(null);
+      setMessages([userMsg]);
+      setTimeout(() => {
+        setMessages((prev) => [...prev, lookAckResponse(look)]);
+        setIsTyping(false);
+      }, 500);
+      return;
+    }
+
+    try {
+      const fresh = await connection.startFresh();
+      setConversationId(fresh.id);
+      setMessages([userMsg]);
+      setServerReady(true);
+      sendServerText(fresh.id, typed);
+    } catch (error: unknown) {
+      setMessages([userMsg, lookAckResponse(look)]);
+      setIsTyping(false);
+      setLocalDemo(true);
+      setServiceNotice(
+        error instanceof AccountApiError
+          ? `${error.message} Continuing with an on-device look consult.`
+          : 'Continuing with an on-device look consult.',
+      );
+    }
+  };
+
+  // Handle incoming navigation state (prompts or wardrobe look consults)
   useEffect(() => {
     if (state.timestamp && state.timestamp !== lastStateTimestampRef.current) {
       lastStateTimestampRef.current = state.timestamp;
@@ -127,8 +230,12 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         setLens((prev) => ({ ...prev, occasion: state.occasionTitle! }));
       }
 
+      if (state.lookConsultation && state.lookConsultation.pieces.length > 0) {
+        void beginLookConsultation(state.lookConsultation);
+        return;
+      }
+
       if (state.suggestedPrompt) {
-        // Send the suggested prompt smoothly as a user message
         handleUserSend(state.suggestedPrompt);
       }
     }
@@ -141,28 +248,29 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     if (!text.trim() && !attachment) return;
     const typed = text.trim();
     if (connection && !localDemo && attachment) {
-      setServiceNotice('Photographs are not sent to the stylist. The message uses your typed words only.');
+      setServiceNotice('Photographs are not uploaded to the live stylist. Your typed question is what gets sent.');
     }
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       timestamp: 'Just now',
-      text: typed || 'I attached a photo, but it stays on this device.',
-      userAttachmentUrl: connection && !localDemo ? undefined : attachment?.url,
-      userAttachmentName: connection && !localDemo ? undefined : attachment?.name,
+      text: typed || 'I attached a photo for reference in this chat.',
+      userAttachmentUrl: attachment?.url,
+      userAttachmentName: attachment?.name,
+      userAttachments: attachment ? [{ name: attachment.name, url: attachment.url }] : undefined,
     };
 
     setMessages((prev) => [...prev, userMsg]);
     if (connection && !localDemo && !typed) {
-      setServiceNotice('Photographs are not sent to the stylist.');
+      setServiceNotice('Add a question about your look — photos alone are not sent to the live stylist.');
       return;
     }
     setIsTyping(true);
 
     if (!connection || localDemo) {
       setTimeout(() => {
-        const response = generateStylistResponse(typed, profile, localDemo ? undefined : attachment);
+        const response = generateStylistResponse(typed, profile, attachment);
         const stylistMsg: ChatMessage = {
           id: `stylist-${Date.now()}`,
           sender: 'stylist',
@@ -183,20 +291,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       setServiceNotice(serviceNotice ?? 'The stylist is not ready for a saved conversation.');
       return;
     }
-    const idempotencyKey = `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-    void connection.send(conversationId, typed, idempotencyKey).then((message) => {
-      setMessages((prev) => [...prev, toChatMessage(message)]);
-      setIsTyping(false);
-    }).catch((error: unknown) => {
-      setIsTyping(false);
-      const failed: ChatMessage = {
-        id: `failed-${Date.now()}`,
-        sender: 'stylist',
-        timestamp: 'Just now',
-        text: error instanceof AccountApiError ? error.message : 'That message could not be sent.',
-      };
-      setMessages((prev) => [...prev, failed]);
-    });
+    sendServerText(conversationId, typed);
   };
 
   const handleSelectPrompt = (prompt: string) => {

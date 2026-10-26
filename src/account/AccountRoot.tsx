@@ -39,6 +39,7 @@ export interface ReadyAccount {
   stylist: {
     availability: () => Promise<{ acceptingMessages: boolean; liveEnabled: boolean; label: string }>;
     restore: () => Promise<{ id: string; messages: import('../services/accountApi').StylistServerMessage[] }>;
+    startFresh: () => Promise<{ id: string; messages: import('../services/accountApi').StylistServerMessage[] }>;
     send: (id: string, text: string, idempotencyKey: string) => Promise<import('../services/accountApi').StylistServerMessage>;
     remove: (id: string) => Promise<void>;
   } | null;
@@ -297,6 +298,10 @@ export function AccountRoot() {
         const id = existing?.id ?? (await accountApi.createStylistConversation()).id;
         const conversation = await accountApi.stylistConversation(id);
         return { id, messages: conversation.messages };
+      },
+      startFresh: async () => {
+        const created = await accountApi.createStylistConversation();
+        return { id: created.id, messages: [] };
       },
       send: async (id, text, idempotencyKey) => (await accountApi.sendStylistMessage(id, text, idempotencyKey)).message,
       remove: (id) => accountApi.deleteStylistConversation(id),

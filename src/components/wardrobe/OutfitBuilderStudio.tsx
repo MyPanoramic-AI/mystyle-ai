@@ -25,7 +25,7 @@ interface OutfitBuilderStudioProps {
   wardrobeItems: WardrobeItem[];
   onSaveOutfit: (outfit: Omit<WardrobeOutfit, 'id' | 'dateCreated' | 'wearCount'>) => void;
   onSendToTryOn: (outfit: WardrobeOutfit, pieces: WardrobeItem[]) => void;
-  onAskStylist: (prompt: string) => void;
+  onAskStylist: (prompt: string, lookConsultation?: import('../../types').StylistLookConsultation) => void;
 }
 
 function SlotTile({
@@ -534,13 +534,24 @@ export const OutfitBuilderStudio: React.FC<OutfitBuilderStudioProps> = ({
 
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                const title = outfitTitle.trim() || 'Untitled studio look';
                 onAskStylist(
-                  `I assembled a ${base === 'dress' ? 'dress-based' : 'top and bottoms'} outfit titled "${outfitTitle || 'Untitled'}" with ${selectedPieces
-                    .map((p) => p.name)
-                    .join(', ')} for ${selectedOccasion}. What do you think and how should I accessorise it?`,
-                )
-              }
+                  `Please advise on my assembled look "${title}".`,
+                  {
+                    title,
+                    occasion: selectedOccasion,
+                    base,
+                    pieces: selectedPieces.map((piece) => ({
+                      name: piece.name,
+                      brand: piece.brand,
+                      category: piece.category,
+                      color: piece.color,
+                      imageUrl: piece.imageUrl,
+                    })),
+                  },
+                );
+              }}
               disabled={!hasCore}
               className="w-full py-2.5 bg-white border border-[#242326]/12 hover:border-[#242326]/30 text-[#242326] text-xs font-medium rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
             >

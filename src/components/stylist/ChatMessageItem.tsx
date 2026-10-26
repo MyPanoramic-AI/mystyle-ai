@@ -102,21 +102,45 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           <span>{message.timestamp}</span>
         </div>
 
-        {/* User image attachment if present */}
-        {message.userAttachmentUrl && (
-          <div className="inline-block rounded-2xl overflow-hidden border border-[#242326]/10 shadow-xs max-w-xs text-left bg-white p-2">
-            <div className="w-48 h-48 rounded-xl overflow-hidden bg-[#242326]/5">
-              <img
-                src={message.userAttachmentUrl}
-                alt={message.userAttachmentName || 'Attached clothing item'}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {message.userAttachmentName && (
-              <div className="flex items-center gap-1.5 pt-1.5 px-1 text-[11px] text-[#5C585E]">
-                <Paperclip className="w-3 h-3 text-[#9C6A61]" />
-                <span className="truncate">{message.userAttachmentName}</span>
+        {/* User image attachment(s) — single upload or assembled look gallery */}
+        {(message.userAttachments?.length || message.userAttachmentUrl) && (
+          <div className={`inline-block rounded-2xl overflow-hidden border border-[#242326]/10 shadow-xs text-left bg-white p-2 ${
+            (message.userAttachments?.length ?? 0) > 1 ? 'max-w-sm' : 'max-w-xs'
+          }`}>
+            {message.userAttachments && message.userAttachments.length > 0 ? (
+              <div className={`grid gap-1.5 ${message.userAttachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {message.userAttachments.map((item) => (
+                  <div key={`${item.url}-${item.name}`} className="rounded-xl overflow-hidden bg-[#242326]/5">
+                    <div className="aspect-square">
+                      <img
+                        src={item.url}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 px-1.5 py-1 text-[10px] text-[#5C585E]">
+                      <Paperclip className="w-2.5 h-2.5 text-[#9C6A61] shrink-0" />
+                      <span className="truncate">{item.name}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <>
+                <div className="w-48 h-48 rounded-xl overflow-hidden bg-[#242326]/5">
+                  <img
+                    src={message.userAttachmentUrl}
+                    alt={message.userAttachmentName || 'Attached clothing item'}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {message.userAttachmentName && (
+                  <div className="flex items-center gap-1.5 pt-1.5 px-1 text-[11px] text-[#5C585E]">
+                    <Paperclip className="w-3 h-3 text-[#9C6A61]" />
+                    <span className="truncate">{message.userAttachmentName}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

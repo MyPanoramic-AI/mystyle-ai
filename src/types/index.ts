@@ -43,10 +43,27 @@ export interface StyleInspiration {
   stylistNote: string;
 }
 
+export interface StylistLookPiece {
+  name: string;
+  brand?: string;
+  category: string;
+  color?: string;
+  imageUrl: string;
+}
+
+export interface StylistLookConsultation {
+  title: string;
+  occasion?: string;
+  base?: 'separates' | 'dress';
+  pieces: StylistLookPiece[];
+}
+
 export interface StylistNavigationState {
   occasionTitle?: string;
   suggestedPrompt?: string;
-  origin?: 'hero' | 'occasion' | 'invitation' | 'tab' | 'inspiration';
+  /** When set, stylist opens a fresh chat focused on this assembled wardrobe look. */
+  lookConsultation?: StylistLookConsultation;
+  origin?: 'hero' | 'occasion' | 'invitation' | 'tab' | 'inspiration' | 'wardrobe';
   timestamp?: number;
 }
 
