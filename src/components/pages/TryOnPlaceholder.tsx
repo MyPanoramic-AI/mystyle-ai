@@ -87,26 +87,44 @@ async function urlToBase64(url: string): Promise<string> {
   return btoa(binary);
 }
 
-/** Precise customer-facing blockers — never imply a result was generated. */
+/**
+ * Customer-facing blockers only — never dump ops/server checks when live is simply off.
+ * Priority: sign-in → storage consent → live disabled → customer live prerequisites.
+ * API key / budget are never shown to customers (ops-only).
+ */
 function generationBlockers(availability: TryOnAvailabilityResponse | null, usesAccount: boolean): string[] {
   if (!usesAccount) return ['Sign in with an adult account to use Virtual Try-On.'];
   if (!availability) return ['Checking try-on availability…'];
-  const blockers: string[] = [];
+  if (availability.generationMode !== 'unavailable') return [];
+
   const checks = availability.readiness?.checks || {};
   if (!availability.privatePhotoStorageConsent && !checks.privatePhotoStorageConsent) {
-    blockers.push('Grant private photograph storage consent before using saved photos.');
+    return ['Grant private photograph storage consent before using saved photos.'];
   }
-  if (availability.generationMode === 'unavailable') {
-    if (!availability.liveEnabled) blockers.push('Live virtual try-on is currently unavailable on this server.');
-    if (!availability.externalPhotoAiConsent) blockers.push('Grant external AI consent to continue.');
-    if (availability.aiImageEntitlement === false) blockers.push('This plan does not include virtual try-on (ai.image entitlement required).');
-    if (typeof availability.creditBalance === 'number' && typeof availability.estimatedCustomerCredits === 'number'
-      && availability.creditBalance < availability.estimatedCustomerCredits) {
-      blockers.push('You need available try-on credits.');
-    }
-    if (checks.fashnApiKeyConfigured === false) blockers.push('A server-side provider key is not configured.');
-    if (checks.nonzeroBudget === false) blockers.push('The server provider budget is zero.');
-    if (blockers.length === 0) blockers.push(availability.note || 'Virtual try-on is currently unavailable.');
+
+  // Live is off (Render/production default): one honest message — not a checklist of plan/key/budget.
+  if (!availability.liveEnabled) {
+    return ['Live virtual try-on is currently unavailable.'];
+  }
+
+  // Live flag is on but this account/server is not ready — only actionable customer items.
+  const blockers: string[] = [];
+  if (!availability.externalPhotoAiConsent) {
+    blockers.push('Grant external AI consent to continue.');
+  }
+  if (availability.aiImageEntitlement === false) {
+    blockers.push('This plan does not include virtual try-on.');
+  }
+  if (
+    typeof availability.creditBalance === 'number'
+    && typeof availability.estimatedCustomerCredits === 'number'
+    && availability.creditBalance < availability.estimatedCustomerCredits
+  ) {
+    blockers.push('You need available try-on credits.');
+  }
+  // Ops gaps (key/budget) collapse to the same customer-safe line.
+  if (blockers.length === 0) {
+    blockers.push('Live virtual try-on is currently unavailable.');
   }
   return blockers;
 }
