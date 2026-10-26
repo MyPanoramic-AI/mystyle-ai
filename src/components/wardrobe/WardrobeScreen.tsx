@@ -147,7 +147,15 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
   const handleAddItem = async (newItem: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'> & { id?: string }, file?: File | null) => {
     if (accountStore) {
       const saved = await accountStore.saveItem(newItem, file);
-      await refreshAccount();
+      try {
+        await refreshAccount();
+      } catch {
+        // Piece is already persisted; list refresh can catch up on next open.
+        setItems((current) => {
+          const without = current.filter((entry) => entry.id !== saved.id);
+          return [saved, ...without];
+        });
+      }
       showToast(newItem.id ? `Saved changes to "${saved.name}"` : `Added "${saved.name}" to your Digital Wardrobe`);
       return;
     }
@@ -633,7 +641,10 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
         key={editingItem?.id ?? 'new-item'}
         isOpen={isAddItemOpen}
         initial={editingItem}
-        uploadPhoto={accountStore ? async () => '' : undefined}
+        uploadPhoto={accountStore ? async (file) => {
+          // Signal that uploads are supported; AddItemModal keeps the File and saveItem performs the upload.
+          return URL.createObjectURL(file);
+        } : undefined}
         onClose={() => {
           setIsAddItemOpen(false);
           setEditingItem(null);

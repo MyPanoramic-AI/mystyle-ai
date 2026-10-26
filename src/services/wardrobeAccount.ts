@@ -1,9 +1,21 @@
-import type { AccountApi, LookRecord, PlanRecord, WardrobeRecord } from './accountApi';
+import { AccountApiError, type AccountApi, type LookRecord, type PlanRecord, type WardrobeRecord } from './accountApi';
 import type { PlannedEvent, WardrobeItem, WardrobeOutfit } from '../types/wardrobe';
 
 function mediaUrl(mediaId: string | null, imageUrl: string | null): string {
   if (mediaId) return `/api/media/${mediaId}`;
-  return imageUrl && !imageUrl.startsWith('data:') ? imageUrl : '';
+  return imageUrl && !imageUrl.startsWith('data:') && !imageUrl.startsWith('blob:') ? imageUrl : '';
+}
+
+/** Drop browser-only / unusable image references before they hit the API. */
+export function sanitizeWardrobeImageUrl(imageUrl: string | null | undefined): string | null {
+  const value = (imageUrl || '').trim();
+  if (!value) return null;
+  if (value.startsWith('blob:') || value.startsWith('data:')) return null;
+  if (value.startsWith('/assets/') || value.startsWith('/images/') || value.startsWith('/api/media/')) return value;
+  if (/^https:\/\//i.test(value)) return value.slice(0, 1000);
+  // Same-origin relative paths (Vite hashed assets without leading intent)
+  if (value.startsWith('/')) return value.slice(0, 1000);
+  return null;
 }
 
 export function itemFromRecord(row: WardrobeRecord): WardrobeItem {
@@ -20,7 +32,7 @@ export function itemFromRecord(row: WardrobeRecord): WardrobeItem {
     imageUrl: mediaUrl(row.mediaId, row.imageUrl),
     timesWorn: row.timesWorn,
     lastWornDate: row.lastWornAt || undefined,
-    dateAdded: row.createdAt.slice(0, 10),
+    dateAdded: (row.createdAt || new Date().toISOString()).slice(0, 10),
     isFavorite: row.isFavorite,
     isCapsuleStaple: row.isCapsule,
     fabric: row.fabric || undefined,
@@ -30,8 +42,15 @@ export function itemFromRecord(row: WardrobeRecord): WardrobeItem {
   };
 }
 
-function itemBody(item: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'> & { id?: string; timesWorn?: number }, mediaId?: string | null): Record<string, unknown> {
-  const privatePhoto = item.imageUrl.startsWith('/api/media/');
+function itemBody(
+  item: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'> & { id?: string; timesWorn?: number },
+  mediaId?: string | null,
+): Record<string, unknown> {
+  const cleanedImage = sanitizeWardrobeImageUrl(item.imageUrl);
+  const privatePhoto = Boolean(cleanedImage?.startsWith('/api/media/'));
+  const resolvedMediaId = mediaId === undefined
+    ? (privatePhoto ? cleanedImage!.split('/').pop() ?? null : null)
+    : mediaId;
   return {
     name: item.name,
     category: item.category,
@@ -46,8 +65,9 @@ function itemBody(item: Omit<WardrobeItem, 'id' | 'dateAdded' | 'timesWorn'> & {
     careNote: item.careNote ?? null,
     pairingNotes: item.pairingNotes ?? null,
     notes: item.pairingNotes ?? null,
-    imageUrl: privatePhoto ? null : item.imageUrl || null,
-    mediaId: mediaId === undefined ? (privatePhoto ? item.imageUrl.split('/').pop() : null) : mediaId,
+    // Prefer private mediaId; never persist blob/data URLs.
+    imageUrl: resolvedMediaId ? null : cleanedImage,
+    mediaId: resolvedMediaId,
     isFavorite: item.isFavorite,
     isCapsule: item.isCapsuleStaple,
     timesWorn: item.timesWorn ?? 0,
@@ -67,7 +87,7 @@ export function outfitFromRecord(row: LookRecord): WardrobeOutfit {
     harmonyCritique: row.harmonyNote || '',
     colorPalette: row.colorPalette || [],
     isFavorite: row.isFavorite,
-    dateCreated: row.createdAt.slice(0, 10),
+    dateCreated: (row.createdAt || new Date().toISOString()).slice(0, 10),
     lastWornDate: row.lastWornAt || undefined,
     wearCount: row.wearCount,
   };
@@ -124,10 +144,20 @@ export interface AccountWardrobe {
 }
 
 async function fileBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let text = '';
-  for (const byte of bytes) text += String.fromCharCode(byte);
-  return btoa(text);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      if (comma < 0) {
+        reject(new AccountApiError('invalid_image', 'The photograph could not be encoded.', 400));
+        return;
+      }
+      resolve(result.slice(comma + 1));
+    };
+    reader.onerror = () => reject(new AccountApiError('invalid_image', 'The photograph could not be read.', 400));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function createAccountWardrobe(api: AccountApi): AccountWardrobe {
@@ -142,24 +172,63 @@ export function createAccountWardrobe(api: AccountApi): AccountWardrobe {
       };
     },
     async saveItem(item, file) {
-      const mediaId = file ? (await api.uploadWardrobePhoto(await fileBase64(file))).id : undefined;
+      // Warm CSRF from session before the first wardrobe mutation.
+      await api.session();
+
+      let mediaId: string | null | undefined;
+      if (file) {
+        try {
+          mediaId = (await api.uploadWardrobePhoto(await fileBase64(file))).id;
+        } catch (error) {
+          if (error instanceof AccountApiError && error.code === 'private_photo_consent_required') {
+            throw new AccountApiError(
+              error.code,
+              'Grant private photograph storage consent in Profile → Privacy before uploading a wardrobe photo. You can still save with a preset image.',
+              error.status,
+            );
+          }
+          throw error;
+        }
+      }
+
+      const cleaned = sanitizeWardrobeImageUrl(item.imageUrl);
+      if (!mediaId && !cleaned) {
+        throw new AccountApiError(
+          'invalid_wardrobe',
+          'Choose a preset image or upload a photograph before saving this piece.',
+          400,
+        );
+      }
+
+      const payload = {
+        ...item,
+        imageUrl: cleaned || '',
+        timesWorn: 0,
+      };
+      const body = itemBody(payload, mediaId ?? undefined);
+      // Updates must not reset wear count from the add-item form.
+      if (item.id) delete body.timesWorn;
       const saved = item.id
-        ? await api.updateWardrobeItem(item.id, itemBody({ ...item, timesWorn: 0 }, mediaId))
-        : await api.createWardrobeItem(itemBody(item, mediaId));
+        ? await api.updateWardrobeItem(item.id, body)
+        : await api.createWardrobeItem(body);
       return itemFromRecord(saved);
     },
     async updateItem(item) {
+      await api.session();
       return itemFromRecord(await api.updateWardrobeItem(item.id, itemBody(item)));
     },
     deleteItem: (id) => api.deleteWardrobeItem(id),
     async saveOutfit(outfit) {
+      await api.session();
       return outfitFromRecord(await api.createLook(outfitBody(outfit)));
     },
     async updateOutfit(outfit) {
+      await api.session();
       return outfitFromRecord(await api.updateLook(outfit.id, outfitBody(outfit)));
     },
     deleteOutfit: (id) => api.deleteLook(id),
     async saveEvent(event) {
+      await api.session();
       const body = {
         title: event.title,
         planDate: event.date,

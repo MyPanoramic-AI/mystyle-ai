@@ -242,7 +242,15 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || saving) return;
+    if (saving) return;
+    if (!name.trim()) {
+      setFormError('Enter a garment name, or tap Click to populate / a preset thumbnail first.');
+      return;
+    }
+    if (!imageUrl.trim()) {
+      setFormError('Choose a preset image or upload a photograph before saving.');
+      return;
+    }
     setSaving(true);
     setFormError(null);
     void Promise.resolve(onSave({
@@ -267,7 +275,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     }).catch((error: unknown) => {
       const status = typeof error === 'object' && error && 'status' in error ? Number((error as { status: number }).status) : 0;
       const message = error instanceof Error && error.message.trim() ? error.message : 'Unable to save. Please retry.';
-      setFormError(status === 401 ? 'Session expired.' : message);
+      setFormError(status === 401 ? 'Session expired. Sign in again, then retry.' : message);
+    }).finally(() => {
       setSaving(false);
     });
   };

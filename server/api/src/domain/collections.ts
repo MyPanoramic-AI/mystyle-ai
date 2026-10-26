@@ -7,9 +7,10 @@ const SEASONS = new Set(['summer', 'autumn', 'winter', 'spring', 'all-season']);
 const OCCASIONS = new Set(['work', 'evening', 'casual', 'cocktail', 'formal', 'weekend', 'vacation', 'travel']);
 const LOOK_KINDS = new Set(['wardrobe_outfit', 'inspiration', 'concept']);
 
-function optionalText(value: unknown, max: number): string | null {
+function optionalText(value: unknown, max: number, field = 'field'): string | null {
   if (value == null || value === '') return null;
-  if (typeof value !== 'string' || value.trim().length > max) throw new ApiError('invalid_wardrobe', 'A text field is too long.', 400);
+  if (typeof value !== 'string') throw new ApiError('invalid_wardrobe', `${field} is not valid.`, 400);
+  if (value.trim().length > max) throw new ApiError('invalid_wardrobe', `${field} is too long (max ${max} characters).`, 400);
   return value.trim() || null;
 }
 
@@ -37,10 +38,31 @@ function flag(value: unknown): number {
 }
 
 function imageReference(value: unknown): string | null {
-  const text = optionalText(value, 500);
+  if (value == null || value === '') return null;
+  if (typeof value !== 'string') throw new ApiError('invalid_wardrobe', 'imageUrl is not valid.', 400);
+  const text = value.trim();
   if (!text) return null;
-  if (text.startsWith('data:') || text.length > 500) throw new ApiError('invalid_wardrobe', 'Photographs must be uploaded as private images.', 400);
-  return text;
+  if (text.startsWith('blob:') || text.startsWith('data:')) {
+    throw new ApiError(
+      'invalid_wardrobe',
+      'Browser-only image previews cannot be saved. Choose a preset image or upload a photograph.',
+      400,
+    );
+  }
+  if (text.length > 1000) {
+    throw new ApiError('invalid_wardrobe', 'imageUrl is too long (max 1000 characters).', 400);
+  }
+  // Catalogue assets, private media paths, or https demonstration references.
+  if (
+    text.startsWith('/assets/')
+    || text.startsWith('/images/')
+    || text.startsWith('/api/media/')
+    || /^https:\/\//i.test(text)
+  ) {
+    return text;
+  }
+  if (text.startsWith('/')) return text;
+  throw new ApiError('invalid_wardrobe', 'imageUrl must be a catalogue asset, private media path, or https image.', 400);
 }
 
 function requiredText(value: unknown, field: string, max: number): string {
@@ -85,22 +107,22 @@ function itemValues(body: Record<string, unknown>, current: Record<string, unkno
     name: body.name === undefined && current ? String(current.name) : requiredText(body.name, 'name', 120),
     category,
     // Multi-colour wardrobe pieces store joined names (up to 6); keep headroom for long labels.
-    colour: body.colour === undefined && current ? optionalText(current.colour, 240) : optionalText(body.colour, 240),
-    sizeLabel: body.sizeLabel === undefined && current ? optionalText(current.sizeLabel, 16) : optionalText(body.sizeLabel, 16),
-    brand: body.brand === undefined && current ? optionalText(current.brand, 80) : optionalText(body.brand, 80),
-    subcategory: body.subcategory === undefined && current ? optionalText(current.subcategory, 80) : optionalText(body.subcategory, 80),
-    colourHex: body.colourHex === undefined && current ? optionalText(current.colourHex, 16) : optionalText(body.colourHex, 16),
+    colour: body.colour === undefined && current ? optionalText(current.colour, 240, 'colour') : optionalText(body.colour, 240, 'colour'),
+    sizeLabel: body.sizeLabel === undefined && current ? optionalText(current.sizeLabel, 40, 'sizeLabel') : optionalText(body.sizeLabel, 40, 'sizeLabel'),
+    brand: body.brand === undefined && current ? optionalText(current.brand, 80, 'brand') : optionalText(body.brand, 80, 'brand'),
+    subcategory: body.subcategory === undefined && current ? optionalText(current.subcategory, 80, 'subcategory') : optionalText(body.subcategory, 80, 'subcategory'),
+    colourHex: body.colourHex === undefined && current ? optionalText(current.colourHex, 16, 'colourHex') : optionalText(body.colourHex, 16, 'colourHex'),
     seasons: body.seasons === undefined && current ? stringList(current.seasons, SEASONS, 'seasons') : stringList(body.seasons, SEASONS, 'seasons'),
     occasions: body.occasions === undefined && current ? stringList(current.occasions, OCCASIONS, 'occasions') : stringList(body.occasions, OCCASIONS, 'occasions'),
-    notes: body.notes === undefined && current ? optionalText(current.notes, 500) : optionalText(body.notes, 500),
-    fabric: body.fabric === undefined && current ? optionalText(current.fabric, 80) : optionalText(body.fabric, 80),
-    careNote: body.careNote === undefined && current ? optionalText(current.careNote, 160) : optionalText(body.careNote, 160),
-    pairingNotes: body.pairingNotes === undefined && current ? optionalText(current.pairingNotes, 500) : optionalText(body.pairingNotes, 500),
+    notes: body.notes === undefined && current ? optionalText(current.notes, 500, 'notes') : optionalText(body.notes, 500, 'notes'),
+    fabric: body.fabric === undefined && current ? optionalText(current.fabric, 120, 'fabric') : optionalText(body.fabric, 120, 'fabric'),
+    careNote: body.careNote === undefined && current ? optionalText(current.careNote, 160, 'careNote') : optionalText(body.careNote, 160, 'careNote'),
+    pairingNotes: body.pairingNotes === undefined && current ? optionalText(current.pairingNotes, 500, 'pairingNotes') : optionalText(body.pairingNotes, 500, 'pairingNotes'),
     imageUrl: body.imageUrl === undefined && current ? imageReference(current.imageUrl) : imageReference(body.imageUrl),
     isFavorite: body.isFavorite === undefined && current ? current.isFavorite === true : body.isFavorite === true,
     isCapsule: body.isCapsule === undefined && current ? current.isCapsule === true : body.isCapsule === true,
     timesWorn: times,
-    lastWornAt: body.lastWornAt === undefined && current ? optionalText(current.lastWornAt, 40) : optionalText(body.lastWornAt, 40),
+    lastWornAt: body.lastWornAt === undefined && current ? optionalText(current.lastWornAt, 40, 'lastWornAt') : optionalText(body.lastWornAt, 40, 'lastWornAt'),
     mediaId: body.mediaId === undefined && current ? (typeof current.mediaId === 'string' ? current.mediaId : null) : (typeof body.mediaId === 'string' ? body.mediaId : null),
   };
 }
