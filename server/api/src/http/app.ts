@@ -9,6 +9,7 @@ import { RateLimiter } from '../auth/rateLimit.js';
 import { clearSessionCookie, destroySession, findSession, readCookie, requireCsrf, sessionCookie, SESSION_COOKIE, safeEqual, type SessionRecord } from '../auth/sessions.js';
 import { loginAccount, registerAccount } from '../domain/accounts.js';
 import {
+  adminMarkEmailVerified,
   assertEmailVerifiedForSensitive,
   completePasswordReset,
   confirmEmailVerification,
@@ -735,6 +736,10 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/admin/accounts', route((req, res) => {
     requireAdmin(req);
     res.json({ accounts: listAccountEntitlements(deps.db) });
+  }));
+  app.post('/api/admin/accounts/verify-email', route((req, res) => {
+    requireAdmin(req);
+    res.json(adminMarkEmailVerified(deps.db, req.body?.email, deps.now()));
   }));
   app.post('/api/admin/entitlements', route((req, res) => {
     requireAdmin(req);

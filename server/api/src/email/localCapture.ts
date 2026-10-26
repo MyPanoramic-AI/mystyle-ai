@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Sql } from '../db.js';
+import { ApiError } from '../errors.js';
 import type { CapturedEmail, Mailer, OutboundEmail } from './types.js';
 
 /** Development and automated-test mailer. Persists messages locally and never contacts a provider. */
@@ -56,7 +57,11 @@ export function createDisabledMailer(): Mailer {
   return {
     providerName: 'disabled',
     async send(): Promise<void> {
-      throw new Error('Transactional email delivery is disabled in this environment.');
+      throw new ApiError(
+        'email_delivery_disabled',
+        'Email delivery is not configured on this server yet, so a verification message cannot be sent. An operator can confirm the address, or a live mailer can be enabled.',
+        503,
+      );
     },
   };
 }

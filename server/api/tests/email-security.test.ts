@@ -267,7 +267,7 @@ test('existing accounts stay unverified after migration 010 and mailbox hides to
        VALUES (?, ?, ?, 'active', ?, ?)`,
     ).run('legacy-user', 'legacy@example.com', 'scrypt$not$real', new Date().toISOString(), new Date().toISOString());
     const applied = migrate(db, migrationsDir);
-    assert.deepEqual(applied, ['010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql']);
+    assert.deepEqual(applied, ['010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql', '013_tryon_free_ai_image.sql']);
     const row = db.prepare(`SELECT email_verified_at AS verifiedAt FROM users WHERE id = ?`).get('legacy-user') as { verifiedAt: string | null };
     assert.equal(row.verifiedAt, null);
     db.close();
@@ -324,4 +324,59 @@ test('disabled mailer does not send and capture stays off in production profile 
     }),
     /EMAIL_CAPTURE_ENABLED/,
   );
+});
+
+test('resend with disabled mailer returns a clear delivery error', async () => {
+  const TOKEN = 'admin-token-for-email-verify-tests';
+  const api = await startApi({
+    adminToken: TOKEN,
+    emailCaptureEnabled: false,
+    appEnv: 'test',
+  });
+  try {
+    const ada = await register(api.base, 'need-mail@example.com');
+    const resend = await fetch(`${api.base}/api/auth/verify-email/request`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: '{}',
+    });
+    assert.equal(resend.status, 503);
+    const body = await resend.json() as { code: string; message: string };
+    assert.equal(body.code, 'email_delivery_disabled');
+    assert.match(body.message, /not configured/i);
+  } finally {
+    await api.close();
+  }
+});
+
+test('admin can mark an account email verified without a mailer', async () => {
+  const TOKEN = 'admin-token-for-email-verify-tests';
+  const api = await startApi({
+    adminToken: TOKEN,
+    emailCaptureEnabled: false,
+    appEnv: 'test',
+  });
+  try {
+    const email = 'ops-verify@example.com';
+    await register(api.base, email);
+    const marked = await fetch(`${api.base}/api/admin/accounts/verify-email`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    assert.equal(marked.status, 200);
+    const body = await marked.json() as { emailVerified: boolean; alreadyVerified: boolean; email: string };
+    assert.equal(body.email, email);
+    assert.equal(body.emailVerified, true);
+    assert.equal(body.alreadyVerified, false);
+
+    const again = await fetch(`${api.base}/api/admin/accounts/verify-email`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    assert.equal((await again.json() as { alreadyVerified: boolean }).alreadyVerified, true);
+  } finally {
+    await api.close();
+  }
 });

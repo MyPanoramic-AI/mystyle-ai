@@ -84,6 +84,28 @@ export async function issueEmailVerification(input: {
   return { sent: true };
 }
 
+/** Operator-only: mark an account email verified when a live mailer is not yet available. */
+export function adminMarkEmailVerified(db: Sql, emailRaw: unknown, now: number): {
+  email: string;
+  userId: string;
+  emailVerified: boolean;
+  alreadyVerified: boolean;
+} {
+  const email = normalEmail(emailRaw);
+  const row = db.prepare(
+    `SELECT id, email_verified_at AS verifiedAt FROM users WHERE lower(email) = lower(?)`,
+  ).get(email) as { id: string; verifiedAt: string | null } | undefined;
+  if (!row) throw new ApiError('not_found', 'No account was found for that email.', 404);
+  if (row.verifiedAt) {
+    return { email, userId: row.id, emailVerified: true, alreadyVerified: true };
+  }
+  const stamp = new Date(now).toISOString();
+  db.prepare(`UPDATE users SET email_verified_at = ?, updated_at = ? WHERE id = ?`).run(stamp, stamp, row.id);
+  invalidateOpenTokens(db, 'email_verification_tokens', row.id, now);
+  audit(db, 'email_verified_by_admin', row.id, { reason: 'operator_mark_verified' }, now);
+  return { email, userId: row.id, emailVerified: true, alreadyVerified: false };
+}
+
 export function confirmEmailVerification(db: Sql, tokenRaw: unknown, now: number): { emailVerified: boolean } {
   if (typeof tokenRaw !== 'string' || tokenRaw.length < 20 || tokenRaw.length > 200) {
     throw new ApiError('invalid_token', 'That verification link is not valid.', 400);
