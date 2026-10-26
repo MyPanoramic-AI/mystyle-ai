@@ -26,6 +26,13 @@ import {
 } from '../../data/mockData';
 import type { ProfilePhotoSlot } from '../../services/accountApi';
 import { PrivatePhotoSlotsEditor } from './PrivatePhotoSlotsEditor';
+import { HeightField } from '../common/HeightField';
+import {
+  type LengthUnit,
+  formatLengthDisplay,
+  inchesToCm,
+  parseLengthCm,
+} from '../../utils/measurements';
 
 export type EditableSection = 'personal' | 'sizes' | 'styles' | 'colours' | 'shopping' | 'photos';
 
@@ -66,8 +73,20 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
   const [shopping, setShopping] = useState<ShoppingPreferences>(profile.shopping);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [bodyUnit, setBodyUnit] = useState<LengthUnit>('cm');
 
   if (!section) return null;
+
+  const setBodyMeasure = (key: 'bustCm' | 'waistCm' | 'hipCm', displayValue: string) => {
+    if (!displayValue.trim()) {
+      setSizes({ ...sizes, [key]: undefined });
+      return;
+    }
+    const n = Number(displayValue);
+    if (!Number.isFinite(n) || n <= 0) return;
+    const cm = bodyUnit === 'in' ? inchesToCm(n) : Math.round(n);
+    setSizes({ ...sizes, [key]: String(cm) });
+  };
 
   const handleSave = async () => {
     if (section === 'photos') {
@@ -147,22 +166,10 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-[#242326] uppercase mb-1">
-                Height (cm)
-              </label>
-              <input
-                type="number"
-                value={personal.heightCm || ''}
-                onChange={(e) =>
-                  setPersonal({
-                    ...personal,
-                    heightCm: e.target.value ? parseInt(e.target.value, 10) : undefined,
-                  })
-                }
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#242326]/15 text-sm"
-              />
-            </div>
+            <HeightField
+              valueCm={personal.heightCm}
+              onChangeCm={(heightCm) => setPersonal({ ...personal, heightCm })}
+            />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-[#242326] uppercase mb-1">
@@ -257,34 +264,62 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <div>
-                <span className="text-[11px] text-[#5C585E] block mb-1">Bust (cm)</span>
-                <input
-                  type="text"
-                  value={sizes.bustCm || ''}
-                  onChange={(e) => setSizes({ ...sizes, bustCm: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#242326]/15 text-xs"
-                />
+            <div className="pt-1">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-xs font-semibold text-[#242326] uppercase tracking-wider">
+                  Body measurements
+                </span>
+                <div className="inline-flex rounded-lg border border-[#242326]/12 bg-white p-0.5" role="group" aria-label="Body measurement unit">
+                  {([
+                    { id: 'cm' as const, label: 'cm' },
+                    { id: 'in' as const, label: 'in' },
+                  ]).map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setBodyUnit(option.id)}
+                      className={`px-2.5 py-1 text-[10px] font-semibold rounded-md cursor-pointer transition-colors ${
+                        bodyUnit === option.id
+                          ? 'bg-[#242326] text-white'
+                          : 'text-[#5C585E] hover:text-[#242326]'
+                      }`}
+                      aria-pressed={bodyUnit === option.id}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div>
-                <span className="text-[11px] text-[#5C585E] block mb-1">Waist (cm)</span>
-                <input
-                  type="text"
-                  value={sizes.waistCm || ''}
-                  onChange={(e) => setSizes({ ...sizes, waistCm: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#242326]/15 text-xs"
-                />
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { key: 'bustCm' as const, label: 'Bust' },
+                  { key: 'waistCm' as const, label: 'Waist' },
+                  { key: 'hipCm' as const, label: 'Hips' },
+                ]).map((field) => (
+                  <div key={field.key}>
+                    <span className="text-[11px] text-[#5C585E] block mb-1">
+                      {field.label} ({bodyUnit})
+                    </span>
+                    <input
+                      type="number"
+                      min={bodyUnit === 'cm' ? 40 : 16}
+                      max={bodyUnit === 'cm' ? 200 : 80}
+                      step={bodyUnit === 'cm' ? 1 : 0.5}
+                      value={formatLengthDisplay(sizes[field.key], bodyUnit)}
+                      onChange={(e) => setBodyMeasure(field.key, e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#242326]/15 text-xs"
+                    />
+                  </div>
+                ))}
               </div>
-              <div>
-                <span className="text-[11px] text-[#5C585E] block mb-1">Hips (cm)</span>
-                <input
-                  type="text"
-                  value={sizes.hipCm || ''}
-                  onChange={(e) => setSizes({ ...sizes, hipCm: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#242326]/15 text-xs"
-                />
-              </div>
+              {(parseLengthCm(sizes.bustCm) || parseLengthCm(sizes.waistCm) || parseLengthCm(sizes.hipCm)) && bodyUnit === 'in' && (
+                <p className="mt-1.5 text-[11px] text-[#5C585E]">
+                  Saved in centimetres
+                  {parseLengthCm(sizes.bustCm) ? ` · bust ${parseLengthCm(sizes.bustCm)} cm` : ''}
+                  {parseLengthCm(sizes.waistCm) ? ` · waist ${parseLengthCm(sizes.waistCm)} cm` : ''}
+                  {parseLengthCm(sizes.hipCm) ? ` · hips ${parseLengthCm(sizes.hipCm)} cm` : ''}
+                </p>
+              )}
             </div>
           </div>
         )}

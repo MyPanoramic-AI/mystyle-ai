@@ -34,6 +34,7 @@ import { getMembership, getCreditBalance } from '../../services/membershipServic
 import { MembershipSubpageTab } from '../../types/membership';
 import { Crown, Coins, Shield, Bell, Settings } from 'lucide-react';
 import type { ProfilePhotoSlot } from '../../services/accountApi';
+import { formatHeight } from '../../utils/measurements';
 
 interface ProfileDashboardProps {
   profile: UserProfile;
@@ -270,7 +271,9 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
               <div className="flex justify-between py-1 border-b border-[#242326]/6">
                 <span className="text-[#5C585E]">Height:</span>
                 <span className="font-medium text-[#242326]">
-                  {profile.personal.heightCm ? `${profile.personal.heightCm} cm` : 'Not specified'}
+                  {profile.personal.heightCm
+                    ? `${formatHeight(profile.personal.heightCm, 'cm')} · ${formatHeight(profile.personal.heightCm, 'ft')}`
+                    : 'Not specified'}
                 </span>
               </div>
               <div className="flex justify-between py-1">
