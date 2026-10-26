@@ -102,14 +102,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </button>
         </div>
 
-        {/* Hover Quick Action: Try Item in Fitting Room */}
-        <div className="absolute inset-x-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none hidden sm:block">
+        {/* Try It On — visible on touch; reinforced on hover for desktop */}
+        <div className="absolute inset-x-2 bottom-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
           <button
+            type="button"
             onClick={handleTryClick}
-            className="w-full py-2 px-3 rounded-xl bg-[#242326]/90 hover:bg-[#242326] text-white text-xs font-medium flex items-center justify-center gap-1.5 shadow-lg backdrop-blur-xs pointer-events-auto transition-colors cursor-pointer"
+            aria-label={`Try It On ${product.name}`}
+            className="w-full py-2 px-3 rounded-xl bg-[#242326]/90 hover:bg-[#242326] text-white text-xs font-medium flex items-center justify-center gap-1.5 shadow-lg backdrop-blur-xs transition-colors cursor-pointer"
           >
             <Shirt className="w-3.5 h-3.5 text-[#E5CDBE]" />
-            <span>Try in Fitting Room</span>
+            <span>Try It On</span>
           </button>
         </div>
       </div>

@@ -56,6 +56,7 @@ import {
 interface WardrobeScreenProps {
   onBack: () => void;
   onSendToTryOn: (outfit: WardrobeOutfit, pieces: WardrobeItem[]) => void;
+  onTryWardrobeItem?: (item: WardrobeItem) => void;
   onSendToShop: (searchQuery: string, title?: string) => void;
   onAskStylist: (prompt: string) => void;
   initialTab?: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps' | 'capsules';
@@ -65,6 +66,7 @@ interface WardrobeScreenProps {
 export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
   onBack,
   onSendToTryOn,
+  onTryWardrobeItem,
   onSendToShop,
   onAskStylist,
   initialTab = 'pieces',
@@ -622,6 +624,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
           showToast(`Added ${it.name} to Studio`);
         }}
         onAskStylist={onAskStylist}
+        onTryItem={onTryWardrobeItem}
       />
 
       {/* Add Item Modal */}

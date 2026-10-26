@@ -2,6 +2,17 @@
 
 Ongoing record for MyStyle AI. A milestone is complete only when its acceptance criteria are met.
 
+## 2026-10-26 — Production-grade Virtual Try-On customer feature (local)
+
+**Status:** Customer journey implemented; live FASHN remains gated. No push, no Render deploy, no additional paid FASHN calls in this pass.
+
+### Delivered
+
+- Stepped Try-On UI: clothing → photograph → confirm → generate → before/after → My Virtual Fittings.
+- Generation modes: `live` | `local_mock` | `unavailable` (no confusing striped success when live is off).
+- Shop/Wardrobe Try It On preload; wardrobe piece Try It On; fittings list/delete; deletion/export cleanup for `tryon_jobs`.
+- Docs: customer flow, production integration, FASHN config, credit accounting, QA, release readiness.
+
 ## 2026-10-16 — Phase 1 audit, verification, and planning
 
 **Status of Phase 1:** IN PROGRESS. Audit, build verification, and documentation are done. The baseline commit is not done.

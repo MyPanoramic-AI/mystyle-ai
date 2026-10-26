@@ -56,7 +56,9 @@ import { loadTryOnConfig, type TryOnConfig } from '../tryon/tryonConfig.js';
 import {
   cancelTryOnJob,
   createTryOnJob,
+  deleteTryOnJob,
   getTryOnJob,
+  listTryOnFittings,
   listTryOnGarments,
   listTryOnJobs,
   prepareTryOnJob,
@@ -660,6 +662,9 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/tryon/jobs', route((req, res) => {
     res.json({ jobs: listTryOnJobs(deps.db, requireUser(req).userId) });
   }));
+  app.get('/api/tryon/fittings', route((req, res) => {
+    res.json({ fittings: listTryOnFittings(deps.db, requireUser(req).userId) });
+  }));
   app.post('/api/tryon/jobs', route((req, res) => {
     const session = requireUser(req);
     const created = createTryOnJob({
@@ -680,6 +685,16 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.post('/api/tryon/jobs/:id/cancel', route((req, res) => {
     res.json(cancelTryOnJob(deps.db, requireUser(req).userId, String(req.params.id), deps.now()));
+  }));
+  app.delete('/api/tryon/jobs/:id', route((req, res) => {
+    const session = requireUser(req);
+    res.json(deleteTryOnJob({
+      db: deps.db,
+      mediaDir: deps.config.mediaDir,
+      userId: session.userId,
+      id: String(req.params.id),
+      now: deps.now(),
+    }));
   }));
 
   const aiConfig = deps.aiConfig ?? loadAiConfig();

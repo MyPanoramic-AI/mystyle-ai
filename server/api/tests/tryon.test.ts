@@ -348,6 +348,74 @@ test('garment list prefers wardrobe items and prepare reports live blockers with
   }
 });
 
+test('customer mock is refused when allowCustomerMock is false', async () => {
+  const api = await startApi({}, {
+    tryOnConfig: { ...loadTryOnConfig(), allowCustomerMock: false, allowLive: false },
+  });
+  try {
+    const ada = await register(api.base, 'tryon-mock-off@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    const availability = await fetch(`${api.base}/api/tryon/availability`, { headers: { cookie: ada.cookie } });
+    const avail = await availability.json() as { generationMode: string };
+    assert.equal(avail.generationMode, 'unavailable');
+
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'mock',
+        idempotencyKey: 'mock-off-1',
+      }),
+    });
+    assert.equal(created.status, 403);
+    const body = await created.json() as { code: string };
+    assert.equal(body.code, 'mock_tryon_disabled');
+  } finally {
+    await api.close();
+  }
+});
+
+test('fittings list and delete remove private result media', async () => {
+  const api = await startApi();
+  try {
+    const ada = await register(api.base, 'tryon-fittings@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+    const created = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'mock',
+        idempotencyKey: 'fitting-save-1',
+      }),
+    });
+    const job = await created.json() as { id: string };
+    const done = await pollJob(api.base, ada.cookie, job.id);
+    assert.equal(done.status, 'succeeded');
+    const fittings = await fetch(`${api.base}/api/tryon/fittings`, { headers: { cookie: ada.cookie } });
+    const listed = await fittings.json() as { fittings: { id: string; resultMediaId: string }[] };
+    assert.equal(listed.fittings.length, 1);
+    const resultId = listed.fittings[0]!.resultMediaId;
+    const deleted = await fetch(`${api.base}/api/tryon/jobs/${job.id}`, {
+      method: 'DELETE',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+    });
+    assert.equal(deleted.status, 200);
+    const media = await fetch(`${api.base}/api/media/${resultId}`, { headers: { cookie: ada.cookie } });
+    assert.equal(media.status, 404);
+    const after = await fetch(`${api.base}/api/tryon/fittings`, { headers: { cookie: ada.cookie } });
+    const afterBody = await after.json() as { fittings: unknown[] };
+    assert.equal(afterBody.fittings.length, 0);
+  } finally {
+    await api.close();
+  }
+});
+
 test('authorised mocked FASHN path stores a provider result without calling the real API', async () => {
   const TOKEN = 'admin-token-for-tests-only';
   const providerPng = Buffer.from(

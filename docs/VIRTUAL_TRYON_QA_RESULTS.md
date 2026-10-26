@@ -1,6 +1,6 @@
 # Virtual try-on QA results
 
-Date: 26 October 2026. Local only. No push. No Render deploy. No paid FASHN calls.
+Date: 26 October 2026. Local only. No push. No Render deploy. No additional paid FASHN calls in this integration pass.
 
 ## Suites
 
@@ -8,28 +8,32 @@ Date: 26 October 2026. Local only. No push. No Render deploy. No paid FASHN call
 | --- | --- |
 | `npm run lint` | Pass |
 | `npm run lint:api` | Pass |
-| `npm run test:api` (includes `tryon.test.ts`) | Pass (69) |
-| `npm run test:ai` | Pass (16) |
-| `npm run test:tryon` (lab) | Pass (16) |
+| `npx tsc --noEmit --strict` | Pass |
+| `npm run build` | Pass |
+| `npm run test:api` | Pass (**71**) |
+| `npm run test:account` | Pass (**5**) |
+| `npm run test:ai` | Pass (**16**) |
+| `npm run test:shopping` | Pass (**15**) |
+| `npm run test:tryon` | Pass (**16**) |
+| Playwright try-on / shop / journey subset | Pass (**11**) |
 
-## Coverage added
+## Coverage
 
-- Successful mock generation with labelled demonstration media
-- Invalid / missing person media
-- Missing `external_photo_ai` consent for live provider
-- Live mode disabled by default (`live_tryon_disabled`)
-- Failed mock scenario
-- Duplicate idempotency key
-- Cross-account job isolation
-- Mock does not change credit balance
-- Wardrobe garment listing + `wardrobeItemId` job create
-- `POST /api/tryon/prepare` reports live blockers without spending
-- Authorised mocked FASHN path (`tryOnFetch`) stores `resultKind: 'provider'` (not demonstration stripes)
-- Live readiness includes `ai.image` entitlement + credit balance checks
+- Shop Try It On preload + photograph step
+- Local development labelled mock (no FASHN hosts)
+- Mock disabled when `allowCustomerMock=false`
+- Fitting list + delete + cross-account isolation
+- Live FASHN blocked without server flag
+- Mocked FASHN provider path (API, no network)
+- Wardrobe garment listing / prepare blockers
+- Account deletion includes `tryon_jobs`; export includes try-on metadata
 
-## Still disabled
+## Verified earlier (separate authorised session)
 
-- `TRYON_ALLOW_LIVE` (and production/Render refuse enabling it)
-- Provider budget defaults to `0`
-- No browser API keys
-- No real FASHN credit spend; image quality of live FASHN has **not** been validated
+One real `tryon-v1.6` generation (~19.1s, 1 FASHN credit) — **not repeated** in this pass.
+
+## Still unverified
+
+- Broad live quality across garments/poses
+- Production live activation on Render
+- Commercial pricing / public plan allowances

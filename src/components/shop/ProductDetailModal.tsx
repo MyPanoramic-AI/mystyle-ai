@@ -253,7 +253,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   icon={<Shirt className="w-4 h-4 text-[#E5CDBE]" />}
                   onClick={handleSendToTryOn}
                 >
-                  Try This Item
+                  Try It On
                 </Button>
 
                 {/* 2. Compare Prices */}

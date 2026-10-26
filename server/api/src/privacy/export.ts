@@ -75,6 +75,14 @@ export function buildAccountExportPayload(db: Sql, userId: string) {
        WHERE e.owner_user_id = ?`,
     ).all(userId),
     wardrobeItems: rows(db, `SELECT * FROM wardrobe_items WHERE user_id = ?`, userId),
+    tryonJobs: rows(
+      db,
+      `SELECT id, status, provider_id AS providerId, model, category, quality, person_media_id AS personMediaId,
+        garment_media_id AS garmentMediaId, result_media_id AS resultMediaId, result_kind AS resultKind,
+        demonstration, credits_reserved AS creditsReserved, error_code AS errorCode, created_at AS createdAt,
+        finished_at AS finishedAt FROM tryon_jobs WHERE user_id = ?`,
+      userId,
+    ),
     outfitPlans: rows(db, `SELECT * FROM outfit_plans WHERE user_id = ?`, userId),
     savedLooks: rows(db, `SELECT * FROM saved_looks WHERE user_id = ?`, userId),
     savedLookItems: db.prepare(

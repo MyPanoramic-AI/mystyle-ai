@@ -1,8 +1,16 @@
 # Release readiness
 
-Date: 20 October 2026.
+Date: 26 October 2026 (try-on update). Original review: 20 October 2026.
 
 MyStyle AI is not ready for a commercial launch. This review separates what a developer can exercise locally from what still needs an external service, a legal decision, or production hosting.
+
+## Virtual Try-On (26 October 2026)
+
+- Customer journey, fittings history, Shop/Wardrobe Try It On, and credit gates are implemented.
+- Live FASHN stays **off** by default; staging/production refuse `TRYON_ALLOW_LIVE`.
+- One authorised local `tryon-v1.6` sample was completed earlier; do not treat that as production validation.
+- Public Free plan still lacks `ai.image`; commercial pricing is unapproved.
+- Do not push or deploy until live activation is separately approved.
 
 ## Ready for a controlled local technical test
 

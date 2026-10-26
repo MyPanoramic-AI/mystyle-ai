@@ -183,6 +183,7 @@ export function confirmDeletion(
       db.prepare(`DELETE FROM saved_look_items WHERE look_id IN (SELECT id FROM saved_looks WHERE user_id = ?)`).run(input.userId);
       db.prepare(`DELETE FROM saved_looks WHERE user_id = ?`).run(input.userId);
       db.prepare(`DELETE FROM outfit_plans WHERE user_id = ?`).run(input.userId);
+      db.prepare(`DELETE FROM tryon_jobs WHERE user_id = ?`).run(input.userId);
       db.prepare(`DELETE FROM wardrobe_items WHERE user_id = ?`).run(input.userId);
       db.prepare(`DELETE FROM saved_products WHERE user_id = ?`).run(input.userId);
       db.prepare(`DELETE FROM profile_measurements WHERE user_id = ?`).run(input.userId);

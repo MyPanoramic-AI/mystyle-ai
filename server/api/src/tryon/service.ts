@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
-import { inspectImage, readOwnedMedia, saveMedia } from '../media/store.js';
+import { deleteOwnedMedia, inspectImage, readOwnedMedia, saveMedia } from '../media/store.js';
 import { hasGrantedConsent } from '../privacy/consent.js';
 import { readCredits, readEntitlement, reserveCredits, settleOperation } from '../domain/membership.js';
 import {
@@ -205,8 +205,20 @@ export function tryOnAvailability(db: Sql, userId: string, config: TryOnConfig) 
   const budgetOk = config.maxBudgetUsd > 0;
   const aiImageEntitlement = hasAiImageFeature(db, userId);
   const creditBalance = readCredits(db, userId).balance;
+  const estimatedCustomerCredits = config.customerCreditCost;
+  const liveReady = config.allowLive && keyConfigured && budgetOk && externalPhotoAiConsent && aiImageEntitlement
+    && creditBalance >= estimatedCustomerCredits;
+  const customerMockAllowed = config.allowCustomerMock && privatePhotoStorageConsent;
+  const generationMode: 'live' | 'local_mock' | 'unavailable' = liveReady
+    ? 'live'
+    : customerMockAllowed
+      ? 'local_mock'
+      : 'unavailable';
   return {
     liveEnabled: config.allowLive,
+    allowCustomerMock: config.allowCustomerMock,
+    generationMode,
+    defaultLiveProviderId: config.defaultLiveProviderId,
     maxBudgetUsd: config.maxBudgetUsd,
     spentUsd: Math.round(spentUsd * 1000) / 1000,
     remainingBudgetUsd: Math.max(0, Math.round((config.maxBudgetUsd - spentUsd) * 1000) / 1000),
@@ -214,10 +226,11 @@ export function tryOnAvailability(db: Sql, userId: string, config: TryOnConfig) 
     privatePhotoStorageConsent,
     aiImageEntitlement,
     creditBalance,
+    estimatedCustomerCredits,
     providers: listAccountProviders(config),
     readiness: {
-      mockReady: privatePhotoStorageConsent,
-      liveReady: config.allowLive && keyConfigured && budgetOk && externalPhotoAiConsent && aiImageEntitlement,
+      mockReady: customerMockAllowed,
+      liveReady,
       checks: {
         tryonAllowLive: config.allowLive,
         fashnApiKeyConfigured: keyConfigured,
@@ -225,15 +238,19 @@ export function tryOnAvailability(db: Sql, userId: string, config: TryOnConfig) 
         externalPhotoAiConsent,
         privatePhotoStorageConsent,
         aiImageEntitlement,
+        sufficientCredits: creditBalance >= estimatedCustomerCredits,
+        allowCustomerMock: config.allowCustomerMock,
       },
     },
     estimatedLiveCostUsd: {
       'fashn-tryon-v1.6': estimatedProviderUsd('fashn-tryon-v1.6', 'standard'),
       'fashn-tryon-max': estimatedProviderUsd('fashn-tryon-max', 'standard'),
     },
-    note: config.allowLive
-      ? 'Live provider calls may leave this environment when external-photo-AI consent is granted. Public Render production refuses TRYON_ALLOW_LIVE at startup.'
-      : 'Only the local demonstration provider is available. Live FASHN stays disabled until TRYON_ALLOW_LIVE is approved in a safe non-production environment.',
+    note: generationMode === 'live'
+      ? 'Live FASHN generation is available for this account when consent and credits allow. Images leave this environment.'
+      : generationMode === 'local_mock'
+        ? 'Local development demonstration mode only. This does not call FASHN and is not a real virtual try-on.'
+        : 'Virtual Try-On is currently unavailable. Your photographs have not been sent for AI processing.',
   };
 }
 
@@ -335,6 +352,7 @@ export function prepareTryOnJob(options: {
   const resolved = resolveTryOnInputs({ ...options, persistGarmentUpload: false });
   const live = resolved.providerId !== 'mock';
   const blockers: string[] = [];
+  if (!live && !options.config.allowCustomerMock) blockers.push('mock_tryon_disabled');
   if (live && !options.config.allowLive) blockers.push('live_tryon_disabled');
   if (live && !hasGrantedConsent(options.db, options.userId, 'external_photo_ai')) blockers.push('external_photo_ai_consent_required');
   if (live && !options.config.fashnApiKey) blockers.push('missing_api_key');
@@ -343,15 +361,18 @@ export function prepareTryOnJob(options: {
     const cost = estimatedProviderUsd(resolved.providerId, resolved.quality);
     const spent = spentLiveUsd(options.db);
     if (options.config.maxBudgetUsd <= 0 || spent + cost > options.config.maxBudgetUsd) blockers.push('budget_exceeded');
-    const creditsNeeded = estimatedProviderCredits(resolved.providerId, resolved.quality);
+    const creditsNeeded = Math.max(options.config.customerCreditCost, estimatedProviderCredits(resolved.providerId, resolved.quality));
     if (readCredits(options.db, options.userId).balance < creditsNeeded) blockers.push('insufficient_credits');
   }
+  const estimatedCredits = live
+    ? Math.max(options.config.customerCreditCost, estimatedProviderCredits(resolved.providerId, resolved.quality))
+    : 0;
   return {
     ok: blockers.length === 0,
     providerId: resolved.providerId,
     live,
     demonstration: !live,
-    estimatedCredits: estimatedProviderCredits(resolved.providerId, resolved.quality),
+    estimatedCredits,
     estimatedCostUsd: estimatedProviderUsd(resolved.providerId, resolved.quality),
     personMediaId: resolved.personMediaId,
     garmentMediaId: resolved.garmentMediaId,
@@ -360,7 +381,9 @@ export function prepareTryOnJob(options: {
     blockers,
     note: live
       ? 'Preparation only. No FASHN request was sent and no credits were reserved.'
-      : 'Preparation only. A demonstration job would not call FASHN or consume purchased credits.',
+      : options.config.allowCustomerMock
+        ? 'Preparation only. A local development demonstration would not call FASHN or consume purchased credits.'
+        : 'Virtual Try-On is unavailable. Photographs will not be sent for AI processing.',
   };
 }
 
@@ -499,6 +522,13 @@ export function createTryOnJob(options: {
   });
 
   const live = providerId !== 'mock';
+  if (!live && !options.config.allowCustomerMock) {
+    throw new ApiError(
+      'mock_tryon_disabled',
+      'Demonstration try-on is not available in this environment. Live generation stays off until explicitly approved.',
+      403,
+    );
+  }
   if (live) {
     if (!options.config.allowLive) {
       throw new ApiError('live_tryon_disabled', 'Live virtual try-on is disabled on this server.', 403);
@@ -512,6 +542,13 @@ export function createTryOnJob(options: {
     }
     if (!options.config.fashnApiKey) {
       throw new ApiError('missing_api_key', 'FASHN_API_KEY is not configured on the server.', 400);
+    }
+    if (!hasAiImageFeature(options.db, options.userId, options.now)) {
+      throw new ApiError(
+        'feature_unavailable',
+        'Your current plan does not include AI image generation. Virtual try-on requires an entitlement that includes ai.image.',
+        403,
+      );
     }
     const cost = estimatedProviderUsd(providerId, quality);
     const spent = spentLiveUsd(options.db);
@@ -531,7 +568,7 @@ export function createTryOnJob(options: {
   let creditOperationId: string | null = null;
   let creditsReserved: number | null = null;
   if (live) {
-    const credits = estimatedProviderCredits(providerId, quality);
+    const credits = Math.max(options.config.customerCreditCost, estimatedProviderCredits(providerId, quality));
     const reserved = reserveCredits(options.db, {
       userId: options.userId,
       amount: credits,
@@ -600,6 +637,46 @@ export function cancelTryOnJob(db: Sql, userId: string, id: string, now: number)
       updated_at = ?, finished_at = CASE WHEN status = 'queued' THEN ? ELSE finished_at END WHERE id = ? AND user_id = ?`,
   ).run(updated, updated, id, userId);
   return toView(readJobRow(db, userId, id));
+}
+
+export function listTryOnFittings(db: Sql, userId: string, limit = 30): TryOnJobView[] {
+  const capped = Math.min(Math.max(limit, 1), 50);
+  const rows = db.prepare(
+    `SELECT id, user_id AS userId, status, provider_id AS providerId, model, category, quality,
+      person_media_id AS personMediaId, garment_media_id AS garmentMediaId, result_media_id AS resultMediaId,
+      result_kind AS resultKind, demonstration, credit_reservation_id AS creditReservationId,
+      credit_operation_id AS creditOperationId, credits_reserved AS creditsReserved, mock_scenario AS mockScenario,
+      error_code AS errorCode, error_message AS errorMessage, provider_job_id AS providerJobId,
+      cancel_requested AS cancelRequested, created_at AS createdAt, updated_at AS updatedAt,
+      started_at AS startedAt, finished_at AS finishedAt
+     FROM tryon_jobs
+     WHERE user_id = ? AND status = 'succeeded' AND result_media_id IS NOT NULL
+     ORDER BY COALESCE(finished_at, created_at) DESC
+     LIMIT ?`,
+  ).all(userId, capped) as JobRow[];
+  return rows.map((row) => toView(row));
+}
+
+export function deleteTryOnJob(options: {
+  db: Sql;
+  mediaDir: string;
+  userId: string;
+  id: string;
+  now: number;
+}): { deleted: true; id: string } {
+  const row = readJobRow(options.db, options.userId, options.id);
+  if (ACTIVE.has(row.status)) {
+    throw new ApiError('tryon_active', 'Cancel the running job before deleting it.', 409);
+  }
+  options.db.prepare(`DELETE FROM tryon_jobs WHERE id = ? AND user_id = ?`).run(options.id, options.userId);
+  if (row.resultMediaId) {
+    try {
+      deleteOwnedMedia(options.db, options.mediaDir, options.userId, row.resultMediaId, options.now);
+    } catch {
+      // Result media may already be expired or cleared.
+    }
+  }
+  return { deleted: true, id: options.id };
 }
 
 function scheduleTryOnJob(options: {

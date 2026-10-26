@@ -351,6 +351,23 @@ export default function App({ account }: { account: ReadyAccount }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleTryWardrobeItem = (item: WardrobeItem) => {
+    const garment: PreloadedGarment = {
+      productId: item.id,
+      productName: item.name,
+      retailer: item.brand || 'Digital Wardrobe',
+      priceZar: 0,
+      imageUrl: item.imageUrl || '',
+      category: item.category,
+    };
+    setTryOnPreloadedGarment(garment);
+    setTryOnPreloadedLook(null);
+    setTryOnFamilyMemberName(null);
+    setActiveSubpage(null);
+    setCurrentTab('try-on');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Wardrobe Action: Send Gap requirement to Shop
   const handleSendWardrobeToShop = (searchQuery: string, title?: string) => {
     setShopPreloadedContext({
@@ -537,6 +554,7 @@ export default function App({ account }: { account: ReadyAccount }) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           onSendToTryOn={handleSendWardrobeToTryOn}
+          onTryWardrobeItem={handleTryWardrobeItem}
           onSendToShop={handleSendWardrobeToShop}
           onAskStylist={handleAskStylistWardrobe}
         />

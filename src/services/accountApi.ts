@@ -106,7 +106,9 @@ export interface AccountApi {
   createTryOnJob(body: TryOnJobCreateBody): Promise<TryOnJobRecord>;
   getTryOnJob(id: string): Promise<TryOnJobRecord>;
   listTryOnJobs(): Promise<{ jobs: TryOnJobRecord[] }>;
+  listTryOnFittings(): Promise<{ fittings: TryOnJobRecord[] }>;
   cancelTryOnJob(id: string): Promise<TryOnJobRecord>;
+  deleteTryOnJob(id: string): Promise<{ deleted: true; id: string }>;
 }
 
 export type TryOnCategory = 'tops' | 'bottoms' | 'one-pieces' | 'outerwear';
@@ -114,11 +116,17 @@ export type TryOnProviderId = 'mock' | 'fashn-tryon-v1.6' | 'fashn-tryon-max';
 
 export interface TryOnAvailabilityResponse {
   liveEnabled: boolean;
+  allowCustomerMock?: boolean;
+  generationMode?: 'live' | 'local_mock' | 'unavailable';
+  defaultLiveProviderId?: TryOnProviderId;
   maxBudgetUsd: number;
   spentUsd?: number;
   remainingBudgetUsd?: number;
   externalPhotoAiConsent: boolean;
   privatePhotoStorageConsent: boolean;
+  aiImageEntitlement?: boolean;
+  creditBalance?: number;
+  estimatedCustomerCredits?: number;
   providers: {
     id: string;
     label: string;
@@ -525,7 +533,9 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     createTryOnJob: (body) => request('/api/tryon/jobs', { method: 'POST', body, csrf: true }),
     getTryOnJob: (id) => request(`/api/tryon/jobs/${id}`),
     listTryOnJobs: () => request('/api/tryon/jobs'),
+    listTryOnFittings: () => request('/api/tryon/fittings'),
     cancelTryOnJob: (id) => request(`/api/tryon/jobs/${id}/cancel`, { method: 'POST', csrf: true }),
+    deleteTryOnJob: (id) => request(`/api/tryon/jobs/${id}`, { method: 'DELETE', csrf: true }),
   };
 }
 

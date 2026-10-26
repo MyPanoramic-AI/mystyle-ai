@@ -49,6 +49,9 @@ function clearMediaReferences(db: Sql, userId: string, mediaId: string): void {
   db.prepare('UPDATE customer_profiles SET portrait_media_id = NULL WHERE user_id = ? AND portrait_media_id = ?').run(userId, mediaId);
   db.prepare('UPDATE customer_profiles SET full_body_front_media_id = NULL WHERE user_id = ? AND full_body_front_media_id = ?').run(userId, mediaId);
   db.prepare('UPDATE customer_profiles SET full_body_additional_media_id = NULL WHERE user_id = ? AND full_body_additional_media_id = ?').run(userId, mediaId);
+  db.prepare(
+    `UPDATE tryon_jobs SET result_media_id = NULL WHERE user_id = ? AND result_media_id = ?`,
+  ).run(userId, mediaId);
 }
 
 export function saveMedia(options: {

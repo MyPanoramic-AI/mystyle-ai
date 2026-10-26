@@ -16,6 +16,7 @@ import {
   Star,
   Tag,
   Info,
+  Camera,
 } from 'lucide-react';
 
 interface WardrobeItemDetailModalProps {
@@ -28,6 +29,7 @@ interface WardrobeItemDetailModalProps {
   onDelete?: (itemId: string) => void;
   onEdit?: (item: WardrobeItem) => void;
   onAskStylist?: (prompt: string) => void;
+  onTryItem?: (item: WardrobeItem) => void;
 }
 
 export const WardrobeItemDetailModal: React.FC<WardrobeItemDetailModalProps> = ({
@@ -40,6 +42,7 @@ export const WardrobeItemDetailModal: React.FC<WardrobeItemDetailModalProps> = (
   onDelete,
   onEdit,
   onAskStylist,
+  onTryItem,
 }) => {
   if (!isOpen || !item) return null;
 
@@ -236,7 +239,19 @@ export const WardrobeItemDetailModal: React.FC<WardrobeItemDetailModalProps> = (
             </button>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
+            {onTryItem && item.imageUrl && (
+              <button
+                onClick={() => {
+                  onTryItem(item);
+                  onClose();
+                }}
+                className="px-3.5 py-2 text-xs font-medium text-[#242326] bg-white border border-[#242326]/12 hover:border-[#9C6A61]/50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Camera className="w-3.5 h-3.5 text-[#9C6A61]" />
+                <span>Try It On</span>
+              </button>
+            )}
             {onAskStylist && (
               <button
                 onClick={() => {
