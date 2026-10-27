@@ -138,6 +138,8 @@ function dataUri(format: ImageFormat, bytes: Buffer): string {
 
 function fashnCategory(category: GarmentCategory): 'tops' | 'bottoms' | 'one-pieces' | 'auto' {
   if (category === 'outerwear') return 'tops';
+  // Shoes, bags, and jewellery are better on tryon-max; v1.6 falls back to auto classification.
+  if (category === 'shoes' || category === 'bags' || category === 'accessories') return 'auto';
   return category;
 }
 

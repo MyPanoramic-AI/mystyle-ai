@@ -32,6 +32,8 @@ import {
   type TryOnProviderId,
 } from '../../services/accountApi';
 import { fileToBase64, mediaDisplayUrl } from '../../services/profilePhotosClient';
+import { SHOP_PRODUCTS } from '../../data/shopData';
+import type { Product } from '../../types/shop';
 
 interface TryOnPlaceholderProps {
   onNavigate: (tab: NavigationTab) => void;
@@ -52,7 +54,48 @@ const CATEGORIES: { id: TryOnCategory; label: string }[] = [
   { id: 'tops', label: 'Tops' },
   { id: 'bottoms', label: 'Bottoms' },
   { id: 'one-pieces', label: 'One-pieces' },
-  { id: 'outerwear', label: 'Outerwear' },
+  { id: 'outerwear', label: 'Jacket / outerwear' },
+  { id: 'shoes', label: 'Shoes' },
+  { id: 'bags', label: 'Bags' },
+  { id: 'accessories', label: 'Accessories' },
+];
+
+type LayerKind = 'outerwear' | 'shoes' | 'accessory';
+
+interface LayerPick {
+  name: string;
+  category: TryOnCategory;
+  imageUrl: string;
+  productId?: string;
+  retailer?: string;
+  priceZar?: number;
+  mediaId?: string;
+  wardrobeItemId?: string;
+  source: 'shop' | 'wardrobe' | 'upload';
+}
+
+const LAYER_META: { kind: LayerKind; title: string; hint: string; categories: TryOnCategory[]; shopMatch: string[] }[] = [
+  {
+    kind: 'outerwear',
+    title: 'Jacket / outerwear',
+    hint: 'Optional layer over the base piece',
+    categories: ['outerwear'],
+    shopMatch: ['Jackets & Blazers'],
+  },
+  {
+    kind: 'shoes',
+    title: 'Shoes',
+    hint: 'Optional footwear for the look',
+    categories: ['shoes'],
+    shopMatch: ['Shoes'],
+  },
+  {
+    kind: 'accessory',
+    title: 'Bag / accessory',
+    hint: 'Optional bag, jewellery, or scarf',
+    categories: ['bags', 'accessories'],
+    shopMatch: ['Bags', 'Jewellery & Accessories'],
+  },
 ];
 
 function personOptions(photos?: TemporaryPhotos): { slot: PersonSlot; mediaId: string; url: string; label: string }[] {
@@ -71,10 +114,21 @@ function personOptions(photos?: TemporaryPhotos): { slot: PersonSlot; mediaId: s
 
 function categoryFromText(raw?: string | null): TryOnCategory {
   const value = (raw || '').toLowerCase();
+  if (value.includes('shoe') || value.includes('heel') || value.includes('sneaker') || value.includes('loafer') || value.includes('sandal') || value.includes('boot')) return 'shoes';
+  if (value.includes('bag') || value.includes('tote') || value.includes('clutch') || value.includes('crossbody')) return 'bags';
+  if (value.includes('jewel') || value.includes('earring') || value.includes('necklace') || value.includes('scarf') || value.includes('sunglass') || value.includes('accessor')) return 'accessories';
   if (value.includes('bottom') || value.includes('pant') || value.includes('skirt') || value.includes('jean')) return 'bottoms';
   if (value.includes('dress') || value.includes('jumpsuit') || value.includes('one')) return 'one-pieces';
   if (value.includes('outer') || value.includes('coat') || value.includes('jacket') || value.includes('blazer')) return 'outerwear';
   return 'tops';
+}
+
+function shopProductsForLayer(meta: (typeof LAYER_META)[number]): Product[] {
+  return SHOP_PRODUCTS.filter((product) => meta.shopMatch.includes(product.category)).slice(0, 8);
+}
+
+function layerNeedsMax(layers: LayerPick[]): boolean {
+  return layers.some((layer) => layer.category === 'shoes' || layer.category === 'bags' || layer.category === 'accessories');
 }
 
 function tryOnFailureMessage(error: unknown, fallback: string): string {
@@ -203,6 +257,9 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const [shopNote, setShopNote] = useState('MyStyle AI Shop demonstration listings are not verified retailer products.');
   const [garmentFile, setGarmentFile] = useState<File | null>(null);
   const [garmentPreview, setGarmentPreview] = useState<string | undefined>(preloadedGarment?.imageUrl);
+  const [layers, setLayers] = useState<Partial<Record<LayerKind, LayerPick>>>({});
+  const [activeLayerPicker, setActiveLayerPicker] = useState<LayerKind | null>(null);
+  const [layerProgress, setLayerProgress] = useState<string | null>(null);
   const [availability, setAvailability] = useState<TryOnAvailabilityResponse | null>(null);
   const [step, setStep] = useState<Step>('garment');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -336,6 +393,42 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     || (garmentMode === 'upload' && garmentFile),
   );
 
+  const orderedLayers = useMemo(() => {
+    const picks: LayerPick[] = [];
+    for (const meta of LAYER_META) {
+      const pick = layers[meta.kind];
+      if (pick) picks.push(pick);
+    }
+    return picks;
+  }, [layers]);
+
+  const buildPayloadFromPick = async (pick: {
+    imageUrl?: string;
+    mediaId?: string;
+    wardrobeItemId?: string;
+    garmentFile?: File | null;
+    source?: string;
+  }): Promise<Partial<{
+    wardrobeItemId: string;
+    garmentMediaId: string;
+    garmentImageUrl: string;
+    garmentImageBase64: string;
+  }>> => {
+    if (pick.wardrobeItemId) return { wardrobeItemId: pick.wardrobeItemId };
+    if (pick.mediaId) return { garmentMediaId: pick.mediaId };
+    if (pick.garmentFile) return { garmentImageBase64: await fileToBase64(pick.garmentFile) };
+    if (pick.imageUrl) {
+      const mediaId = mediaIdFromUrl(pick.imageUrl);
+      if (mediaId) return { garmentMediaId: mediaId };
+      const forServer = garmentUrlForServer(pick.imageUrl);
+      if (forServer) return { garmentImageUrl: forServer };
+      if (pick.imageUrl.startsWith('blob:') || pick.imageUrl.startsWith('data:')) {
+        return { garmentImageBase64: await blobOrDataUrlToBase64(pick.imageUrl) };
+      }
+    }
+    throw new Error('That garment image cannot be used for try-on. Choose a Shop listing, wardrobe photo, or upload.');
+  };
+
   const buildGarmentPayload = async (): Promise<Partial<{
     wardrobeItemId: string;
     garmentMediaId: string;
@@ -347,21 +440,28 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       return { garmentMediaId: selectedGarment.mediaId };
     }
     if (garmentMode === 'shop' && preloadedGarment?.imageUrl) {
-      const imageUrl = preloadedGarment.imageUrl;
-      const mediaId = mediaIdFromUrl(imageUrl);
-      if (mediaId) return { garmentMediaId: mediaId };
-      const forServer = garmentUrlForServer(imageUrl);
-      if (forServer) return { garmentImageUrl: forServer };
-      if (imageUrl.startsWith('blob:') || imageUrl.startsWith('data:')) {
-        return { garmentImageBase64: await blobOrDataUrlToBase64(imageUrl) };
-      }
-      throw new Error('That garment image cannot be used for try-on. Choose a Shop listing, wardrobe photo, or upload.');
+      return buildPayloadFromPick({ imageUrl: preloadedGarment.imageUrl, source: 'shop' });
     }
     if (garmentMode === 'upload' && garmentFile) {
       return { garmentImageBase64: await fileToBase64(garmentFile) };
     }
     throw new Error('Select a wardrobe garment, Shop listing, or upload.');
   };
+
+  const waitForJobCompletion = (jobId: string): Promise<TryOnJobRecord> => new Promise((resolve, reject) => {
+    const tick = () => {
+      void accountApi.getTryOnJob(jobId).then((next) => {
+        setJob(next);
+        if (next.status === 'succeeded') resolve(next);
+        else if (next.status === 'failed' || next.status === 'cancelled') {
+          reject(new Error(next.errorMessage || (next.status === 'cancelled' ? 'Try-on cancelled.' : 'Try-on failed.')));
+        } else {
+          window.setTimeout(tick, 400);
+        }
+      }).catch((error) => reject(error instanceof Error ? error : new Error('The try-on job could not be refreshed.')));
+    };
+    tick();
+  });
 
   const handleGenerate = async () => {
     if (!usesAccount) {
@@ -373,7 +473,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       return;
     }
     if (!garmentReady) {
-      showStatus('Select a garment before generating a fitting.');
+      showStatus('Select a base garment before generating a fitting.');
       return;
     }
     if (generationMode === 'unavailable') {
@@ -382,50 +482,94 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     }
 
     const providerId: TryOnProviderId = generationMode === 'live'
-      ? (availability?.defaultLiveProviderId || 'fashn-tryon-v1.6')
+      ? (layerNeedsMax(orderedLayers)
+        ? 'fashn-tryon-max'
+        : (availability?.defaultLiveProviderId || 'fashn-tryon-v1.6'))
       : 'mock';
 
     setBusy(true);
     setJob(null);
     setStep('progress');
-    showStatus(generationMode === 'live' ? 'Starting virtual try-on…' : 'Starting local development demonstration…');
+    setLayerProgress(null);
+    const totalSteps = 1 + orderedLayers.length;
+    showStatus(
+      orderedLayers.length > 0
+        ? `Building a layered look (${totalSteps} pieces)…`
+        : (generationMode === 'live' ? 'Starting virtual try-on…' : 'Starting local development demonstration…'),
+    );
+
     try {
-      const garmentPayload = await buildGarmentPayload();
-      const prepared = await accountApi.prepareTryOnJob({
-        personMediaId,
-        category,
-        providerId,
-        ...garmentPayload,
-      });
-      if (!prepared.ok) {
-        setBusy(false);
-        setStep('confirm');
-        showStatus(`Cannot generate yet: ${prepared.blockers.join(', ') || prepared.note}`);
-        return;
+      let currentPersonId = personMediaId;
+      const pipeline: { label: string; category: TryOnCategory; payload: Awaited<ReturnType<typeof buildGarmentPayload>> }[] = [
+        {
+          label: preloadedGarment?.productName || selectedGarment?.name || 'Base garment',
+          category,
+          payload: await buildGarmentPayload(),
+        },
+        ...await Promise.all(orderedLayers.map(async (layer) => ({
+          label: layer.name,
+          category: layer.category,
+          payload: await buildPayloadFromPick(layer),
+        }))),
+      ];
+
+      let finalJob: TryOnJobRecord | null = null;
+      for (let index = 0; index < pipeline.length; index += 1) {
+        const piece = pipeline[index]!;
+        setLayerProgress(`Layer ${index + 1} of ${pipeline.length}: ${piece.label}`);
+        showStatus(`Applying ${piece.label} (${index + 1}/${pipeline.length})…`);
+
+        const prepared = await accountApi.prepareTryOnJob({
+          personMediaId: currentPersonId,
+          category: piece.category,
+          providerId,
+          ...piece.payload,
+        });
+        if (!prepared.ok) {
+          setBusy(false);
+          setStep('confirm');
+          setLayerProgress(null);
+          showStatus(`Cannot generate yet: ${prepared.blockers.join(', ') || prepared.note}`);
+          return;
+        }
+
+        const created = await accountApi.createTryOnJob({
+          personMediaId: currentPersonId,
+          category: piece.category,
+          providerId,
+          idempotencyKey: `ui-layer-${index}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+          ...piece.payload,
+        });
+        setJob(created);
+        const done = created.status === 'succeeded' || created.status === 'failed' || created.status === 'cancelled'
+          ? created
+          : await waitForJobCompletion(created.id);
+        setJob(done);
+        if (done.status !== 'succeeded' || !done.resultMediaId) {
+          throw new Error(done.errorMessage || `Layer "${piece.label}" did not produce a result.`);
+        }
+        currentPersonId = done.resultMediaId;
+        finalJob = done;
       }
 
-      const created = await accountApi.createTryOnJob({
-        personMediaId,
-        category,
-        providerId,
-        idempotencyKey: `ui-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-        ...garmentPayload,
-      });
-      setJob(created);
-      if (created.status === 'succeeded') {
-        setBusy(false);
-        setStep('result');
-        void refreshFittings();
-        showStatus(created.demonstration
-          ? 'Local development demonstration complete — not a real FASHN fitting.'
-          : 'Virtual try-on complete. This is an AI visualisation, not a precise physical fit guarantee.');
-        return;
-      }
-      watchJob(created.id);
+      setBusy(false);
+      setLayerProgress(null);
+      setStep('result');
+      void refreshFittings();
+      showStatus(
+        finalJob?.demonstration
+          ? (orderedLayers.length > 0
+            ? 'Layered local demonstration complete — not a real FASHN fitting.'
+            : 'Local development demonstration complete — not a real FASHN fitting.')
+          : (orderedLayers.length > 0
+            ? 'Layered virtual try-on complete. Shoes, jacket, and accessories were applied one after another.'
+            : 'Virtual try-on complete. This is an AI visualisation, not a precise physical fit guarantee.'),
+      );
     } catch (error) {
       setBusy(false);
+      setLayerProgress(null);
       setStep('confirm');
-      showStatus(tryOnFailureMessage(error, 'The try-on could not be started.'));
+      showStatus(tryOnFailureMessage(error, 'The layered try-on could not be completed.'));
     }
   };
 
@@ -474,11 +618,15 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const hasCompletedResult = Boolean(job?.status === 'succeeded' && job.resultMediaId);
   const resultUrl = hasCompletedResult && job?.resultMediaId ? mediaDisplayUrl(job.resultMediaId) : undefined;
   const blockers = generationBlockers(availability, usesAccount);
-  const generateLabel = generationMode === 'live'
-    ? 'Generate Virtual Try-On'
-    : generationMode === 'local_mock'
-      ? 'Run Local Development Demo'
-      : 'Virtual Try-On Unavailable';
+  const generateLabel = generationMode === 'unavailable'
+    ? 'Virtual Try-On Unavailable'
+    : orderedLayers.length > 0
+      ? (generationMode === 'live'
+        ? `Generate layered look (${1 + orderedLayers.length})`
+        : `Demo layered look (${1 + orderedLayers.length})`)
+      : generationMode === 'live'
+        ? 'Generate Virtual Try-On'
+        : 'Run Local Development Demo';
 
   const goToStep = (next: Step) => {
     if (next === 'result' && !hasCompletedResult && job?.status !== 'failed') {
@@ -515,7 +663,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               Virtual Fitting Room
             </h1>
             <p className="text-xs sm:text-sm text-[#5C585E] mt-1">
-              Select clothing, confirm your photograph, and generate a private virtual try-on when authorised.
+              Choose a base piece, optionally add a jacket, shoes, and accessories, then generate a private layered try-on when authorised.
             </p>
           </div>
         </div>
@@ -688,6 +836,143 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                 <img src={garmentPreview} alt="Selected garment" className="w-full h-full object-cover" />
               </div>
             )}
+
+            <div className="rounded-2xl border border-[#242326]/10 bg-[#FAF7F2] p-4 space-y-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#866a40]">Build the look</p>
+                <h3 className="font-serif text-base font-semibold text-[#242326] mt-0.5">Add jacket, shoes & accessories</h3>
+                <p className="text-[11px] text-[#5C585E] mt-1 leading-relaxed">
+                  Each extra piece is applied in order on top of the previous result, so the final image includes everything you selected.
+                </p>
+              </div>
+              <div className="space-y-2">
+                {LAYER_META.map((meta) => {
+                  const pick = layers[meta.kind];
+                  return (
+                    <div key={meta.kind} className="rounded-xl bg-white border border-[#242326]/8 p-3 flex items-center gap-3">
+                      <div className="w-12 h-14 rounded-lg overflow-hidden bg-[#F6F2EC] border border-[#242326]/8 shrink-0">
+                        {pick ? (
+                          <img src={pick.imageUrl} alt={pick.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[#B49361]">
+                            <Shirt className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-[#242326]">{meta.title}</p>
+                        <p className="text-[11px] text-[#5C585E] truncate">{pick ? pick.name : meta.hint}</p>
+                      </div>
+                      {pick ? (
+                        <button
+                          type="button"
+                          onClick={() => setLayers((current) => {
+                            const next = { ...current };
+                            delete next[meta.kind];
+                            return next;
+                          })}
+                          className="text-[11px] font-semibold text-[#9C6A61] hover:text-[#794E46] cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setActiveLayerPicker(meta.kind)}
+                          className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-[#242326] text-white cursor-pointer"
+                        >
+                          Add
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {activeLayerPicker && (() => {
+                const meta = LAYER_META.find((item) => item.kind === activeLayerPicker)!;
+                const shopOptions = shopProductsForLayer(meta);
+                const wardrobeOptions = accountGarments.filter((item) => {
+                  const mapped = categoryFromText(item.category);
+                  return meta.categories.includes(mapped) || meta.categories.includes(categoryFromText(item.name));
+                });
+                return (
+                  <div className="rounded-xl border border-[#9C6A61]/25 bg-white p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-[#242326]">Choose {meta.title.toLowerCase()}</p>
+                      <button type="button" onClick={() => setActiveLayerPicker(null)} className="text-[11px] text-[#5C585E] cursor-pointer">Close</button>
+                    </div>
+                    {wardrobeOptions.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] uppercase tracking-wider font-semibold text-[#5C585E]">From wardrobe</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {wardrobeOptions.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                setLayers((current) => ({
+                                  ...current,
+                                  [meta.kind]: {
+                                    name: item.name,
+                                    category: categoryFromText(item.category) || meta.categories[0]!,
+                                    imageUrl: mediaDisplayUrl(item.mediaId),
+                                    mediaId: item.mediaId,
+                                    wardrobeItemId: item.wardrobeItemId ?? undefined,
+                                    source: 'wardrobe',
+                                  },
+                                }));
+                                setActiveLayerPicker(null);
+                              }}
+                              className="text-left rounded-lg border border-[#242326]/10 overflow-hidden hover:border-[#9C6A61]/40 cursor-pointer"
+                            >
+                              <div className="aspect-[3/4] bg-[#FAF7F2]">
+                                <img src={mediaDisplayUrl(item.mediaId)} alt={item.name} className="w-full h-full object-cover" />
+                              </div>
+                              <p className="p-1.5 text-[10px] font-medium text-[#242326] line-clamp-2">{item.name}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-[#5C585E]">From shop catalogue</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {shopOptions.map((product) => (
+                          <button
+                            key={product.id}
+                            type="button"
+                            onClick={() => {
+                              setLayers((current) => ({
+                                ...current,
+                                [meta.kind]: {
+                                  name: product.name,
+                                  category: categoryFromText(product.category),
+                                  imageUrl: product.imageUrl,
+                                  productId: product.id,
+                                  retailer: product.retailer,
+                                  priceZar: product.demoPriceZar,
+                                  source: 'shop',
+                                },
+                              }));
+                              setActiveLayerPicker(null);
+                            }}
+                            className="text-left rounded-lg border border-[#242326]/10 overflow-hidden hover:border-[#9C6A61]/40 cursor-pointer"
+                          >
+                            <div className="aspect-[3/4] bg-[#FAF7F2]">
+                              <ImageWithFallback src={product.imageUrl} alt={product.name} className="w-full h-full" imageClassName="object-cover" />
+                            </div>
+                            <p className="p-1.5 text-[10px] font-medium text-[#242326] line-clamp-2">{product.name}</p>
+                            <p className="px-1.5 pb-1.5 text-[10px] text-[#5C585E]">R{product.demoPriceZar.toLocaleString('en-ZA')}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
             <Button type="button" variant="primary" size="md" disabled={!garmentReady} onClick={() => setStep('photo')}>
               Continue to photograph
             </Button>
@@ -762,7 +1047,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                 These are your inputs only — not a finished try-on result.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3" data-testid="tryon-confirm-inputs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" data-testid="tryon-confirm-inputs">
               <div className="rounded-xl border border-dashed border-[#242326]/20 overflow-hidden bg-[#FAF7F2]">
                 <div className="aspect-square max-h-40 bg-white">
                   {activePhoto && (
@@ -777,9 +1062,22 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                     <img src={garmentPreview} alt="Selected garment" className="w-full h-full object-cover" data-testid="tryon-confirm-garment" />
                   )}
                 </div>
-                <p className="text-[11px] p-2 text-[#5C585E]">Selected garment · {category}</p>
+                <p className="text-[11px] p-2 text-[#5C585E]">Base · {category}</p>
               </div>
+              {orderedLayers.map((layer) => (
+                <div key={`${layer.category}-${layer.name}`} className="rounded-xl border border-dashed border-[#242326]/20 overflow-hidden bg-[#FAF7F2]">
+                  <div className="aspect-square max-h-40 bg-white">
+                    <img src={layer.imageUrl} alt={layer.name} className="w-full h-full object-cover" />
+                  </div>
+                  <p className="text-[11px] p-2 text-[#5C585E] line-clamp-2">{layer.category} · {layer.name}</p>
+                </div>
+              ))}
             </div>
+            {orderedLayers.length > 0 && (
+              <p className="text-[11px] text-[#5C585E] leading-relaxed">
+                Generation applies {1 + orderedLayers.length} pieces in sequence. Live shoes and accessories use Try-On Max when available.
+              </p>
+            )}
 
             {blockers.length > 0 && (
               <div
@@ -839,15 +1137,18 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B49361]">Generating</p>
               <h2 className="font-serif text-lg font-semibold text-[#242326] mt-1">Virtual try-on in progress</h2>
               <p className="text-xs text-[#5C585E] mt-1">
-                {job?.status === 'queued' || job?.status === 'running'
-                  ? `Provider status: ${job.status}. Please wait — this is not a finished result yet.`
-                  : 'Submitting your request…'}
+                {layerProgress
+                  || (job?.status === 'queued' || job?.status === 'running'
+                    ? `Provider status: ${job.status}. Please wait — this is not a finished result yet.`
+                    : 'Submitting your request…')}
               </p>
             </div>
             <div className="p-6 rounded-2xl border border-[#242326]/10 bg-[#FAF7F2] flex flex-col items-center gap-3 text-center">
               <RefreshCw className="w-8 h-8 text-[#9C6A61] animate-spin" aria-hidden />
               <p className="text-sm text-[#5C585E]">
-                Do not treat the garment catalogue image as your result. The finished output will appear on the Result step.
+                {orderedLayers.length > 0
+                  ? 'Each jacket, shoe, or accessory is applied onto the previous generated image. Wait for the final layered result.'
+                  : 'Do not treat the garment catalogue image as your result. The finished output will appear on the Result step.'}
               </p>
               {busy && job && (job.status === 'queued' || job.status === 'running') && (
                 <Button type="button" variant="secondary" size="md" onClick={() => void handleCancel()}>Cancel</Button>

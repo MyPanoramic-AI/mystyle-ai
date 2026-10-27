@@ -1,4 +1,4 @@
-export type GarmentCategory = 'tops' | 'bottoms' | 'one-pieces' | 'outerwear';
+export type GarmentCategory = 'tops' | 'bottoms' | 'one-pieces' | 'outerwear' | 'shoes' | 'bags' | 'accessories';
 export type Quality = 'draft' | 'standard' | 'high';
 export type JobStatus = 'draft' | 'running' | 'succeeded' | 'failed';
 export type ImageFormat = 'jpeg' | 'png' | 'webp';

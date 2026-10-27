@@ -84,6 +84,49 @@ test('mock try-on succeeds with demonstration result and does not consume credit
   }
 });
 
+test('layered try-on can apply shoes onto a previous try-on result', async () => {
+  const api = await startApi();
+  try {
+    const ada = await register(api.base, 'tryon-layers@example.com');
+    const personMediaId = await uploadPerson(api.base, ada.cookie, ada.body.csrfToken);
+
+    const base = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId,
+        garmentImageBase64: PNG,
+        category: 'tops',
+        providerId: 'mock',
+        idempotencyKey: 'mock-layer-base-001',
+      }),
+    });
+    assert.equal(base.status, 201);
+    const baseJob = await pollJob(api.base, ada.cookie, (await base.json() as { id: string }).id);
+    assert.equal(baseJob.status, 'succeeded');
+    assert.ok(baseJob.resultMediaId);
+
+    const shoes = await fetch(`${api.base}/api/tryon/jobs`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({
+        personMediaId: baseJob.resultMediaId,
+        garmentImageBase64: PNG,
+        category: 'shoes',
+        providerId: 'mock',
+        idempotencyKey: 'mock-layer-shoes-001',
+      }),
+    });
+    assert.equal(shoes.status, 201);
+    const shoeJob = await pollJob(api.base, ada.cookie, (await shoes.json() as { id: string }).id);
+    assert.equal(shoeJob.status, 'succeeded');
+    assert.equal(shoeJob.category, 'shoes');
+    assert.ok(shoeJob.resultMediaId);
+  } finally {
+    await api.close();
+  }
+});
+
 test('duplicate try-on idempotency returns the same job', async () => {
   const api = await startApi();
   try {

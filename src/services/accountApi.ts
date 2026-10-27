@@ -135,7 +135,7 @@ export interface AccountApi {
   deleteTryOnJob(id: string): Promise<{ deleted: true; id: string }>;
 }
 
-export type TryOnCategory = 'tops' | 'bottoms' | 'one-pieces' | 'outerwear';
+export type TryOnCategory = 'tops' | 'bottoms' | 'one-pieces' | 'outerwear' | 'shoes' | 'bags' | 'accessories';
 export type TryOnProviderId = 'mock' | 'fashn-tryon-v1.6' | 'fashn-tryon-max';
 
 export interface TryOnAvailabilityResponse {

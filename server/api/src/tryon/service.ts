@@ -18,10 +18,11 @@ import {
 } from './providers.js';
 import type { TryOnConfig } from './tryonConfig.js';
 
-const CATEGORIES = new Set<GarmentCategory>(['tops', 'bottoms', 'one-pieces', 'outerwear']);
+const CATEGORIES = new Set<GarmentCategory>(['tops', 'bottoms', 'one-pieces', 'outerwear', 'shoes', 'bags', 'accessories']);
 const QUALITIES = new Set<Quality>(['draft', 'standard', 'high']);
 const PROVIDERS = new Set<TryOnProviderId>(['mock', 'fashn-tryon-v1.6', 'fashn-tryon-max']);
-const PERSON_PURPOSES = new Set(['full_body_front', 'full_body_additional', 'profile_portrait', 'profile']);
+/** tryon_result allows sequential outfit layering (jacket/shoes/accessories on a prior fitting). */
+const PERSON_PURPOSES = new Set(['full_body_front', 'full_body_additional', 'profile_portrait', 'profile', 'tryon_result']);
 const GARMENT_PURPOSES = new Set(['garment_reference', 'wardrobe']);
 const ACTIVE = new Set(['queued', 'running']);
 
@@ -92,7 +93,11 @@ function text(value: unknown, field: string, min = 1, max = 120): string {
 
 function assertCategory(value: unknown): GarmentCategory {
   if (typeof value !== 'string' || !CATEGORIES.has(value as GarmentCategory)) {
-    throw new ApiError('invalid_category', 'Category must be tops, bottoms, one-pieces, or outerwear.', 400);
+    throw new ApiError(
+      'invalid_category',
+      'Category must be tops, bottoms, one-pieces, outerwear, shoes, bags, or accessories.',
+      400,
+    );
   }
   return value as GarmentCategory;
 }
