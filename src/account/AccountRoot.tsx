@@ -21,8 +21,10 @@ import { createAccountWardrobe, type AccountWardrobe } from '../services/wardrob
 import { createAccountFamily, type AccountFamily } from '../services/familyAccount';
 import { createAccountBeauty, type AccountBeauty } from '../services/beautyAccount';
 import { Button } from '../components/common/Button';
+import { MarketingHomePage } from '../components/marketing/MarketingHomePage';
 
 type Phase = 'loading' | 'unavailable' | 'signed-out' | 'import-review' | 'ready';
+type SignedOutView = 'landing' | 'auth';
 
 export interface ReadyAccount {
   mode: 'account' | 'demo';
@@ -83,6 +85,7 @@ export function AccountRoot() {
   const [securityNotice, setSecurityNotice] = useState<string | null>(null);
   const [persistence, setPersistence] = useState<'persistent' | 'ephemeral' | 'local' | null>(null);
   const [authBoot, setAuthBoot] = useState<{ panel: 'register' | 'login' | 'forgot' | 'reset' | 'verify'; token?: string; message?: string }>({ panel: 'login' });
+  const [signedOutView, setSignedOutView] = useState<SignedOutView>('landing');
   const generation = useRef(0);
 
   async function loadSignedIn(nextUserId: string, gen: number): Promise<void> {
@@ -139,6 +142,7 @@ export function AccountRoot() {
         } catch (error) {
           clearSecurityParams();
           setAuthBoot({ panel: 'verify', message: messageFrom(error) });
+          setSignedOutView('auth');
           setPhase('signed-out');
           return;
         }
@@ -149,6 +153,7 @@ export function AccountRoot() {
         setEmail(null);
         setEmailVerified(false);
         setProfile(emptyAccountProfile());
+        setSignedOutView('auth');
         setPhase('signed-out');
         return;
       }
@@ -162,6 +167,7 @@ export function AccountRoot() {
         setEmail(null);
         setEmailVerified(false);
         setProfile(emptyAccountProfile());
+        setSignedOutView('landing');
         setPhase('signed-out');
         return;
       }
@@ -329,12 +335,43 @@ export function AccountRoot() {
     );
   }
   if (phase === 'signed-out') {
+    const openDemo = () => {
+      void savedLooksService.useAccount(null);
+      void savedProductsService.useAccount(null);
+      setMode('demo');
+      setProfile(profileService.getProfile());
+      setPhase('ready');
+    };
+
+    if (signedOutView === 'landing') {
+      return (
+        <MarketingHomePage
+          onSignIn={() => {
+            setFormError(null);
+            setAuthBoot({ panel: 'login' });
+            setSignedOutView('auth');
+          }}
+          onCreateAccount={() => {
+            setFormError(null);
+            setAuthBoot({ panel: 'register' });
+            setSignedOutView('auth');
+          }}
+          onBrowseDemo={openDemo}
+        />
+      );
+    }
+
     return (
       <AuthScreen
         busy={busy}
         error={formError}
         initial={authBoot}
         notice={securityNotice}
+        onBackHome={() => {
+          setFormError(null);
+          setAuthBoot({ panel: 'login' });
+          setSignedOutView('landing');
+        }}
         onRegister={register}
         onLogin={login}
         onForgot={async (forgotEmail) => {
@@ -376,13 +413,7 @@ export function AccountRoot() {
             setBusy(false);
           }
         }}
-        onDemo={() => {
-          void savedLooksService.useAccount(null);
-          void savedProductsService.useAccount(null);
-          setMode('demo');
-          setProfile(profileService.getProfile());
-          setPhase('ready');
-        }}
+        onDemo={openDemo}
       />
     );
   }
@@ -468,6 +499,7 @@ function AuthScreen({
   error,
   notice,
   initial,
+  onBackHome,
   onRegister,
   onLogin,
   onForgot,
@@ -478,6 +510,7 @@ function AuthScreen({
   error: string | null;
   notice: string | null;
   initial: { panel: 'register' | 'login' | 'forgot' | 'reset' | 'verify'; token?: string; message?: string };
+  onBackHome: () => void;
   onRegister: (input: { email: string; password: string; confirmation: string }) => Promise<void>;
   onLogin: (input: { email: string; password: string }) => Promise<void>;
   onForgot: (email: string) => Promise<void>;
@@ -512,7 +545,14 @@ function AuthScreen({
   return (
     <main className="min-h-screen bg-[#F6F2EC] text-[#242326] px-4 py-10">
       <section className="max-w-md mx-auto rounded-3xl bg-white border border-[#242326]/10 shadow-sm p-8">
-        <p className="font-serif text-2xl">MyStyle <span className="text-[10px] uppercase tracking-widest text-[#866a40] font-sans">AI</span></p>
+        <div className="flex items-start justify-between gap-3">
+          <button type="button" onClick={onBackHome} className="font-serif text-2xl text-left cursor-pointer">
+            MyStyle <span className="text-[10px] uppercase tracking-widest text-[#866a40] font-sans">AI</span>
+          </button>
+          <button type="button" onClick={onBackHome} className="text-xs font-medium text-[#5C585E] hover:text-[#242326] underline cursor-pointer">
+            Home
+          </button>
+        </div>
         <h1 className="mt-6 font-serif text-3xl">{titles[panel]}</h1>
         <p className="mt-3 text-sm text-[#5C585E] leading-relaxed">{intros[panel]}</p>
         {notice || initial.message ? <p className="mt-3 text-sm text-[#866a40]" role="status">{notice ?? initial.message}</p> : null}
