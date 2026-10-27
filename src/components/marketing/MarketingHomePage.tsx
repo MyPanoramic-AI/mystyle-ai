@@ -114,41 +114,39 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
         </div>
       </header>
 
-      <section className="relative min-h-[88vh] sm:min-h-[92vh] overflow-hidden">
+      <section className="relative min-h-[78vh] sm:min-h-[86vh] overflow-hidden bg-[#E5CDBE]/35">
         <ImageWithFallback
           src={heroEditorialImg}
           alt="MyStyle AI fashion editorial"
           fallbackTitle="MyStyle AI"
           className="absolute inset-0 w-full h-full"
-          imageClassName="object-cover object-[center_18%] scale-105 motion-safe:animate-[marketing-pan_28s_ease-in-out_infinite_alternate]"
+          imageClassName="object-cover object-[70%_center] sm:object-[center_20%] motion-safe:animate-[marketing-pan_32s_ease-in-out_infinite_alternate]"
           loading="eager"
           fetchPriority="high"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#242326]/78 via-[#242326]/45 to-[#242326]/20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#242326]/55 via-transparent to-[#242326]/25" />
+        {/* Soft ivory wash — keeps the cream editorial visible instead of a charcoal scrim */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#F6F2EC] via-[#F6F2EC]/88 to-[#F6F2EC]/15 sm:via-[#F6F2EC]/72 sm:to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#F6F2EC] via-transparent to-[#F6F2EC]/40 sm:to-[#F6F2EC]/20" />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[88vh] sm:min-h-[92vh] flex flex-col justify-end pb-14 sm:pb-20 pt-24">
-          <p className="font-serif text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight drop-shadow-sm motion-safe:animate-[marketing-rise_0.9s_ease-out]">
-            MyStyle <span className="text-sm sm:text-base uppercase tracking-[0.28em] text-[#E5CDBE] font-sans align-super">AI</span>
-          </p>
-          <h1 className="mt-4 max-w-2xl font-serif text-3xl sm:text-4xl lg:text-5xl text-white leading-tight motion-safe:animate-[marketing-rise_1.05s_ease-out]">
-            Your private fashion, beauty, and shopping companion.
-          </h1>
-          <p className="mt-4 max-w-xl text-sm sm:text-base text-white/85 leading-relaxed motion-safe:animate-[marketing-rise_1.2s_ease-out]">
-            Build a style profile, digitise your wardrobe, ask an AI stylist for looks, preview try-ons, shop South African retailers, and style your family — all in one calm, personal space.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-3 motion-safe:animate-[marketing-rise_1.35s_ease-out]">
-            <Button variant="primary" size="lg" onClick={onCreateAccount} icon={<ArrowRight className="w-4 h-4" />}>
-              Create free account
-            </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={onSignIn}
-              className="bg-white/95 border-transparent hover:bg-white"
-            >
-              Sign in
-            </Button>
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[78vh] sm:min-h-[86vh] flex flex-col justify-end sm:justify-center pb-14 sm:pb-20 pt-24">
+          <div className="max-w-xl motion-safe:animate-[marketing-rise_0.9s_ease-out]">
+            <p className="font-serif text-4xl sm:text-5xl lg:text-6xl text-[#242326] tracking-tight">
+              MyStyle <span className="text-sm sm:text-base uppercase tracking-[0.28em] text-[#B49361] font-sans align-super">AI</span>
+            </p>
+            <h1 className="mt-4 font-serif text-3xl sm:text-4xl lg:text-5xl text-[#242326] leading-tight">
+              Your private fashion, beauty, and shopping companion.
+            </h1>
+            <p className="mt-4 text-sm sm:text-base text-[#5C585E] leading-relaxed">
+              Build a style profile, digitise your wardrobe, ask an AI stylist for looks, preview try-ons, shop South African retailers, and style your family — all in one calm, personal space.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <Button variant="primary" size="lg" onClick={onCreateAccount} icon={<ArrowRight className="w-4 h-4" />}>
+                Create free account
+              </Button>
+              <Button variant="secondary" size="lg" onClick={onSignIn}>
+                Sign in
+              </Button>
+            </div>
           </div>
         </div>
       </section>
@@ -297,8 +295,8 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
           to { opacity: 1; transform: translateY(0); }
         }
         @keyframes marketing-pan {
-          from { transform: scale(1.05) translate3d(0, 0, 0); }
-          to { transform: scale(1.12) translate3d(-1.5%, -1%, 0); }
+          from { transform: scale(1.02) translate3d(0, 0, 0); }
+          to { transform: scale(1.06) translate3d(-1%, 0, 0); }
         }
       `}</style>
     </div>
