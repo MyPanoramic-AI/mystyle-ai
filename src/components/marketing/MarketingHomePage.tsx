@@ -19,13 +19,18 @@ import heroEditorialImg from '../../assets/images/hero_editorial_fashion_1791978
 import dateNightImg from '../../assets/images/fashion_date_night_1791978397788.jpg';
 import weddingGuestImg from '../../assets/images/fashion_wedding_guest_1791978399342.jpg';
 import workOfficeImg from '../../assets/images/fashion_work_office_1791978399975.jpg';
-import weekendCasualImg from '../../assets/images/fashion_weekend_casual_1791978401075.jpg';
 import specialGalaImg from '../../assets/images/fashion_special_gala_1791978474099.jpg';
 import holidayResortImg from '../../assets/images/fashion_holiday_resort_1791978473683.jpg';
 import styleSportyImg from '../../assets/images/style_sporty_active_1791980329185.jpg';
 import styleClassicImg from '../../assets/images/style_classic_tailored_1791980329558.jpg';
 import styleMinimalImg from '../../assets/images/style_modern_minimal_1791980327769.jpg';
 import styleTrendyImg from '../../assets/images/style_trendy_bold_1791980328578.jpg';
+
+/** Clean retail imagery — several local full-body assets have AI limb artefacts. */
+const shoppingLookImg =
+  'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80';
+const weekendEaseImg =
+  'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80';
 
 interface MarketingHomePageProps {
   onSignIn: () => void;
@@ -36,7 +41,7 @@ interface MarketingHomePageProps {
 const GALLERY = [
   { src: dateNightImg, label: 'Date night' },
   { src: workOfficeImg, label: 'Work & executive' },
-  { src: weekendCasualImg, label: 'Weekend ease' },
+  { src: weekendEaseImg, label: 'Weekend ease' },
   { src: weddingGuestImg, label: 'Celebrations' },
   { src: specialGalaImg, label: 'Evening polish' },
   { src: holidayResortImg, label: 'Holiday resort' },
