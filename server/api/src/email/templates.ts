@@ -44,9 +44,33 @@ export function buildTransactionalEmail(input: {
   appPublicUrl: string;
   actionPath?: string;
   expiresMinutes?: number;
+  fromDisplayName?: string | null;
+  relationshipLabel?: string | null;
 }): OutboundEmail {
   const actionUrl = input.actionPath ? `${input.appPublicUrl.replace(/\/$/, '')}${input.actionPath.startsWith('/') ? '' : '/'}${input.actionPath}` : null;
   const expiry = input.expiresMinutes ? `This link expires in about ${input.expiresMinutes} minutes.` : 'If you did not expect this message, you can ignore it.';
+
+  if (input.kind === 'family_link_invite') {
+    const who = input.fromDisplayName?.trim() || 'A MyStyle AI member';
+    const relation = input.relationshipLabel?.trim()
+      ? ` They suggested the relationship “${input.relationshipLabel.trim()}”.`
+      : '';
+    const built = shell(
+      'Family link request',
+      `${who} invited you to link family style profiles on MyStyle AI.${relation} Sign in with this email (or create an account) to accept or decline the request.`,
+      'Open MyStyle AI',
+      actionUrl,
+      'This message does not confirm whether you already have an account. If you did not expect a family link request, you can ignore it.',
+    );
+    return {
+      kind: input.kind,
+      to: input.to,
+      subject: 'Family link request on MyStyle AI',
+      text: built.text,
+      html: built.html,
+      actionPath: input.actionPath,
+    };
+  }
 
   if (input.kind === 'email_verification') {
     const built = shell(

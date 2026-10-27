@@ -3,7 +3,11 @@ import test from 'node:test';
 import { authHeaders, register, startApi } from './harness.js';
 
 test('family link invites can be sent, accepted, and declined', async () => {
-  const api = await startApi();
+  const api = await startApi({
+    emailCaptureEnabled: true,
+    appPublicUrl: 'https://mystyle.example',
+    smtp: null,
+  });
   try {
     const nikkie = await register(api.base, 'nikkie-link@example.com');
     const partner = await register(api.base, 'partner-link@example.com');
@@ -33,10 +37,18 @@ test('family link invites can be sent, accepted, and declined', async () => {
       headers: nikkieHeaders,
       body: JSON.stringify({ email: 'partner-link@example.com', relationshipLabel: 'Partner / Spouse' }),
     });
-    const inviteBody = await invited.json() as { id: string; status: string; toUserId: string | null };
+    const inviteBody = await invited.json() as { id: string; status: string; toUserId: string | null; emailed?: boolean };
     assert.equal(invited.status, 201);
     assert.equal(inviteBody.status, 'pending');
+    assert.equal(inviteBody.emailed, true);
     assert.ok(inviteBody.toUserId);
+
+    const captured = api.db.prepare(
+      `SELECT kind, recipient, subject FROM transactional_email_capture
+       WHERE kind = 'family_link_invite' AND lower(recipient) = ? LIMIT 1`,
+    ).get('partner-link@example.com') as { kind: string; recipient: string; subject: string } | undefined;
+    assert.ok(captured);
+    assert.match(captured.subject, /family link/i);
 
     const duplicate = await fetch(`${api.base}/api/family/link-invites`, {
       method: 'POST',

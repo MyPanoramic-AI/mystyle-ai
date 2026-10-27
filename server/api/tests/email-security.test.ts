@@ -326,6 +326,30 @@ test('disabled mailer does not send and capture stays off in production profile 
   );
 });
 
+test('production config accepts Office 365 SMTP settings used by My Panoramic apps', () => {
+  const config = loadConfig({
+    APP_ENV: 'production',
+    API_HOST: '0.0.0.0',
+    API_PUBLIC_ORIGIN: 'https://mystyle.example',
+    API_ALLOWED_ORIGINS: 'https://mystyle.example',
+    APP_PUBLIC_URL: 'https://mystyle.example',
+    API_ADMIN_TOKEN: 'email-security-admin-token',
+    EMAIL_CAPTURE_ENABLED: 'false',
+    SMTP_HOST: 'smtp.office365.com',
+    SMTP_PORT: '587',
+    SMTP_SECURE: 'false',
+    SMTP_USER: 'No-Reply@mypanoramic.com',
+    SMTP_PASS: 'test-smtp-password',
+    SMTP_FROM: 'MyStyle AI <No-Reply@mypanoramic.com>',
+  });
+  assert.ok(config.smtp);
+  assert.equal(config.smtp?.host, 'smtp.office365.com');
+  assert.equal(config.smtp?.port, 587);
+  assert.equal(config.smtp?.secure, false);
+  assert.equal(config.smtp?.user, 'No-Reply@mypanoramic.com');
+  assert.match(config.smtp?.from ?? '', /No-Reply@mypanoramic\.com/);
+});
+
 test('resend with disabled mailer returns a clear delivery error', async () => {
   const TOKEN = 'admin-token-for-email-verify-tests';
   const api = await startApi({

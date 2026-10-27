@@ -299,6 +299,7 @@ export interface FamilyLinkInviteCreateResult {
   toUserId: string | null;
   relationshipLabel: string | null;
   createdAt: string;
+  emailed?: boolean;
   note: string;
 }
 

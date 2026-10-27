@@ -2,7 +2,8 @@ export type TransactionalEmailKind =
   | 'email_verification'
   | 'password_reset'
   | 'password_changed'
-  | 'security_alert';
+  | 'security_alert'
+  | 'family_link_invite';
 
 export interface OutboundEmail {
   kind: TransactionalEmailKind;

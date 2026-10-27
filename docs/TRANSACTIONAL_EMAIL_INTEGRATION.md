@@ -11,9 +11,10 @@ Date: 21 October 2026.
 | Provider | When |
 | --- | --- |
 | `local_capture` | Development/test when `EMAIL_CAPTURE_ENABLED` is not `false` |
-| `disabled` | Hosted profiles, or capture off |
+| `smtp` | When `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` (or `SMTP_PASSWORD`) are set and capture is off |
+| `disabled` | Hosted profiles with no SMTP, or capture off |
 
-A live transactional provider adapter is **not** implemented. Purchasing or registering one requires explicit approval.
+Production uses Office 365 SMTP (`smtp.office365.com:587`, STARTTLS) with `No-Reply@mypanoramic.com`, matching other My Panoramic apps. Family link invites are sent through the same mailer.
 
 ## Local mailbox
 

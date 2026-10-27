@@ -26,5 +26,19 @@ services:
         value: /var/data
       - key: API_ALLOWED_ORIGINS
         value: https://mystyle-ai.onrender.com
+      - key: APP_PUBLIC_URL
+        value: https://mystyle-ai.onrender.com
+      - key: SMTP_HOST
+        value: smtp.office365.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        value: No-Reply@mypanoramic.com
+      - key: SMTP_FROM
+        value: MyStyle AI <No-Reply@mypanoramic.com>
+      - key: SMTP_PASS
+        sync: false
       - key: API_ADMIN_TOKEN
         generateValue: true

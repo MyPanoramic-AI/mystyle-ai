@@ -1,6 +1,8 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { ApiError } from '../errors.js';
 import type { Sql } from '../db.js';
+import { buildTransactionalEmail } from '../email/templates.js';
+import type { Mailer } from '../email/types.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STATUSES = new Set(['pending', 'accepted', 'declined', 'cancelled']);
@@ -86,12 +88,14 @@ function createLinkedMember(db: Sql, ownerUserId: string, linkedUserId: string, 
   return id;
 }
 
-export function createFamilyLinkInvite(
+export async function createFamilyLinkInvite(
   db: Sql,
   fromUserId: string,
   body: Record<string, unknown>,
   now: number,
-): Record<string, unknown> {
+  mailer: Mailer,
+  appPublicUrl: string,
+): Promise<Record<string, unknown>> {
   const toEmail = normalEmail(body.email ?? body.toEmail);
   const relationshipLabel = optionalLabel(body.relationshipLabel);
   const fromEmail = userEmail(db, fromUserId);
@@ -135,6 +139,21 @@ export function createFamilyLinkInvite(
     ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, NULL)`,
   ).run(id, fromUserId, toEmail, toUserId, relationshipLabel, hashToken(token), stamp, stamp);
 
+  const fromDisplayName = userDisplayName(db, fromUserId);
+  let emailed = false;
+  if (mailer.providerName !== 'disabled' && appPublicUrl) {
+    const message = buildTransactionalEmail({
+      kind: 'family_link_invite',
+      to: toEmail,
+      appPublicUrl,
+      actionPath: '/',
+      fromDisplayName,
+      relationshipLabel,
+    });
+    await mailer.send(message);
+    emailed = true;
+  }
+
   return {
     id,
     status: 'pending',
@@ -142,9 +161,12 @@ export function createFamilyLinkInvite(
     toUserId,
     relationshipLabel,
     createdAt: stamp,
-    note: toUserId
-      ? 'Request sent. They will see it when signed in to MyStyle AI.'
-      : 'If that email has a MyStyle AI account, they will see the request when signed in. We do not confirm whether the address is registered.',
+    emailed,
+    note: emailed
+      ? 'Request sent by email. They can also accept or decline when signed in to MyStyle AI.'
+      : toUserId
+        ? 'Request sent. They will see it when signed in to MyStyle AI.'
+        : 'If that email has a MyStyle AI account, they will see the request when signed in. We do not confirm whether the address is registered.',
   };
 }
 

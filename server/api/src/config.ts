@@ -35,6 +35,15 @@ export interface ApiConfig {
   resetTokenMs: number;
   requireVerifiedForSensitive: boolean;
   emailCaptureEnabled: boolean;
+  smtp: {
+    enabled: boolean;
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    pass: string;
+    from: string;
+  } | null;
 }
 
 const LOCAL_VITE_ORIGINS = [3000, 3001, 4173].flatMap((port) => [
@@ -118,6 +127,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     throw new Error('EMAIL_CAPTURE_ENABLED cannot be true in staging or production.');
   }
 
+  const smtpHost = (env.SMTP_HOST ?? '').trim();
+  const smtpUser = (env.SMTP_USER ?? '').trim();
+  const smtpPass = (env.SMTP_PASS ?? env.SMTP_PASSWORD ?? '').trim();
+  const smtpFrom = (env.SMTP_FROM ?? smtpUser).trim();
+  const smtpPort = env.SMTP_PORT ? intEnv(env, 'SMTP_PORT', 587) : 587;
+  const smtpSecure = env.SMTP_SECURE === 'true';
+  const smtpPlaceholder = !smtpPass || /^your_/i.test(smtpPass) || /_here$/i.test(smtpPass);
+  const smtpConfigured = Boolean(smtpHost && smtpUser && smtpFrom && !smtpPlaceholder);
+  if ((env.SMTP_HOST || env.SMTP_USER || env.SMTP_PASS || env.SMTP_PASSWORD) && !smtpConfigured) {
+    throw new Error('SMTP settings are incomplete. Set SMTP_HOST, SMTP_USER, and SMTP_PASS (or SMTP_PASSWORD).');
+  }
+  if (smtpConfigured && emailCaptureEnabled) {
+    throw new Error('Disable EMAIL_CAPTURE_ENABLED when SMTP delivery is configured.');
+  }
+
   return {
     appEnv,
     host: host as ApiConfig['host'],
@@ -147,6 +171,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     resetTokenMs: intEnv(env, 'API_RESET_TOKEN_MINUTES', 30) * 60 * 1000,
     requireVerifiedForSensitive: env.API_REQUIRE_EMAIL_VERIFIED === 'true',
     emailCaptureEnabled,
+    smtp: smtpConfigured
+      ? {
+        enabled: true,
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        user: smtpUser,
+        pass: smtpPass,
+        from: smtpFrom.includes('<') ? smtpFrom : `MyStyle AI <${smtpFrom}>`,
+      }
+      : null,
   };
 }
 

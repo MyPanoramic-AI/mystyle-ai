@@ -18,6 +18,7 @@ import {
   requestPasswordReset,
 } from '../domain/emailSecurity.js';
 import { createCaptureMailer, createDisabledMailer, listCapturedEmails, readCapturedAction } from '../email/localCapture.js';
+import { createSmtpMailer } from '../email/smtpMailer.js';
 import type { Mailer } from '../email/types.js';
 import { getPreferences, getProfile, updatePreferences, updateProfile } from '../domain/profiles.js';
 import { assertPhotoSlot, deleteProfilePhotoSlot, readProfilePhotoSlots, uploadProfilePhotoSlot } from '../domain/profilePhotos.js';
@@ -103,7 +104,11 @@ export function createApp(deps: AppDeps): express.Express {
   app.disable('x-powered-by');
   if (deps.config.trustProxy) app.set('trust proxy', 1);
   const mailer = deps.mailer
-    ?? (deps.config.emailCaptureEnabled ? createCaptureMailer(deps.db, deps.now) : createDisabledMailer());
+    ?? (deps.config.emailCaptureEnabled
+      ? createCaptureMailer(deps.db, deps.now)
+      : deps.config.smtp
+        ? createSmtpMailer(deps.config.smtp)
+        : createDisabledMailer());
   const emailSecurity = {
     appPublicUrl: deps.config.appPublicUrl,
     verificationTokenMs: deps.config.verificationTokenMs,
@@ -426,8 +431,15 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/family/link-invites', route((req, res) => {
     res.json(listFamilyLinkInvites(deps.db, requireUser(req).userId, deps.now()));
   }));
-  app.post('/api/family/link-invites', route((req, res) => {
-    res.status(201).json(createFamilyLinkInvite(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
+  app.post('/api/family/link-invites', route(async (req, res) => {
+    res.status(201).json(await createFamilyLinkInvite(
+      deps.db,
+      requireUser(req).userId,
+      req.body ?? {},
+      deps.now(),
+      mailer,
+      deps.config.appPublicUrl,
+    ));
   }));
   app.post('/api/family/link-invites/:id/accept', route((req, res) => {
     res.json(respondFamilyLinkInvite(deps.db, requireUser(req).userId, String(req.params.id), 'accepted', deps.now()));
