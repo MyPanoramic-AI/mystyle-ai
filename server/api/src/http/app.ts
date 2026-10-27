@@ -23,6 +23,12 @@ import { getPreferences, getProfile, updatePreferences, updateProfile } from '..
 import { assertPhotoSlot, deleteProfilePhotoSlot, readProfilePhotoSlots, uploadProfilePhotoSlot } from '../domain/profilePhotos.js';
 import { assertSilhouetteId, estimateSilhouetteForUser, listSilhouetteOptions, saveSilhouette } from '../domain/silhouette.js';
 import { createFamilyEvent, createFamilyMember, deleteFamilyEvent, deleteFamilyMember, getFamilyEvent, getFamilyMember, listFamily, listFamilyEvents, updateFamilyEvent, updateFamilyMember } from '../domain/family.js';
+import {
+  cancelFamilyLinkInvite,
+  createFamilyLinkInvite,
+  listFamilyLinkInvites,
+  respondFamilyLinkInvite,
+} from '../domain/familyLinks.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
@@ -416,6 +422,21 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/family', route((req, res) => res.json({ members: listFamily(deps.db, requireUser(req).userId) })));
   app.post('/api/family', route((req, res) => {
     res.status(201).json(createFamilyMember(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
+  }));
+  app.get('/api/family/link-invites', route((req, res) => {
+    res.json(listFamilyLinkInvites(deps.db, requireUser(req).userId, deps.now()));
+  }));
+  app.post('/api/family/link-invites', route((req, res) => {
+    res.status(201).json(createFamilyLinkInvite(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
+  }));
+  app.post('/api/family/link-invites/:id/accept', route((req, res) => {
+    res.json(respondFamilyLinkInvite(deps.db, requireUser(req).userId, String(req.params.id), 'accepted', deps.now()));
+  }));
+  app.post('/api/family/link-invites/:id/decline', route((req, res) => {
+    res.json(respondFamilyLinkInvite(deps.db, requireUser(req).userId, String(req.params.id), 'declined', deps.now()));
+  }));
+  app.delete('/api/family/link-invites/:id', route((req, res) => {
+    res.json(cancelFamilyLinkInvite(deps.db, requireUser(req).userId, String(req.params.id), deps.now()));
   }));
   app.get('/api/family/:id', route((req, res) => res.json(getFamilyMember(deps.db, requireUser(req).userId, String(req.params.id)))));
   app.patch('/api/family/:id', route((req, res) => {

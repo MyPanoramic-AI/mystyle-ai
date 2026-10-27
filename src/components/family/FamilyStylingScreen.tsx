@@ -18,6 +18,7 @@ import { FamilyMemberCard } from './FamilyMemberCard';
 import { FamilyMemberModal } from './FamilyMemberModal';
 import { FamilyShoppingListView } from './FamilyShoppingListView';
 import { SavedFamilyPlansView } from './SavedFamilyPlansView';
+import { FamilyLinkInvitePanel } from './FamilyLinkInvitePanel';
 import { Button } from '../common/Button';
 import {
   ArrowLeft,
@@ -296,11 +297,26 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
             </Button>
           </div>
 
+          {accountFamily ? (
+            <FamilyLinkInvitePanel
+              enabled
+              onLinked={() => {
+                void accountFamily.loadMembers().then(setFamilyMembers).catch((error) => {
+                  setStatusMessage(familyStatus(error));
+                });
+              }}
+            />
+          ) : null}
+
           {loadingAccount ? <p className="text-sm text-[#5C585E]">Loading family profiles.</p> : null}
           {familyMembers.length === 0 && !loadingAccount ? (
             <div className="rounded-3xl border border-[#242326]/10 bg-white p-8 text-center">
               <h3 className="font-serif text-xl text-[#242326]">No family profiles added</h3>
-              <p className="mt-2 text-sm text-[#5C585E]">Add your first family profile.</p>
+              <p className="mt-2 text-sm text-[#5C585E]">
+                {accountFamily
+                  ? 'Link another adult by email, or add a dependent planning profile.'
+                  : 'Add your first family profile.'}
+              </p>
             </div>
           ) : null}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

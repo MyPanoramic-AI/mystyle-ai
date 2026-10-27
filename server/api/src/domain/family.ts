@@ -76,11 +76,14 @@ function kindOf(value: unknown, current?: string): 'adult' | 'dependent' {
 const MEMBER_SELECT = `id, display_name AS displayName, member_kind AS memberKind, relationship_label AS relationshipLabel,
   permission_level AS permissionLevel, access_status AS accessStatus, styles_json AS stylesJson, colours_json AS coloursJson,
   occasions_json AS occasionsJson, sizes_json AS sizesJson, categories_json AS categoriesJson, comfort_json AS comfortJson,
-  budget_cents AS budgetCents, created_at AS createdAt, updated_at AS updatedAt`;
+  budget_cents AS budgetCents, linked_user_id AS linkedUserId, created_at AS createdAt, updated_at AS updatedAt`;
 
 function presentMember(row: Record<string, unknown>): Record<string, unknown> {
+  const linkedUserId = typeof row.linkedUserId === 'string' ? row.linkedUserId : null;
   return {
     ...row,
+    linkedUserId,
+    linkSource: linkedUserId ? 'account_link' : 'manual',
     styles: parseList(row.stylesJson),
     colours: parseList(row.coloursJson),
     occasions: parseList(row.occasionsJson),

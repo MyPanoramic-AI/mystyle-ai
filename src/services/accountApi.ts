@@ -85,6 +85,14 @@ export interface AccountApi {
   createFamilyMember(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   updateFamilyMember(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
   deleteFamilyMember(id: string): Promise<void>;
+  familyLinkInvites(): Promise<{
+    outgoing: FamilyLinkInvite[];
+    incoming: FamilyLinkInvite[];
+  }>;
+  createFamilyLinkInvite(body: { email: string; relationshipLabel?: string }): Promise<FamilyLinkInviteCreateResult>;
+  acceptFamilyLinkInvite(id: string): Promise<{ id: string; status: string }>;
+  declineFamilyLinkInvite(id: string): Promise<{ id: string; status: string }>;
+  cancelFamilyLinkInvite(id: string): Promise<{ id: string; status: string }>;
   familyEvents(): Promise<{ events: Record<string, unknown>[] }>;
   createFamilyEvent(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   updateFamilyEvent(id: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
@@ -267,6 +275,31 @@ export interface ProfilePhotoUploadResult {
   contentType: string;
   byteSize: number;
   previousMediaId: string | null;
+}
+
+export interface FamilyLinkInvite {
+  id: string;
+  direction: 'incoming' | 'outgoing';
+  status: string;
+  relationshipLabel: string | null;
+  fromUserId: string;
+  fromEmail?: string | null;
+  fromDisplayName?: string | null;
+  toEmail: string;
+  toUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  respondedAt: string | null;
+}
+
+export interface FamilyLinkInviteCreateResult {
+  id: string;
+  status: string;
+  toEmail: string;
+  toUserId: string | null;
+  relationshipLabel: string | null;
+  createdAt: string;
+  note: string;
 }
 
 export interface SavedProductRecord {
@@ -514,6 +547,11 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     createFamilyMember: (body) => request('/api/family', { method: 'POST', body, csrf: true }),
     updateFamilyMember: (id, body) => request(`/api/family/${id}`, { method: 'PATCH', body, csrf: true }),
     deleteFamilyMember: (id) => request(`/api/family/${id}`, { method: 'DELETE', csrf: true }),
+    familyLinkInvites: () => request('/api/family/link-invites'),
+    createFamilyLinkInvite: (body) => request('/api/family/link-invites', { method: 'POST', body, csrf: true }),
+    acceptFamilyLinkInvite: (id) => request(`/api/family/link-invites/${id}/accept`, { method: 'POST', csrf: true }),
+    declineFamilyLinkInvite: (id) => request(`/api/family/link-invites/${id}/decline`, { method: 'POST', csrf: true }),
+    cancelFamilyLinkInvite: (id) => request(`/api/family/link-invites/${id}`, { method: 'DELETE', csrf: true }),
     familyEvents: () => request('/api/family-events'),
     createFamilyEvent: (body) => request('/api/family-events', { method: 'POST', body, csrf: true }),
     updateFamilyEvent: (id, body) => request(`/api/family-events/${id}`, { method: 'PATCH', body, csrf: true }),

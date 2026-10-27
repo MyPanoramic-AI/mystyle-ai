@@ -39,6 +39,7 @@ import { formatHeight } from '../../utils/measurements';
 import { estimateSilhouetteFromCm, SILHOUETTE_OPTIONS } from '../../utils/silhouette';
 import { estimateSilhouetteFromPhotoUrls } from '../../utils/silhouetteFromPhoto';
 import type { StylingSilhouetteId } from '../../types';
+import { FamilyLinkInvitePanel } from '../family/FamilyLinkInvitePanel';
 
 interface ProfileDashboardProps {
   profile: UserProfile;
@@ -828,7 +829,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
             {/* Member preview avatars */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               {usesAccount && familyMembers.length === 0 ? (
-                <p className="text-xs text-[#5C585E] sm:col-span-3">Family profiles load from this account inside Family Styling.</p>
+                <p className="text-xs text-[#5C585E] sm:col-span-3">Family profiles load from this account inside Family Styling. Link another adult by email below.</p>
               ) : null}
               {familyMembers.map((member) => (
                 <div
@@ -848,6 +849,10 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="mb-4">
+              <FamilyLinkInvitePanel enabled={usesAccount} />
             </div>
 
             {onOpenFamily && (
