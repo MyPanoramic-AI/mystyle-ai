@@ -1695,13 +1695,66 @@ export function filterAndSortProducts(
   return result;
 }
 
-function calculateProfileAffinity(product: Product, profile?: UserProfile): number {
-  if (!profile || !profile.styles || profile.styles.length === 0) {
-    // Default baseline affinity (sale items & classics slightly prioritized)
+function shoeShapeHints(product: Product): { looksHighHeel: boolean; looksBlockHeel: boolean; looksFlat: boolean } {
+  const name = product.name.toLowerCase();
+  return {
+    looksHighHeel: /stiletto|high heel|court|pump|strappy/.test(name) && !/block|kitten|flat|loafer|sneaker|trainer|boot/.test(name),
+    looksBlockHeel: /block heel|wedge|kitten/.test(name),
+    looksFlat: /flat|loafer|sneaker|trainer|mule|ballet|sandal/.test(name) && !/heel/.test(name),
+  };
+}
+
+function profileSizeMatches(product: Product, profile?: UserProfile): boolean | null {
+  if (!profile?.sizes) return null;
+  const sizes = profile.sizes;
+  if (product.category === 'Shoes') {
+    if (!sizes.shoeSize || sizes.shoeSize === 'Not sure') return null;
+    return product.sizes.includes(sizes.shoeSize);
+  }
+  if (product.category === 'Tops & Blouses' || product.category === 'Jackets & Blazers' || product.category === 'Activewear') {
+    if (!sizes.topsSize || sizes.topsSize === 'Not sure') return null;
+    return product.sizes.some((size) => size === sizes.topsSize || sizes.topsSize.includes(size) || size.includes(sizes.topsSize.split(' ')[0] || ''));
+  }
+  if (product.category === 'Jeans & Trousers') {
+    if (!sizes.bottomsSize || sizes.bottomsSize === 'Not sure') return null;
+    return product.sizes.some((size) => size === sizes.bottomsSize || sizes.bottomsSize.includes(size));
+  }
+  if (product.category === 'Dresses') {
+    if (!sizes.dressSize || sizes.dressSize === 'Not sure') return null;
+    return product.sizes.some((size) => size === sizes.dressSize || sizes.dressSize.includes(size) || size.includes(sizes.dressSize));
+  }
+  return null;
+}
+
+/** True when a product clearly conflicts with saved preferences (hide from fitting room). */
+export function productConflictsWithProfile(product: Product, profile?: UserProfile): boolean {
+  if (!profile) return false;
+
+  const avoid = profile.colours?.avoidColors || [];
+  if (avoid.some((colour) => product.colour.toLowerCase().includes(colour.toLowerCase()) || colour.toLowerCase().includes(product.colour.toLowerCase()))) {
+    return true;
+  }
+
+  if (product.category === 'Shoes') {
+    const shoePrefs = profile.shoePreferences;
+    const { looksHighHeel, looksBlockHeel } = shoeShapeHints(product);
+    if (shoePrefs?.heelComfort === 'cannot-wear-heels' || shoePrefs?.heelOccasion === 'never') {
+      if (looksHighHeel || looksBlockHeel) return true;
+    }
+    if (shoePrefs?.heelComfort === 'low-heels-only' && looksHighHeel) return true;
+    if (shoePrefs?.heelComfort === 'block-heels-ok' && looksHighHeel && !looksBlockHeel) return true;
+  }
+
+  return false;
+}
+
+export function calculateProfileAffinity(product: Product, profile?: UserProfile): number {
+  if (!profile) {
     return (product.isDemoSale ? 3 : 0) + (product.isNewArrival ? 2 : 0);
   }
 
   let score = 0;
+  const hasStyles = (profile.styles || []).length > 0;
 
   // Match preferred aesthetics
   const primaryAesthetics = profile.styles || [];
@@ -1714,34 +1767,31 @@ function calculateProfileAffinity(product: Product, profile?: UserProfile): numb
   if (primaryAesthetics.some((a: string) => a.toLowerCase().includes(product.styleCategory.toLowerCase()))) {
     score += 10;
   }
-
-  // Match sizes
-  const sizes = profile.sizes;
-  if (sizes) {
-    if (product.category === 'Shoes' && sizes.shoeSize && product.sizes.includes(sizes.shoeSize)) {
-      score += 8;
-    } else if (
-      (product.category === 'Tops & Blouses' || product.category === 'Jackets & Blazers') &&
-      sizes.topsSize &&
-      product.sizes.includes(sizes.topsSize)
-    ) {
-      score += 8;
-    } else if (
-      product.category === 'Jeans & Trousers' &&
-      sizes.bottomsSize &&
-      product.sizes.includes(sizes.bottomsSize)
-    ) {
-      score += 8;
-    } else if (product.category === 'Dresses' && sizes.dressSize && product.sizes.includes(sizes.dressSize)) {
-      score += 8;
-    }
+  if (!hasStyles) {
+    score += (product.isDemoSale ? 3 : 0) + (product.isNewArrival ? 2 : 0);
   }
 
-  // Match favourite colours
+  // Match sizes
+  const sizeMatch = profileSizeMatches(product, profile);
+  if (sizeMatch === true) score += 12;
+  if (sizeMatch === false) score -= 8;
+
+  // Match favourite colours / penalise avoid colours
   const favColours = profile.colours?.favoriteColors || [];
   if (favColours.some((c: string) => product.colour.toLowerCase().includes(c.toLowerCase()))) {
     score += 6;
   }
+  const avoidColours = profile.colours?.avoidColors || [];
+  if (avoidColours.some((c: string) => product.colour.toLowerCase().includes(c.toLowerCase()))) {
+    score -= 20;
+  }
+
+  // Fit preference soft signal via product copy
+  const fit = profile.colours?.fitPreference;
+  const copy = `${product.shortDescription} ${product.longDescription}`.toLowerCase();
+  if (fit === 'fitted' && /fitted|tailored|contour|slim/.test(copy)) score += 3;
+  if (fit === 'relaxed' && /relaxed|easy|oversized|soft/.test(copy)) score += 3;
+  if (fit === 'regular' && /regular|classic|clean/.test(copy)) score += 2;
 
   // Match preferred retailers
   const favRetailers = profile.shopping?.favoriteRetailers || [];
@@ -1749,13 +1799,40 @@ function calculateProfileAffinity(product: Product, profile?: UserProfile): numb
     score += 5;
   }
 
+  // Budget band
+  const budget = profile.shopping?.itemBudget;
+  if (budget && budget !== 'flexible') {
+    const price = product.demoPriceZar;
+    if (budget === 'under-300' && price <= 300) score += 4;
+    else if (budget === '300-600' && price >= 250 && price <= 650) score += 4;
+    else if (budget === '600-1000' && price >= 500 && price <= 1100) score += 4;
+    else if (budget === '1000-2000' && price >= 900 && price <= 2100) score += 4;
+    else if (budget === '2000-plus' && price >= 1800) score += 4;
+    else if (budget === 'under-300' && price > 600) score -= 4;
+  }
+
+  // Age-range soft signal via occasion / style
+  const age = (profile.personal?.ageRange || '').toLowerCase();
+  const occasions = product.occasionTags.map((tag) => tag.toLowerCase());
+  if (age.includes('18') || age.includes('24')) {
+    if (occasions.some((tag) => /casual|weekend|party|festival|day/.test(tag)) || /casual|modern/.test(product.styleCategory.toLowerCase())) score += 4;
+    if (/formal|boardroom|gala/.test(occasions.join(' '))) score -= 1;
+  } else if (age.includes('25') || age.includes('34') || age.includes('35') || age.includes('44')) {
+    if (occasions.some((tag) => /work|office|evening|weekend|smart/.test(tag))) score += 3;
+  } else if (age.includes('45') || age.includes('54') || age.includes('55')) {
+    if (occasions.some((tag) => /work|elegant|classic|formal|evening/.test(tag)) || /classic|elegant|professional/.test(product.styleCategory.toLowerCase())) score += 4;
+    if (/festival|street/.test(occasions.join(' '))) score -= 2;
+  }
+
+  // Experimentation
+  if (profile.colours?.experimentation === 'adventurous' && product.isNewArrival) score += 3;
+  if (profile.colours?.experimentation === 'classic' && /classic|elegant|tailored/.test(product.styleCategory.toLowerCase())) score += 3;
+
   // Match shoe comfort / preferred styles
   if (product.category === 'Shoes') {
     const shoePrefs = profile.shoePreferences;
+    const { looksHighHeel, looksBlockHeel, looksFlat } = shoeShapeHints(product);
     const name = product.name.toLowerCase();
-    const looksHighHeel = /stiletto|high heel|court|pump|strappy/.test(name) && !/block|kitten|flat|loafer|sneaker|trainer|boot/.test(name);
-    const looksBlockHeel = /block heel|wedge|kitten/.test(name);
-    const looksFlat = /flat|loafer|sneaker|trainer|mule|ballet|sandal/.test(name) && !/heel/.test(name);
     if (shoePrefs?.heelComfort === 'cannot-wear-heels' || shoePrefs?.heelOccasion === 'never') {
       if (looksHighHeel || looksBlockHeel) score -= 12;
       if (looksFlat) score += 8;
@@ -1765,6 +1842,12 @@ function calculateProfileAffinity(product: Product, profile?: UserProfile): numb
     } else if (shoePrefs?.heelComfort === 'block-heels-ok') {
       if (looksHighHeel && !looksBlockHeel) score -= 6;
       if (looksBlockHeel) score += 6;
+    } else if (shoePrefs?.heelComfort === 'high-heels-ok') {
+      if (looksHighHeel || looksBlockHeel) score += 4;
+    }
+    if (shoePrefs?.heelOccasion === 'special-occasions' && looksHighHeel) {
+      if (occasions.some((tag) => /evening|formal|wedding|gala|party/.test(tag))) score += 5;
+      else score -= 3;
     }
     for (const style of shoePrefs?.preferredStyles ?? []) {
       if (name.includes(style.replace('-', ' ')) || name.includes(style)) score += 4;
@@ -1775,4 +1858,18 @@ function calculateProfileAffinity(product: Product, profile?: UserProfile): numb
   if (product.isDemoSale) score += 2;
 
   return score;
+}
+
+/** Rank catalogue products for try-on / shop personalisation; hides hard conflicts. */
+export function rankProductsForProfile(
+  products: Product[],
+  profile?: UserProfile,
+  limit = 12,
+): Product[] {
+  const compatible = products.filter((product) => !productConflictsWithProfile(product, profile));
+  const sized = compatible.filter((product) => profileSizeMatches(product, profile) !== false);
+  const pool = sized.length > 0 ? sized : compatible;
+  return [...pool]
+    .sort((a, b) => calculateProfileAffinity(b, profile) - calculateProfileAffinity(a, profile))
+    .slice(0, limit);
 }

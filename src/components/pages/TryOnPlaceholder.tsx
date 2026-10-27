@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { NavigationTab, TemporaryPhotos } from '../../types';
+import { NavigationTab, TemporaryPhotos, UserProfile } from '../../types';
 import { FashionLook } from '../../types/discover';
 import { PreloadedGarment } from '../../types/shop';
 import { Button } from '../common/Button';
@@ -32,11 +32,12 @@ import {
   type TryOnProviderId,
 } from '../../services/accountApi';
 import { fileToBase64, mediaDisplayUrl } from '../../services/profilePhotosClient';
-import { SHOP_PRODUCTS } from '../../data/shopData';
+import { SHOP_PRODUCTS, rankProductsForProfile } from '../../data/shopData';
 import type { Product } from '../../types/shop';
 
 interface TryOnPlaceholderProps {
   onNavigate: (tab: NavigationTab) => void;
+  profile?: UserProfile | null;
   preloadedOutfit?: FashionLook | null;
   preloadedGarment?: PreloadedGarment | null;
   familyMemberName?: string | null;
@@ -123,8 +124,9 @@ function categoryFromText(raw?: string | null): TryOnCategory {
   return 'tops';
 }
 
-function shopProductsForLayer(meta: (typeof LAYER_META)[number]): Product[] {
-  return SHOP_PRODUCTS.filter((product) => meta.shopMatch.includes(product.category)).slice(0, 8);
+function shopProductsForLayer(meta: (typeof LAYER_META)[number], profile?: UserProfile | null): Product[] {
+  const pool = SHOP_PRODUCTS.filter((product) => meta.shopMatch.includes(product.category));
+  return rankProductsForProfile(pool, profile ?? undefined, 8);
 }
 
 function layerNeedsMax(layers: LayerPick[]): boolean {
@@ -149,9 +151,23 @@ function normalizeTryOnCategory(raw?: string | null): TryOnCategory | 'uncategor
   return categoryFromText(raw);
 }
 
-function shopProductsForTryOnCategory(tryOnCategory: TryOnCategory): Product[] {
+function shopProductsForTryOnCategory(tryOnCategory: TryOnCategory, profile?: UserProfile | null): Product[] {
   const match = SHOP_CATEGORY_BY_TRYON[tryOnCategory] ?? [];
-  return SHOP_PRODUCTS.filter((product) => match.includes(product.category)).slice(0, 12);
+  const pool = SHOP_PRODUCTS.filter((product) => match.includes(product.category));
+  return rankProductsForProfile(pool, profile ?? undefined, 12);
+}
+
+function profileMatchSummary(profile?: UserProfile | null): string {
+  if (!profile) return 'Add a style profile to personalise these pieces.';
+  const bits: string[] = [];
+  if (profile.personal.ageRange) bits.push(profile.personal.ageRange);
+  if (profile.styles.length > 0) bits.push(profile.styles.slice(0, 2).join(', '));
+  if (profile.sizes.topsSize) bits.push(`tops ${profile.sizes.topsSize}`);
+  if (profile.shoePreferences?.heelComfort && profile.shoePreferences.heelComfort !== 'no-preference') {
+    bits.push(profile.shoePreferences.heelComfort.replace(/-/g, ' '));
+  }
+  if (bits.length === 0) return 'Matched loosely — complete your profile for sharper picks.';
+  return `Matched to your profile · ${bits.join(' · ')}`;
 }
 
 type BrowseCategory = TryOnCategory | 'uncategorized';
@@ -277,6 +293,7 @@ function generationBlockers(availability: TryOnAvailabilityResponse | null, uses
 
 export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   onNavigate,
+  profile = null,
   preloadedOutfit,
   preloadedGarment,
   familyMemberName,
@@ -382,7 +399,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     ));
     const fromShop = browseCategory === 'uncategorized'
       ? []
-      : shopProductsForTryOnCategory(browseCategory).map((product) => ({
+      : shopProductsForTryOnCategory(browseCategory, profile).map((product) => ({
         id: `shop:${product.id}`,
         name: product.name,
         category: browseCategory,
@@ -392,8 +409,9 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         retailer: product.retailer,
         priceZar: product.demoPriceZar,
       } satisfies BrowsePhoto));
+    // Wardrobe / uploads first, then profile-ranked shop pieces.
     return [...fromAccount, ...fromShop];
-  }, [browseCategory, categorizedAccountGarments]);
+  }, [browseCategory, categorizedAccountGarments, profile]);
 
   const browseCategoryTabs = useMemo(() => {
     const counts = new Map<BrowseCategory, number>();
@@ -401,7 +419,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
     }
     for (const tab of CATEGORIES) {
-      counts.set(tab.id, (counts.get(tab.id) ?? 0) + shopProductsForTryOnCategory(tab.id).length);
+      counts.set(tab.id, (counts.get(tab.id) ?? 0) + shopProductsForTryOnCategory(tab.id, profile).length);
     }
     const tabs: { id: BrowseCategory; label: string; count: number }[] = CATEGORIES.map((item) => ({
       id: item.id,
@@ -413,7 +431,9 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       tabs.push({ id: 'uncategorized', label: 'Uploaded', count: uploadedCount });
     }
     return tabs;
-  }, [categorizedAccountGarments]);
+  }, [categorizedAccountGarments, profile]);
+
+  const matchNote = useMemo(() => profileMatchSummary(profile), [profile]);
 
   const refreshFittings = async () => {
     if (!usesAccount) return;
@@ -956,6 +976,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               <input ref={garmentInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleGarmentFile} />
             </div>
             <p className="text-[11px] text-[#5C585E]">{shopNote}</p>
+            <p className="text-[11px] text-[#866a40] font-medium leading-relaxed">{matchNote}</p>
 
             {garmentMode !== 'upload' && (
               <div className="space-y-3">
@@ -1108,7 +1129,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
 
               {activeLayerPicker && (() => {
                 const meta = LAYER_META.find((item) => item.kind === activeLayerPicker)!;
-                const shopOptions = shopProductsForLayer(meta);
+                const shopOptions = shopProductsForLayer(meta, profile);
                 const wardrobeOptions = accountGarments.filter((item) => {
                   const mapped = categoryFromText(item.category);
                   return meta.categories.includes(mapped) || meta.categories.includes(categoryFromText(item.name));

@@ -647,6 +647,7 @@ export default function App({ account }: { account: ReadyAccount }) {
       {!activeSubpage && currentTab === 'try-on' && (
         <TryOnPlaceholder
           onNavigate={handleNavigate}
+          profile={profile}
           preloadedOutfit={tryOnPreloadedLook}
           preloadedGarment={tryOnPreloadedGarment}
           familyMemberName={tryOnFamilyMemberName}
