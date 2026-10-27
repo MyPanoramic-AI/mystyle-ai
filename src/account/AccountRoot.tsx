@@ -82,7 +82,7 @@ export function AccountRoot() {
   const [busy, setBusy] = useState(false);
   const [securityNotice, setSecurityNotice] = useState<string | null>(null);
   const [persistence, setPersistence] = useState<'persistent' | 'ephemeral' | 'local' | null>(null);
-  const [authBoot, setAuthBoot] = useState<{ panel: 'register' | 'login' | 'forgot' | 'reset' | 'verify'; token?: string; message?: string }>({ panel: 'register' });
+  const [authBoot, setAuthBoot] = useState<{ panel: 'register' | 'login' | 'forgot' | 'reset' | 'verify'; token?: string; message?: string }>({ panel: 'login' });
   const generation = useRef(0);
 
   async function loadSignedIn(nextUserId: string, gen: number): Promise<void> {
