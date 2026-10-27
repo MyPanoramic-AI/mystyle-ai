@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   UserProfile,
   PersonalDetails,
   ClothingSizes,
   ColourPreferences,
   ShoppingPreferences,
+  ShoePreferences,
   TemporaryPhotos,
   FitPreference,
   ExperimentationLevel,
@@ -17,6 +18,8 @@ import {
 } from '../../types';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
+import { ShoePreferencesFields } from '../common/ShoePreferencesFields';
+import { DEFAULT_SHOE_PREFERENCES } from '../../data/shoePreferences';
 import {
   STYLE_CATEGORIES,
   SWATCH_COLORS,
@@ -34,7 +37,7 @@ import {
   parseLengthCm,
 } from '../../utils/measurements';
 
-export type EditableSection = 'personal' | 'sizes' | 'styles' | 'colours' | 'shopping' | 'photos';
+export type EditableSection = 'personal' | 'sizes' | 'styles' | 'colours' | 'shopping' | 'photos' | 'shoes';
 
 interface EditSectionModalProps {
   section: EditableSection | null;
@@ -68,12 +71,26 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
   // Local state for whichever section is active
   const [personal, setPersonal] = useState<PersonalDetails>(profile.personal);
   const [sizes, setSizes] = useState<ClothingSizes>(profile.sizes);
+  const [shoePreferences, setShoePreferences] = useState<ShoePreferences>(
+    profile.shoePreferences ?? { ...DEFAULT_SHOE_PREFERENCES },
+  );
   const [styles, setStyles] = useState<string[]>(profile.styles);
   const [colours, setColours] = useState<ColourPreferences>(profile.colours);
   const [shopping, setShopping] = useState<ShoppingPreferences>(profile.shopping);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [bodyUnit, setBodyUnit] = useState<LengthUnit>('cm');
+
+  useEffect(() => {
+    if (!isOpen || !section) return;
+    setPersonal(profile.personal);
+    setSizes(profile.sizes);
+    setShoePreferences(profile.shoePreferences ?? { ...DEFAULT_SHOE_PREFERENCES });
+    setStyles(profile.styles);
+    setColours(profile.colours);
+    setShopping(profile.shopping);
+    setSaveError(null);
+  }, [isOpen, section, profile]);
 
   if (!section) return null;
 
@@ -95,7 +112,11 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
     }
     let updated: UserProfile = { ...profile };
     if (section === 'personal') updated.personal = personal;
-    if (section === 'sizes') updated.sizes = sizes;
+    if (section === 'sizes') {
+      updated.sizes = sizes;
+      updated.shoePreferences = shoePreferences;
+    }
+    if (section === 'shoes') updated.shoePreferences = shoePreferences;
     if (section === 'styles') updated.styles = styles;
     if (section === 'colours') updated.colours = colours;
     if (section === 'shopping') updated.shopping = shopping;
@@ -116,7 +137,9 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
       case 'personal':
         return 'Edit Personal Details';
       case 'sizes':
-        return 'Edit Clothing Sizes & Measurements';
+        return 'Edit Sizes, Measurements & Shoe Preferences';
+      case 'shoes':
+        return 'Edit Shoe Preferences';
       case 'styles':
         return 'Edit Style Aesthetics';
       case 'colours':
@@ -264,6 +287,9 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
                 ))}
               </select>
             </div>
+            <div className="pt-3 border-t border-[#242326]/8">
+              <ShoePreferencesFields value={shoePreferences} onChange={setShoePreferences} compact />
+            </div>
             <div className="pt-1">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="text-xs font-semibold text-[#242326] uppercase tracking-wider">
@@ -321,6 +347,15 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {section === 'shoes' && (
+          <div className="space-y-3">
+            <p className="text-xs text-[#5C585E] leading-relaxed">
+              Tell us what you can comfortably wear so recommendations stay realistic — for example no high heels, or heels only for special occasions.
+            </p>
+            <ShoePreferencesFields value={shoePreferences} onChange={setShoePreferences} />
           </div>
         )}
 

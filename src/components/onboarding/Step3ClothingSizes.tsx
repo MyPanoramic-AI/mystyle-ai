@@ -5,20 +5,24 @@
 
 import React, { useState } from 'react';
 import { onboardingStepLabel } from './onboardingSteps';
-import { ClothingSizes } from '../../types';
+import { ClothingSizes, ShoePreferences } from '../../types';
 import { SIZE_OPTIONS } from '../../data/mockData';
+import { DEFAULT_SHOE_PREFERENCES } from '../../data/shoePreferences';
+import { ShoePreferencesFields } from '../common/ShoePreferencesFields';
 import { Button } from '../common/Button';
 import { ArrowLeft, ArrowRight, Info } from 'lucide-react';
 
 interface Step3ClothingSizesProps {
   initialData: ClothingSizes;
-  onContinue: (data: ClothingSizes) => void;
+  initialShoePreferences?: ShoePreferences;
+  onContinue: (data: ClothingSizes, shoePreferences: ShoePreferences) => void;
   onBack: () => void;
   onSkip: () => void;
 }
 
 export const Step3ClothingSizes: React.FC<Step3ClothingSizesProps> = ({
   initialData,
+  initialShoePreferences,
   onContinue,
   onBack,
   onSkip,
@@ -30,18 +34,24 @@ export const Step3ClothingSizes: React.FC<Step3ClothingSizesProps> = ({
   const [bustCm, setBustCm] = useState(initialData.bustCm || '');
   const [waistCm, setWaistCm] = useState(initialData.waistCm || '');
   const [hipCm, setHipCm] = useState(initialData.hipCm || '');
+  const [shoePreferences, setShoePreferences] = useState<ShoePreferences>(
+    initialShoePreferences ?? { ...DEFAULT_SHOE_PREFERENCES },
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onContinue({
-      topsSize,
-      bottomsSize,
-      dressSize,
-      shoeSize,
-      bustCm,
-      waistCm,
-      hipCm,
-    });
+    onContinue(
+      {
+        topsSize,
+        bottomsSize,
+        dressSize,
+        shoeSize,
+        bustCm,
+        waistCm,
+        hipCm,
+      },
+      shoePreferences,
+    );
   };
 
   return (
@@ -181,6 +191,16 @@ export const Step3ClothingSizes: React.FC<Step3ClothingSizesProps> = ({
                 />
               </div>
             </div>
+          </div>
+
+          <div className="pt-2 border-t border-[#242326]/8">
+            <span className="block text-xs font-semibold text-[#242326] uppercase tracking-wider mb-1">
+              Shoe preferences
+            </span>
+            <p className="text-[11px] text-[#5C585E] mb-3 leading-relaxed">
+              Tell us what you can comfortably wear so recommendations stay realistic — for example no high heels, or heels only for special occasions.
+            </p>
+            <ShoePreferencesFields value={shoePreferences} onChange={setShoePreferences} />
           </div>
 
           {/* Disclaimer note */}

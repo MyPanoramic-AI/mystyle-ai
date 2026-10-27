@@ -34,15 +34,34 @@ test('a customer can save profile, measurements, and preferences', async () => {
         favouriteRetailers: ['Woolworths'],
         onboardingStatus: 'completed',
         sizes: { dress: 'SA 34 / UK 10' },
+        shoeHeelComfort: 'block-heels-ok',
+        shoeHeelOccasion: 'special-occasions',
+        preferredShoeStyles: ['flats', 'block-heels'],
       }),
     });
-    const detailedBody = await detailed.json() as { ageRange: string; shoppingPriorities: string[]; favouriteRetailers: string[]; onboardingStatus: string; sizes: { dress: string } };
+    const detailedBody = await detailed.json() as {
+      ageRange: string;
+      shoppingPriorities: string[];
+      favouriteRetailers: string[];
+      onboardingStatus: string;
+      sizes: { dress: string };
+      shoeHeelComfort: string;
+      shoeHeelOccasion: string;
+      preferredShoeStyles: string[];
+      shoePreferences: { heelComfort: string; heelOccasion: string; preferredStyles: string[] };
+    };
     assert.equal(detailed.status, 200);
     assert.equal(detailedBody.ageRange, '25–34');
     assert.deepEqual(detailedBody.shoppingPriorities, ['Quality and durability']);
     assert.deepEqual(detailedBody.favouriteRetailers, ['Woolworths']);
     assert.equal(detailedBody.onboardingStatus, 'completed');
     assert.equal(detailedBody.sizes.dress, 'SA 34 / UK 10');
+    assert.equal(detailedBody.shoeHeelComfort, 'block-heels-ok');
+    assert.equal(detailedBody.shoeHeelOccasion, 'special-occasions');
+    assert.deepEqual(detailedBody.preferredShoeStyles, ['flats', 'block-heels']);
+    assert.equal(detailedBody.shoePreferences.heelComfort, 'block-heels-ok');
+    assert.equal(detailedBody.shoePreferences.heelOccasion, 'special-occasions');
+    assert.deepEqual(detailedBody.shoePreferences.preferredStyles, ['flats', 'block-heels']);
     const preferences = await fetch(`${api.base}/api/preferences`, {
       method: 'PUT',
       headers,

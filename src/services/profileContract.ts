@@ -1,8 +1,42 @@
-import { BudgetTier, ExperimentationLevel, FitPreference, UserProfile } from '../types';
+import {
+  BudgetTier,
+  ExperimentationLevel,
+  FitPreference,
+  PreferredShoeStyleId,
+  ShoeHeelComfort,
+  ShoeHeelOccasion,
+  ShoePreferences,
+  UserProfile,
+} from '../types';
+import { DEFAULT_SHOE_PREFERENCES } from '../data/shoePreferences';
 
 const BUDGETS = new Set<BudgetTier>(['under-300', '300-600', '600-1000', '1000-2000', '2000-plus', 'flexible']);
 const FITS = new Set<FitPreference>(['relaxed', 'regular', 'fitted', 'no-preference']);
 const EXPERIMENTS = new Set<ExperimentationLevel>(['classic', 'balanced', 'adventurous', 'no-preference']);
+const HEEL_COMFORT = new Set<ShoeHeelComfort>([
+  'cannot-wear-heels',
+  'low-heels-only',
+  'block-heels-ok',
+  'high-heels-ok',
+  'no-preference',
+]);
+const HEEL_OCCASION = new Set<ShoeHeelOccasion>([
+  'never',
+  'special-occasions',
+  'sometimes',
+  'often',
+  'no-preference',
+]);
+const SHOE_STYLES = new Set<PreferredShoeStyleId>([
+  'sneakers',
+  'flats',
+  'loafers',
+  'boots',
+  'sandals',
+  'block-heels',
+  'pumps',
+  'stilettos',
+]);
 
 export const PROFILE_STORAGE_KEY = 'mystyle_ai_user_profile_v1';
 
@@ -53,6 +87,7 @@ export function emptyAccountProfile(): UserProfile {
     styles: [],
     colours: { favoriteColors: [], avoidColors: [], fitPreference: 'no-preference', experimentation: 'no-preference' },
     shopping: { itemBudget: 'flexible', priorities: [], favoriteRetailers: [] },
+    shoePreferences: { ...DEFAULT_SHOE_PREFERENCES },
     isOnboardingCompleted: false,
     onboardingStatus: 'pending',
   };
@@ -70,8 +105,34 @@ function asExperiment(value: unknown): ExperimentationLevel {
   return typeof value === 'string' && EXPERIMENTS.has(value as ExperimentationLevel) ? value as ExperimentationLevel : 'no-preference';
 }
 
+function asHeelComfort(value: unknown): ShoeHeelComfort {
+  return typeof value === 'string' && HEEL_COMFORT.has(value as ShoeHeelComfort)
+    ? value as ShoeHeelComfort
+    : 'no-preference';
+}
+
+function asHeelOccasion(value: unknown): ShoeHeelOccasion {
+  return typeof value === 'string' && HEEL_OCCASION.has(value as ShoeHeelOccasion)
+    ? value as ShoeHeelOccasion
+    : 'no-preference';
+}
+
+function asShoeStyles(value: unknown): PreferredShoeStyleId[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is PreferredShoeStyleId => typeof item === 'string' && SHOE_STYLES.has(item as PreferredShoeStyleId));
+}
+
 function textList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function asShoePreferences(body: Record<string, unknown>): ShoePreferences {
+  const nested = (body.shoePreferences ?? null) as Record<string, unknown> | null;
+  return {
+    heelComfort: asHeelComfort(nested?.heelComfort ?? body.shoeHeelComfort),
+    heelOccasion: asHeelOccasion(nested?.heelOccasion ?? body.shoeHeelOccasion),
+    preferredStyles: asShoeStyles(nested?.preferredStyles ?? body.preferredShoeStyles),
+  };
 }
 
 function measurementText(value: unknown): string {
@@ -119,6 +180,7 @@ export function fromApiProfile(body: Record<string, unknown>): UserProfile {
       priorities: textList(body.shoppingPriorities),
       favoriteRetailers: textList(body.favouriteRetailers),
     },
+    shoePreferences: asShoePreferences(body),
     isOnboardingCompleted: status === 'completed',
     onboardingStatus: status,
   };
@@ -153,6 +215,9 @@ export function toApiProfile(profile: UserProfile): Record<string, unknown> {
     currency: profile.personal.currency,
     shoppingPriorities: profile.shopping.priorities,
     favouriteRetailers: profile.shopping.favoriteRetailers,
+    shoeHeelComfort: profile.shoePreferences?.heelComfort ?? 'no-preference',
+    shoeHeelOccasion: profile.shoePreferences?.heelOccasion ?? 'no-preference',
+    preferredShoeStyles: profile.shoePreferences?.preferredStyles ?? [],
     onboardingStatus: profile.onboardingStatus ?? (profile.isOnboardingCompleted ? 'completed' : 'pending'),
     measurements: {
       heightCm: typeof heightCm === 'number' && Number.isInteger(heightCm) ? heightCm : null,
@@ -182,6 +247,15 @@ function readStoredProfile(store: BrowserStore): UserProfile | null {
       sizes: { ...emptyAccountProfile().sizes, ...(parsed.sizes ?? {}) },
       colours: { ...emptyAccountProfile().colours, ...(parsed.colours ?? {}) },
       shopping: { ...emptyAccountProfile().shopping, ...(parsed.shopping ?? {}) },
+      shoePreferences: {
+        ...DEFAULT_SHOE_PREFERENCES,
+        ...(parsed.shoePreferences ?? {}),
+        preferredStyles: Array.isArray(parsed.shoePreferences?.preferredStyles)
+          ? asShoeStyles(parsed.shoePreferences.preferredStyles)
+          : [],
+        heelComfort: asHeelComfort(parsed.shoePreferences?.heelComfort),
+        heelOccasion: asHeelOccasion(parsed.shoePreferences?.heelOccasion),
+      },
       styles: Array.isArray(parsed.styles) ? parsed.styles : [],
     };
   } catch {

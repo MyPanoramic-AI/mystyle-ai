@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { UserProfile, TemporaryPhotos, PersonalDetails, ClothingSizes, ColourPreferences, ShoppingPreferences } from '../../types';
+import { UserProfile, TemporaryPhotos, PersonalDetails, ClothingSizes, ColourPreferences, ShoppingPreferences, ShoePreferences } from '../../types';
 import { Step1Welcome } from './Step1Welcome';
 import { Step2PersonalDetails } from './Step2PersonalDetails';
 import { Step3ClothingSizes } from './Step3ClothingSizes';
@@ -84,8 +84,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSizes = (data: ClothingSizes) => {
-    setProfile((prev) => ({ ...prev, sizes: data }));
+  const handleSizes = (data: ClothingSizes, shoePreferences: ShoePreferences) => {
+    setProfile((prev) => ({ ...prev, sizes: data, shoePreferences }));
     setCurrentStep(4);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -225,6 +225,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         {currentStep === 3 && (
           <Step3ClothingSizes
             initialData={profile.sizes}
+            initialShoePreferences={profile.shoePreferences}
             onContinue={handleSizes}
             onBack={handleBack}
             onSkip={handleSkipCurrentStep}

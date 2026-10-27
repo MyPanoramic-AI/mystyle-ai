@@ -25,6 +25,7 @@ import {
   Heart,
   Users,
   Layers,
+  Footprints,
 } from 'lucide-react';
 import { savedLooksService } from '../../services/savedLooksService';
 import { familyService } from '../../services/familyService';
@@ -39,6 +40,11 @@ import { formatHeight } from '../../utils/measurements';
 import { estimateSilhouetteFromCm, SILHOUETTE_OPTIONS } from '../../utils/silhouette';
 import { estimateSilhouetteFromPhotoUrls } from '../../utils/silhouetteFromPhoto';
 import type { StylingSilhouetteId } from '../../types';
+import {
+  preferredShoeStyleLabel,
+  shoeHeelComfortLabel,
+  shoeHeelOccasionLabel,
+} from '../../data/shoePreferences';
 import { FamilyLinkInvitePanel } from '../family/FamilyLinkInvitePanel';
 
 interface ProfileDashboardProps {
@@ -85,6 +91,16 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   onDeletePhotoSlot,
 }) => {
   const [activeEditSection, setActiveEditSection] = useState<EditableSection | null>(null);
+  const shoePrefs = {
+    heelComfort: profile.shoePreferences?.heelComfort ?? 'no-preference' as const,
+    heelOccasion: profile.shoePreferences?.heelOccasion ?? 'no-preference' as const,
+    preferredStyles: profile.shoePreferences?.preferredStyles ?? [],
+  };
+  const shoePrefsConfigured = (
+    shoePrefs.heelComfort !== 'no-preference'
+    || shoePrefs.heelOccasion !== 'no-preference'
+    || shoePrefs.preferredStyles.length > 0
+  );
   const [silhouetteBusy, setSilhouetteBusy] = useState(false);
   const [silhouetteMessage, setSilhouetteMessage] = useState<string | null>(null);
 
@@ -481,15 +497,78 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 <span className="font-semibold text-[#242326] mt-0.5 block">{profile.sizes.dressSize}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-[#F6F2EC]">
-                <span className="text-[11px] text-[#5C585E] block">Shoes</span>
+                <span className="text-[11px] text-[#5C585E] block">Shoe size</span>
                 <span className="font-semibold text-[#242326] mt-0.5 block">{profile.sizes.shoeSize}</span>
               </div>
             </div>
 
-            <div className="text-[11px] text-[#5C585E] flex justify-between px-1">
+            <div className="text-[11px] text-[#5C585E] flex justify-between px-1 mb-4">
               <span>Bust: {profile.sizes.bustCm ? `${profile.sizes.bustCm}cm` : '—'}</span>
               <span>Waist: {profile.sizes.waistCm ? `${profile.sizes.waistCm}cm` : '—'}</span>
               <span>Hips: {profile.sizes.hipCm ? `${profile.sizes.hipCm}cm` : '—'}</span>
+            </div>
+
+            <div id="shoe-preferences" className="pt-3 border-t border-[#242326]/10 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Footprints className="w-3.5 h-3.5 text-[#866a40] shrink-0" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5C585E]">
+                    Shoe preferences
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveEditSection('shoes')}
+                  className="text-xs font-medium text-[#9C6A61] hover:text-[#794E46] flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Pencil className="w-3 h-3" />
+                  <span>{shoePrefsConfigured ? 'Edit' : 'Add'}</span>
+                </button>
+              </div>
+
+              {shoePrefsConfigured ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#242326]/8">
+                      <span className="text-[10px] text-[#5C585E] block">Heel comfort</span>
+                      <span className="text-xs font-semibold text-[#242326] mt-0.5 block">
+                        {shoeHeelComfortLabel(shoePrefs.heelComfort)}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#242326]/8">
+                      <span className="text-[10px] text-[#5C585E] block">When you wear heels</span>
+                      <span className="text-xs font-semibold text-[#242326] mt-0.5 block">
+                        {shoePrefs.heelComfort === 'cannot-wear-heels'
+                          ? 'Never'
+                          : shoeHeelOccasionLabel(shoePrefs.heelOccasion)}
+                      </span>
+                    </div>
+                  </div>
+                  {shoePrefs.preferredStyles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {shoePrefs.preferredStyles.map((style) => (
+                        <span
+                          key={style}
+                          className="text-[10px] font-medium px-2 py-1 rounded-lg bg-[#242326]/5 text-[#242326]"
+                        >
+                          {preferredShoeStyleLabel(style)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActiveEditSection('shoes')}
+                  className="w-full text-left rounded-xl border border-dashed border-[#866a40]/40 bg-[#FAF7F2] px-3 py-3 cursor-pointer hover:border-[#866a40]/70 transition-colors"
+                >
+                  <span className="block text-xs font-semibold text-[#242326]">Set shoe preferences</span>
+                  <span className="block text-[11px] text-[#5C585E] mt-1 leading-relaxed">
+                    e.g. no high heels, or heels only for special occasions
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -131,6 +131,44 @@ function layerNeedsMax(layers: LayerPick[]): boolean {
   return layers.some((layer) => layer.category === 'shoes' || layer.category === 'bags' || layer.category === 'accessories');
 }
 
+const SHOP_CATEGORY_BY_TRYON: Record<TryOnCategory, string[]> = {
+  tops: ['Tops & Blouses', 'Activewear'],
+  bottoms: ['Jeans & Trousers'],
+  'one-pieces': ['Dresses'],
+  outerwear: ['Jackets & Blazers'],
+  shoes: ['Shoes'],
+  bags: ['Bags'],
+  accessories: ['Jewellery & Accessories'],
+};
+
+function normalizeTryOnCategory(raw?: string | null): TryOnCategory | 'uncategorized' {
+  if (!raw?.trim()) return 'uncategorized';
+  const value = raw.trim().toLowerCase();
+  if (value === 'dresses' || value === 'one-pieces' || value === 'one-piece') return 'one-pieces';
+  if (CATEGORIES.some((item) => item.id === value)) return value as TryOnCategory;
+  return categoryFromText(raw);
+}
+
+function shopProductsForTryOnCategory(tryOnCategory: TryOnCategory): Product[] {
+  const match = SHOP_CATEGORY_BY_TRYON[tryOnCategory] ?? [];
+  return SHOP_PRODUCTS.filter((product) => match.includes(product.category)).slice(0, 12);
+}
+
+type BrowseCategory = TryOnCategory | 'uncategorized';
+
+interface BrowsePhoto {
+  id: string;
+  name: string;
+  category: BrowseCategory;
+  imageUrl: string;
+  source: 'wardrobe' | 'upload' | 'shop';
+  mediaId?: string;
+  wardrobeItemId?: string;
+  productId?: string;
+  retailer?: string;
+  priceZar?: number;
+}
+
 function tryOnFailureMessage(error: unknown, fallback: string): string {
   if (error instanceof AccountApiError) return error.message;
   if (error instanceof Error && error.name === 'AccountApiError' && error.message) return error.message;
@@ -254,6 +292,23 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const [garmentMode, setGarmentMode] = useState<GarmentMode>(preloadedGarment ? 'shop' : 'existing');
   const [accountGarments, setAccountGarments] = useState<TryOnGarmentOption[]>([]);
   const [selectedGarmentId, setSelectedGarmentId] = useState<string>('');
+  const [shopBasePick, setShopBasePick] = useState<BrowsePhoto | null>(
+    preloadedGarment
+      ? {
+        id: `shop:${preloadedGarment.productId}`,
+        name: preloadedGarment.productName,
+        category: categoryFromText(preloadedGarment.category),
+        imageUrl: preloadedGarment.imageUrl,
+        source: 'shop',
+        productId: preloadedGarment.productId,
+        retailer: preloadedGarment.retailer,
+        priceZar: preloadedGarment.priceZar,
+      }
+      : null,
+  );
+  const [browseCategory, setBrowseCategory] = useState<BrowseCategory>(
+    categoryFromText(preloadedGarment?.category) || 'tops',
+  );
   const [shopNote, setShopNote] = useState('MyStyle AI Shop demonstration listings are not verified retailer products.');
   const [garmentFile, setGarmentFile] = useState<File | null>(null);
   const [garmentPreview, setGarmentPreview] = useState<string | undefined>(preloadedGarment?.imageUrl);
@@ -282,15 +337,83 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   }, [options, personMediaId, preferredPerson?.mediaId]);
 
   useEffect(() => {
-    setCategory(categoryFromText(preloadedGarment?.category));
+    const nextCategory = categoryFromText(preloadedGarment?.category);
+    setCategory(nextCategory);
+    setBrowseCategory(nextCategory);
     if (preloadedGarment?.imageUrl) {
       setGarmentMode('shop');
       setGarmentPreview(preloadedGarment.imageUrl);
       setGarmentFile(null);
+      setShopBasePick({
+        id: `shop:${preloadedGarment.productId}`,
+        name: preloadedGarment.productName,
+        category: nextCategory,
+        imageUrl: preloadedGarment.imageUrl,
+        source: 'shop',
+        productId: preloadedGarment.productId,
+        retailer: preloadedGarment.retailer,
+        priceZar: preloadedGarment.priceZar,
+      });
       // Skip ahead: photo ready → confirm; otherwise land on photograph step.
       setStep(hasFullBody || preferredPerson?.mediaId ? 'confirm' : 'photo');
     }
   }, [preloadedGarment, hasFullBody, preferredPerson?.mediaId]);
+
+  const categorizedAccountGarments = useMemo(() => {
+    return accountGarments.map((item) => {
+      const mapped = normalizeTryOnCategory(item.category);
+      return {
+        id: item.id,
+        name: item.name,
+        category: mapped,
+        imageUrl: mediaDisplayUrl(item.mediaId),
+        source: item.source === 'wardrobe' ? 'wardrobe' as const : 'upload' as const,
+        mediaId: item.mediaId,
+        wardrobeItemId: item.wardrobeItemId ?? undefined,
+      } satisfies BrowsePhoto;
+    });
+  }, [accountGarments]);
+
+  const browsePhotos = useMemo(() => {
+    const fromAccount = categorizedAccountGarments.filter((item) => (
+      browseCategory === 'uncategorized'
+        ? item.category === 'uncategorized'
+        : item.category === browseCategory
+    ));
+    const fromShop = browseCategory === 'uncategorized'
+      ? []
+      : shopProductsForTryOnCategory(browseCategory).map((product) => ({
+        id: `shop:${product.id}`,
+        name: product.name,
+        category: browseCategory,
+        imageUrl: product.imageUrl,
+        source: 'shop' as const,
+        productId: product.id,
+        retailer: product.retailer,
+        priceZar: product.demoPriceZar,
+      } satisfies BrowsePhoto));
+    return [...fromAccount, ...fromShop];
+  }, [browseCategory, categorizedAccountGarments]);
+
+  const browseCategoryTabs = useMemo(() => {
+    const counts = new Map<BrowseCategory, number>();
+    for (const item of categorizedAccountGarments) {
+      counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+    }
+    for (const tab of CATEGORIES) {
+      counts.set(tab.id, (counts.get(tab.id) ?? 0) + shopProductsForTryOnCategory(tab.id).length);
+    }
+    const tabs: { id: BrowseCategory; label: string; count: number }[] = CATEGORIES.map((item) => ({
+      id: item.id,
+      label: item.label,
+      count: counts.get(item.id) ?? 0,
+    }));
+    const uploadedCount = counts.get('uncategorized') ?? 0;
+    if (uploadedCount > 0) {
+      tabs.push({ id: 'uncategorized', label: 'Uploaded', count: uploadedCount });
+    }
+    return tabs;
+  }, [categorizedAccountGarments]);
 
   const refreshFittings = async () => {
     if (!usesAccount) return;
@@ -373,6 +496,8 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     if (!file) return;
     setGarmentMode('upload');
     setGarmentFile(file);
+    setSelectedGarmentId('');
+    setShopBasePick(null);
     setGarmentPreview(URL.createObjectURL(file));
   };
 
@@ -381,17 +506,45 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     setSelectedGarmentId(garmentId);
     setGarmentMode('existing');
     setGarmentFile(null);
+    setShopBasePick(null);
     if (garment) {
       setGarmentPreview(mediaDisplayUrl(garment.mediaId));
-      setCategory(categoryFromText(garment.category));
+      const mapped = normalizeTryOnCategory(garment.category);
+      const nextCategory = mapped === 'uncategorized' ? categoryFromText(garment.name) : mapped;
+      setCategory(nextCategory);
+      setBrowseCategory(mapped === 'uncategorized' ? 'uncategorized' : nextCategory);
     }
+  };
+
+  const handleSelectBrowsePhoto = (photo: BrowsePhoto) => {
+    if (photo.source === 'shop') {
+      setGarmentMode('shop');
+      setSelectedGarmentId('');
+      setGarmentFile(null);
+      setShopBasePick(photo);
+      setGarmentPreview(photo.imageUrl);
+      const nextCategory = photo.category === 'uncategorized' ? 'tops' : photo.category;
+      setCategory(nextCategory);
+      setBrowseCategory(photo.category);
+      if (onClearGarment) onClearGarment();
+      return;
+    }
+    handleSelectExisting(photo.id);
   };
 
   const garmentReady = Boolean(
     (garmentMode === 'existing' && selectedGarment)
-    || (garmentMode === 'shop' && preloadedGarment?.imageUrl)
+    || (garmentMode === 'shop' && (shopBasePick?.imageUrl || preloadedGarment?.imageUrl))
     || (garmentMode === 'upload' && garmentFile),
   );
+
+  const selectedBrowseId = garmentMode === 'existing' && selectedGarmentId
+    ? selectedGarmentId
+    : garmentMode === 'shop' && shopBasePick
+      ? shopBasePick.id
+      : garmentMode === 'shop' && preloadedGarment
+        ? `shop:${preloadedGarment.productId}`
+        : '';
 
   const orderedLayers = useMemo(() => {
     const picks: LayerPick[] = [];
@@ -439,8 +592,11 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       if (selectedGarment.wardrobeItemId) return { wardrobeItemId: selectedGarment.wardrobeItemId };
       return { garmentMediaId: selectedGarment.mediaId };
     }
-    if (garmentMode === 'shop' && preloadedGarment?.imageUrl) {
-      return buildPayloadFromPick({ imageUrl: preloadedGarment.imageUrl, source: 'shop' });
+    if (garmentMode === 'shop' && (shopBasePick?.imageUrl || preloadedGarment?.imageUrl)) {
+      return buildPayloadFromPick({
+        imageUrl: shopBasePick?.imageUrl || preloadedGarment?.imageUrl,
+        source: 'shop',
+      });
     }
     if (garmentMode === 'upload' && garmentFile) {
       return { garmentImageBase64: await fileToBase64(garmentFile) };
@@ -511,7 +667,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       let currentPersonId = personMediaId;
       const pipeline: { label: string; category: TryOnCategory; payload: Awaited<ReturnType<typeof buildGarmentPayload>> }[] = [
         {
-          label: preloadedGarment?.productName || selectedGarment?.name || 'Base garment',
+          label: shopBasePick?.name || preloadedGarment?.productName || selectedGarment?.name || 'Base garment',
           category,
           payload: await buildGarmentPayload(),
         },
@@ -786,64 +942,116 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           <div className="space-y-4">
             <h2 className="font-serif text-lg font-semibold text-[#242326]">Select clothing</h2>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant={garmentMode === 'existing' ? 'primary' : 'secondary'} size="sm" onClick={() => setGarmentMode('existing')}>
-                Wardrobe / saved
-              </Button>
               <Button
                 type="button"
-                variant={garmentMode === 'shop' ? 'primary' : 'secondary'}
+                variant={garmentMode !== 'upload' ? 'primary' : 'secondary'}
                 size="sm"
-                onClick={() => {
-                  if (preloadedGarment) {
-                    setGarmentMode('shop');
-                    setGarmentPreview(preloadedGarment.imageUrl);
-                    return;
-                  }
-                  onNavigate('shop');
-                }}
+                onClick={() => setGarmentMode(shopBasePick || preloadedGarment ? 'shop' : 'existing')}
               >
-                Shop
+                Browse photos
               </Button>
               <Button type="button" variant={garmentMode === 'upload' ? 'primary' : 'secondary'} size="sm" icon={<Upload className="w-4 h-4" />} onClick={() => garmentInputRef.current?.click()}>
-                Upload
+                Upload new
               </Button>
               <input ref={garmentInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleGarmentFile} />
             </div>
             <p className="text-[11px] text-[#5C585E]">{shopNote}</p>
-            {garmentMode === 'existing' && (
-              accountGarments.length > 0 ? (
-                <label className="text-xs text-[#5C585E] block">
-                  Existing garment
+
+            {garmentMode !== 'upload' && (
+              <div className="space-y-3">
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                  {browseCategoryTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setBrowseCategory(tab.id);
+                        if (tab.id !== 'uncategorized') setCategory(tab.id);
+                      }}
+                      className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold border transition-colors cursor-pointer ${
+                        browseCategory === tab.id
+                          ? 'bg-[#242326] text-white border-[#242326]'
+                          : 'bg-white text-[#5C585E] border-[#242326]/12 hover:border-[#242326]/30'
+                      }`}
+                    >
+                      {tab.label}
+                      <span className="ml-1 opacity-70">{tab.count}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {browsePhotos.length > 0 ? (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {browsePhotos.map((photo) => {
+                      const selected = selectedBrowseId === photo.id;
+                      return (
+                        <button
+                          key={photo.id}
+                          type="button"
+                          onClick={() => handleSelectBrowsePhoto(photo)}
+                          className={`group relative aspect-[3/4] rounded-xl overflow-hidden border-2 text-left cursor-pointer transition-all ${
+                            selected
+                              ? 'border-[#9C6A61] ring-2 ring-[#9C6A61]/25'
+                              : 'border-[#242326]/10 hover:border-[#242326]/25'
+                          }`}
+                        >
+                          <img src={photo.imageUrl} alt={photo.name} className="w-full h-full object-cover" />
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pt-6 pb-1.5">
+                            <p className="text-[10px] font-semibold text-white truncate leading-tight">{photo.name}</p>
+                            <p className="text-[9px] text-white/80 capitalize">
+                              {photo.source === 'wardrobe' ? 'Wardrobe' : photo.source === 'upload' ? 'Uploaded' : 'Shop'}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#5C585E]">
+                    No photos in this category yet. Try another category, open Shop, or upload a garment image.
+                  </p>
+                )}
+
+                {browseCategory === 'uncategorized' && (
+                  <label className="text-xs text-[#5C585E] block max-w-xs">
+                    Assign category for try-on
+                    <select
+                      className="mt-1 block w-full rounded-xl border border-[#242326]/12 bg-white px-3 py-2 text-[#242326]"
+                      value={category}
+                      onChange={(event) => setCategory(event.target.value as TryOnCategory)}
+                    >
+                      {CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
+            )}
+
+            {garmentMode === 'upload' && (
+              <div className="space-y-3">
+                <p className="text-xs text-[#5C585E]">Choose a category for the garment you uploaded.</p>
+                <label className="text-xs text-[#5C585E] block max-w-xs">
+                  Garment category
                   <select
                     className="mt-1 block w-full rounded-xl border border-[#242326]/12 bg-white px-3 py-2 text-[#242326]"
-                    value={selectedGarmentId}
-                    onChange={(event) => handleSelectExisting(event.target.value)}
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value as TryOnCategory)}
                   >
-                    {accountGarments.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.source === 'wardrobe' ? 'Wardrobe' : 'Uploaded'} · {item.name}
-                      </option>
-                    ))}
+                    {CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
                   </select>
                 </label>
-              ) : (
-                <p className="text-xs text-[#5C585E]">No authorised wardrobe photographs yet. Open Shop or upload a garment image.</p>
-              )
-            )}
-            <label className="text-xs text-[#5C585E] block max-w-xs">
-              Garment category
-              <select
-                className="mt-1 block w-full rounded-xl border border-[#242326]/12 bg-white px-3 py-2 text-[#242326]"
-                value={category}
-                onChange={(event) => setCategory(event.target.value as TryOnCategory)}
-              >
-                {CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-              </select>
-            </label>
-            {garmentPreview && (
-              <div className="w-20 h-24 rounded-xl overflow-hidden border border-[#242326]/10">
-                <img src={garmentPreview} alt="Selected garment" className="w-full h-full object-cover" />
+                {garmentPreview && (
+                  <div className="w-24 h-32 rounded-xl overflow-hidden border border-[#242326]/10">
+                    <img src={garmentPreview} alt="Uploaded garment" className="w-full h-full object-cover" />
+                  </div>
+                )}
               </div>
+            )}
+
+            {garmentMode !== 'upload' && garmentPreview && selectedBrowseId && (
+              <p className="text-[11px] text-[#5C585E]">
+                Selected: <span className="font-semibold text-[#242326]">{shopBasePick?.name || selectedGarment?.name || preloadedGarment?.productName}</span>
+              </p>
             )}
 
             <div className="rounded-2xl border border-[#242326]/10 bg-[#FAF7F2] p-4 space-y-3">

@@ -97,6 +97,38 @@ export interface ClothingSizes {
   hipCm?: string;
 }
 
+/** How comfortable someone is wearing elevated heels day to day. */
+export type ShoeHeelComfort =
+  | 'cannot-wear-heels'
+  | 'low-heels-only'
+  | 'block-heels-ok'
+  | 'high-heels-ok'
+  | 'no-preference';
+
+/** When they typically choose heels, if they wear them at all. */
+export type ShoeHeelOccasion =
+  | 'never'
+  | 'special-occasions'
+  | 'sometimes'
+  | 'often'
+  | 'no-preference';
+
+export type PreferredShoeStyleId =
+  | 'sneakers'
+  | 'flats'
+  | 'loafers'
+  | 'boots'
+  | 'sandals'
+  | 'block-heels'
+  | 'pumps'
+  | 'stilettos';
+
+export interface ShoePreferences {
+  heelComfort: ShoeHeelComfort;
+  heelOccasion: ShoeHeelOccasion;
+  preferredStyles: PreferredShoeStyleId[];
+}
+
 export type FitPreference = 'relaxed' | 'regular' | 'fitted' | 'no-preference';
 export type ExperimentationLevel = 'classic' | 'balanced' | 'adventurous' | 'no-preference';
 
@@ -121,6 +153,7 @@ export interface UserProfile {
   styles: string[];
   colours: ColourPreferences;
   shopping: ShoppingPreferences;
+  shoePreferences: ShoePreferences;
   isOnboardingCompleted: boolean;
   onboardingStatus?: 'pending' | 'deferred' | 'completed';
   lastUpdated?: string;

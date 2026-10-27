@@ -1749,6 +1749,28 @@ function calculateProfileAffinity(product: Product, profile?: UserProfile): numb
     score += 5;
   }
 
+  // Match shoe comfort / preferred styles
+  if (product.category === 'Shoes') {
+    const shoePrefs = profile.shoePreferences;
+    const name = product.name.toLowerCase();
+    const looksHighHeel = /stiletto|high heel|court|pump|strappy/.test(name) && !/block|kitten|flat|loafer|sneaker|trainer|boot/.test(name);
+    const looksBlockHeel = /block heel|wedge|kitten/.test(name);
+    const looksFlat = /flat|loafer|sneaker|trainer|mule|ballet|sandal/.test(name) && !/heel/.test(name);
+    if (shoePrefs?.heelComfort === 'cannot-wear-heels' || shoePrefs?.heelOccasion === 'never') {
+      if (looksHighHeel || looksBlockHeel) score -= 12;
+      if (looksFlat) score += 8;
+    } else if (shoePrefs?.heelComfort === 'low-heels-only') {
+      if (looksHighHeel) score -= 10;
+      if (looksBlockHeel || looksFlat) score += 6;
+    } else if (shoePrefs?.heelComfort === 'block-heels-ok') {
+      if (looksHighHeel && !looksBlockHeel) score -= 6;
+      if (looksBlockHeel) score += 6;
+    }
+    for (const style of shoePrefs?.preferredStyles ?? []) {
+      if (name.includes(style.replace('-', ' ')) || name.includes(style)) score += 4;
+    }
+  }
+
   // Sales bonus
   if (product.isDemoSale) score += 2;
 

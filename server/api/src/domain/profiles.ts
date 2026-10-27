@@ -8,6 +8,9 @@ const ONBOARDING = new Set(['pending', 'deferred', 'completed']);
 const BUDGETS = new Set(['under-300', '300-600', '600-1000', '1000-2000', '2000-plus', 'flexible']);
 const FITS = new Set(['relaxed', 'regular', 'fitted', 'no-preference']);
 const EXPERIMENTS = new Set(['classic', 'balanced', 'adventurous', 'no-preference']);
+const HEEL_COMFORT = new Set(['cannot-wear-heels', 'low-heels-only', 'block-heels-ok', 'high-heels-ok', 'no-preference']);
+const HEEL_OCCASION = new Set(['never', 'special-occasions', 'sometimes', 'often', 'no-preference']);
+const SHOE_STYLES = new Set(['sneakers', 'flats', 'loafers', 'boots', 'sandals', 'block-heels', 'pumps', 'stilettos']);
 
 function text(value: unknown, max: number, field: string): string | null {
   if (value === undefined || value === null || value === '') return null;
@@ -21,6 +24,14 @@ function list(value: unknown, field: string, itemMax = 40): string[] | undefined
     throw new ApiError('invalid_profile', `${field} must be a short list of text values.`, 400);
   }
   return value.map((item) => item.trim()).filter(Boolean);
+}
+
+function shoeStyleList(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > 12 || value.some((item) => typeof item !== 'string' || !SHOE_STYLES.has(item))) {
+    throw new ApiError('invalid_profile', 'preferredShoeStyles must be a short list of accepted shoe styles.', 400);
+  }
+  return [...new Set(value)];
 }
 
 function cm(value: unknown, field: string): number | null | undefined {
@@ -66,6 +77,14 @@ export function getProfile(db: Sql, userId: string): Record<string, unknown> {
     ageRange: profile.age_range,
     shoppingPriorities: JSON.parse(String(profile.shopping_priorities_json ?? '[]')),
     favouriteRetailers: JSON.parse(String(profile.favourite_retailers_json ?? '[]')),
+    shoeHeelComfort: profile.shoe_heel_comfort ?? 'no-preference',
+    shoeHeelOccasion: profile.shoe_heel_occasion ?? 'no-preference',
+    preferredShoeStyles: JSON.parse(String(profile.preferred_shoe_styles_json ?? '[]')),
+    shoePreferences: {
+      heelComfort: profile.shoe_heel_comfort ?? 'no-preference',
+      heelOccasion: profile.shoe_heel_occasion ?? 'no-preference',
+      preferredStyles: JSON.parse(String(profile.preferred_shoe_styles_json ?? '[]')),
+    },
     onboardingStatus: profile.onboarding_status ?? 'pending',
     completionStatus: profile.completion_status,
     measurements: measurements ?? null,
@@ -98,6 +117,15 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
   const onboarding = body.onboardingStatus === undefined ? current.onboarding_status : enumValue(body.onboardingStatus, ONBOARDING, 'onboardingStatus');
   const fit = body.fitPreference === undefined ? current.fit_preference : enumValue(body.fitPreference, FITS, 'fitPreference');
   const experiment = body.experimentation === undefined ? current.experimentation : enumValue(body.experimentation, EXPERIMENTS, 'experimentation');
+  const nestedShoe = (body.shoePreferences ?? null) as Record<string, unknown> | null;
+  const shoeHeelComfort = body.shoeHeelComfort === undefined && nestedShoe?.heelComfort === undefined
+    ? current.shoe_heel_comfort
+    : enumValue(body.shoeHeelComfort ?? nestedShoe?.heelComfort, HEEL_COMFORT, 'shoeHeelComfort');
+  const shoeHeelOccasion = body.shoeHeelOccasion === undefined && nestedShoe?.heelOccasion === undefined
+    ? current.shoe_heel_occasion
+    : enumValue(body.shoeHeelOccasion ?? nestedShoe?.heelOccasion, HEEL_OCCASION, 'shoeHeelOccasion');
+  const preferredShoeStyles = shoeStyleList(body.preferredShoeStyles ?? nestedShoe?.preferredStyles)
+    ?? JSON.parse(String(current.preferred_shoe_styles_json ?? '[]'));
   const country = body.country === undefined ? current.country : text(body.country, 80, 'country');
   const currency = body.currency === undefined ? current.currency : text(body.currency, 16, 'currency');
   const complete = Boolean(displayName) && styles.length > 0 && Boolean(tops) && Boolean(budget);
@@ -105,8 +133,35 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
   db.prepare(
     `UPDATE customer_profiles SET display_name=?, style_preferences_json=?, tops_size=?, bottoms_size=?, dress_size=?, shoe_size=?,
       budget_tier=?, favourite_colours_json=?, avoid_colours_json=?, fashion_interests_json=?, fit_preference=?, experimentation=?,
-      country=?, currency=?, age_range=?, shopping_priorities_json=?, favourite_retailers_json=?, onboarding_status=?, completion_status=?, updated_at=? WHERE user_id=?`,
-  ).run(displayName, JSON.stringify(styles), tops, bottoms, dress, shoe, budget, JSON.stringify(favourite), JSON.stringify(avoid), JSON.stringify(interests), fit, experiment, country, currency, ageRange, JSON.stringify(priorities), JSON.stringify(retailers), onboarding ?? 'pending', complete ? 'complete' : 'incomplete', stamp, userId);
+      country=?, currency=?, age_range=?, shopping_priorities_json=?, favourite_retailers_json=?,
+      shoe_heel_comfort=?, shoe_heel_occasion=?, preferred_shoe_styles_json=?,
+      onboarding_status=?, completion_status=?, updated_at=? WHERE user_id=?`,
+  ).run(
+    displayName,
+    JSON.stringify(styles),
+    tops,
+    bottoms,
+    dress,
+    shoe,
+    budget,
+    JSON.stringify(favourite),
+    JSON.stringify(avoid),
+    JSON.stringify(interests),
+    fit,
+    experiment,
+    country,
+    currency,
+    ageRange,
+    JSON.stringify(priorities),
+    JSON.stringify(retailers),
+    shoeHeelComfort,
+    shoeHeelOccasion,
+    JSON.stringify(preferredShoeStyles),
+    onboarding ?? 'pending',
+    complete ? 'complete' : 'incomplete',
+    stamp,
+    userId,
+  );
   if (body.measurements !== undefined) {
     const raw = body.measurements;
     if (raw === null) {

@@ -6,6 +6,7 @@
 import React from 'react';
 import { UserProfile, TemporaryPhotos } from '../../types';
 import { Button } from '../common/Button';
+import { shoeHeelComfortLabel, shoeHeelOccasionLabel } from '../../data/shoePreferences';
 import { Sparkles, ArrowRight, CheckCircle2, User, Palette, Shirt, Tag } from 'lucide-react';
 
 interface Step8CompletionProps {
@@ -102,6 +103,14 @@ export const Step8Completion: React.FC<Step8CompletionProps> = ({
                 Bottoms: <strong className="text-[#242326] font-medium">{profile.sizes.bottomsSize}</strong>
                 <br />
                 Shoes: <strong className="text-[#242326] font-medium">{profile.sizes.shoeSize}</strong>
+                <br />
+                Heels:{' '}
+                <strong className="text-[#242326] font-medium">
+                  {shoeHeelComfortLabel(profile.shoePreferences?.heelComfort ?? 'no-preference')}
+                  {profile.shoePreferences?.heelComfort !== 'cannot-wear-heels'
+                    ? ` · ${shoeHeelOccasionLabel(profile.shoePreferences?.heelOccasion ?? 'no-preference')}`
+                    : ''}
+                </strong>
               </p>
             </div>
 

@@ -11,6 +11,7 @@
  */
 
 import { UserProfile } from '../types';
+import { DEFAULT_SHOE_PREFERENCES } from '../data/shoePreferences';
 
 const STORAGE_KEY = 'mystyle_ai_user_profile_v1';
 
@@ -43,6 +44,12 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
     priorities: ['Quality and durability', 'Best value for money', 'Finding specials and discounts'],
     favoriteRetailers: ['Woolworths', 'Superbalist', 'Zara', 'Country Road'],
   },
+  shoePreferences: {
+    ...DEFAULT_SHOE_PREFERENCES,
+    heelComfort: 'block-heels-ok',
+    heelOccasion: 'special-occasions',
+    preferredStyles: ['flats', 'loafers', 'block-heels'],
+  },
   isOnboardingCompleted: true,
   lastUpdated: new Date().toISOString(),
 };
@@ -63,6 +70,13 @@ export const profileService = {
           sizes: { ...DEFAULT_USER_PROFILE.sizes, ...(parsed.sizes || {}) },
           colours: { ...DEFAULT_USER_PROFILE.colours, ...(parsed.colours || {}) },
           shopping: { ...DEFAULT_USER_PROFILE.shopping, ...(parsed.shopping || {}) },
+          shoePreferences: {
+            ...DEFAULT_SHOE_PREFERENCES,
+            ...(parsed.shoePreferences || {}),
+            preferredStyles: Array.isArray(parsed.shoePreferences?.preferredStyles)
+              ? parsed.shoePreferences.preferredStyles
+              : DEFAULT_SHOE_PREFERENCES.preferredStyles,
+          },
         };
       }
     } catch (e) {
@@ -111,10 +125,11 @@ export const profileService = {
     if (profile.personal.ageRange || profile.personal.heightCm) score += 5;
 
     // Sizes (25 points)
-    if (profile.sizes.topsSize && profile.sizes.topsSize !== 'Not sure') score += 7;
-    if (profile.sizes.bottomsSize && profile.sizes.bottomsSize !== 'Not sure') score += 7;
-    if (profile.sizes.shoeSize && profile.sizes.shoeSize !== 'Not sure') score += 6;
-    if (profile.sizes.dressSize || profile.sizes.bustCm) score += 5;
+    if (profile.sizes.topsSize && profile.sizes.topsSize !== 'Not sure') score += 6;
+    if (profile.sizes.bottomsSize && profile.sizes.bottomsSize !== 'Not sure') score += 6;
+    if (profile.sizes.shoeSize && profile.sizes.shoeSize !== 'Not sure') score += 5;
+    if (profile.sizes.dressSize || profile.sizes.bustCm) score += 4;
+    if (profile.shoePreferences?.heelComfort && profile.shoePreferences.heelComfort !== 'no-preference') score += 4;
 
     // Styles (20 points)
     if (profile.styles && profile.styles.length > 0) {
