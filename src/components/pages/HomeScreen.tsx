@@ -17,7 +17,9 @@ import { StylistInvitation } from '../home/StylistInvitation';
 import { FamilyStylingCard } from '../home/FamilyStylingCard';
 import { DigitalWardrobeCard } from '../home/DigitalWardrobeCard';
 import { MembershipCard } from '../home/MembershipCard';
+import { AccessoriesSection } from '../home/AccessoriesSection';
 import { MembershipSubpageTab } from '../../types/membership';
+import type { PreloadedGarment, ProductCategory } from '../../types/shop';
 
 interface HomeScreenProps {
   profile: UserProfile;
@@ -31,6 +33,8 @@ interface HomeScreenProps {
   onOpenWardrobe?: (tab?: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps') => void;
   onOpenBeautyStudio?: () => void;
   onOpenMembership?: (tab?: MembershipSubpageTab) => void;
+  onTryAccessory?: (garment: PreloadedGarment) => void;
+  onShopAccessories?: (category: ProductCategory) => void;
   wardrobeCounts?: { pieces: number; outfits: number } | null;
   usesAccount?: boolean;
 }
@@ -47,6 +51,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenWardrobe,
   onOpenBeautyStudio,
   onOpenMembership,
+  onTryAccessory,
+  onShopAccessories,
   wardrobeCounts = null,
   usesAccount = false,
 }) => {
@@ -103,6 +109,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         shopping={profile.shopping}
         onNavigate={onNavigate}
       />
+
+      {/* 6.5 Accessories to try on and buy */}
+      {onTryAccessory && onShopAccessories ? (
+        <AccessoriesSection
+          onTryItem={onTryAccessory}
+          onBrowseShop={onShopAccessories}
+        />
+      ) : null}
 
       {/* 6. Style Profile Summary ("Your Style DNA") */}
       <StyleProfileSummary

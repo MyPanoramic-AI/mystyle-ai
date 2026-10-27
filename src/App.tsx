@@ -607,6 +607,17 @@ export default function App({ account }: { account: ReadyAccount }) {
           onOpenWardrobe={handleOpenWardrobe}
           onOpenBeautyStudio={() => handleOpenBeauty('complete-looks')}
           onOpenMembership={handleOpenMembership}
+          onTryAccessory={handleSendToTryOnFromShop}
+          onShopAccessories={(category) => {
+            setShopPreloadedContext({
+              outfitTitle: 'Accessories',
+              category,
+              pieces: [category],
+            });
+            setActiveSubpage(null);
+            setCurrentTab('shop');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
           wardrobeCounts={wardrobeCounts}
           usesAccount={account.mode === 'account'}
         />
