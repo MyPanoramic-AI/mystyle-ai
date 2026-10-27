@@ -102,6 +102,26 @@ function assertCategory(value: unknown): GarmentCategory {
   return value as GarmentCategory;
 }
 
+/** Prompts for Try-On Max when the person image is already a prior fitting result. */
+function additiveLayerPrompt(category: GarmentCategory): string {
+  switch (category) {
+    case 'outerwear':
+      return 'Add only this jacket or coat over the clothing already worn. Keep the existing dress or outfit underneath completely unchanged. Do not replace the dress, trousers, top, or shoes.';
+    case 'shoes':
+      return 'Change only the footwear to match this product. Keep every other garment in the current outfit exactly as worn.';
+    case 'bags':
+      return 'Add only this bag as a carried accessory. Do not change the clothing already worn.';
+    case 'accessories':
+      return 'Add only this accessory. Keep the existing outfit underneath completely unchanged.';
+    case 'tops':
+      return 'Replace only the top layer if needed, but preserve any dress or one-piece already worn whenever possible.';
+    case 'bottoms':
+      return 'Change only the lower garment. Keep the top or dress already worn unchanged.';
+    default:
+      return 'Add this item to the existing outfit without replacing the clothing already worn.';
+  }
+}
+
 function assertQuality(value: unknown): Quality {
   if (value === undefined || value === null || value === '') return 'standard';
   if (typeof value !== 'string' || !QUALITIES.has(value as Quality)) {
@@ -897,6 +917,8 @@ export async function runTryOnJob(options: {
     const garment = readOwnedMedia(options.db, options.mediaDir, options.userId, row.garmentMediaId);
     const provider = resolveAccountProvider(row.providerId, row.mockScenario);
     const runtime = providerRuntime(options.config, options.fetchImpl ?? fetch);
+    const personPurpose = ownedMediaMeta(options.db, options.userId, row.personMediaId).purpose;
+    const additivePrompt = personPurpose === 'tryon_result' ? additiveLayerPrompt(row.category) : undefined;
     const result = await provider.run(
       {
         person: person.bytes,
@@ -905,6 +927,7 @@ export async function runTryOnJob(options: {
         garmentFormat: formatToKind(garment.contentType),
         category: row.category,
         quality: row.quality,
+        prompt: additivePrompt,
       },
       runtime,
     );

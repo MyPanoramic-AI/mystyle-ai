@@ -7,6 +7,8 @@ export interface ProviderRunInput {
   garmentFormat: 'jpeg' | 'png' | 'webp';
   category: GarmentCategory;
   quality: Quality;
+  /** Try-On Max styling instruction — used for additive layering over an existing look. */
+  prompt?: string;
 }
 
 export interface ProviderRunResult {

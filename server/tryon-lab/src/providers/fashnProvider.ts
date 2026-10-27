@@ -32,17 +32,21 @@ export function buildFashnBody(model: FashnModel, input: ProviderRunInput): Reco
       },
     };
   }
+  const maxInputs: Record<string, unknown> = {
+    model_image: person,
+    product_image: garment,
+    generation_mode: maxMode(input.quality),
+    resolution: '1k',
+    num_images: 1,
+    output_format: 'png',
+    return_base64: true,
+  };
+  if (input.prompt?.trim()) {
+    maxInputs.prompt = input.prompt.trim().slice(0, 500);
+  }
   return {
     model_name: 'tryon-max',
-    inputs: {
-      model_image: person,
-      product_image: garment,
-      generation_mode: maxMode(input.quality),
-      resolution: '1k',
-      num_images: 1,
-      output_format: 'png',
-      return_base64: true,
-    },
+    inputs: maxInputs,
   };
 }
 
@@ -137,7 +141,9 @@ function dataUri(format: ImageFormat, bytes: Buffer): string {
 }
 
 function fashnCategory(category: GarmentCategory): 'tops' | 'bottoms' | 'one-pieces' | 'auto' {
-  if (category === 'outerwear') return 'tops';
+  // Outerwear mapped to tops can wipe a dress underneath when the product photo is a full-body shot.
+  // Prefer auto so flat-lay jackets classify as tops without forcing a full outfit swap.
+  if (category === 'outerwear') return 'auto';
   // Shoes, bags, and jewellery are better on tryon-max; v1.6 falls back to auto classification.
   if (category === 'shoes' || category === 'bags' || category === 'accessories') return 'auto';
   return category;

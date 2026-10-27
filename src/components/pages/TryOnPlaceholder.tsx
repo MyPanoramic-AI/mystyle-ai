@@ -481,11 +481,20 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       return;
     }
 
+    // Additive layers must use Try-On Max so prompts can keep the base dress/outfit underneath.
     const providerId: TryOnProviderId = generationMode === 'live'
-      ? (layerNeedsMax(orderedLayers)
+      ? (orderedLayers.length > 0 || layerNeedsMax(orderedLayers)
         ? 'fashn-tryon-max'
         : (availability?.defaultLiveProviderId || 'fashn-tryon-v1.6'))
       : 'mock';
+
+    if (generationMode === 'live' && orderedLayers.length > 0 && providerId === 'fashn-tryon-max') {
+      const maxReady = availability?.providers?.some((item) => item.id === 'fashn-tryon-max' && item.availability === 'ready');
+      if (!maxReady) {
+        showStatus('Adding a jacket, shoes, or accessories on top of a look needs Try-On Max. Live Try-On Max is not ready on this server yet.');
+        return;
+      }
+    }
 
     setBusy(true);
     setJob(null);
@@ -842,7 +851,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-[#866a40]">Build the look</p>
                 <h3 className="font-serif text-base font-semibold text-[#242326] mt-0.5">Add jacket, shoes & accessories</h3>
                 <p className="text-[11px] text-[#5C585E] mt-1 leading-relaxed">
-                  Each extra piece is applied in order on top of the previous result, so the final image includes everything you selected.
+                  Extra pieces are added over your base look — for example a jacket over a dress keeps the dress underneath. Only add the layers you want; leave the rest empty.
                 </p>
               </div>
               <div className="space-y-2">
@@ -1075,7 +1084,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
             </div>
             {orderedLayers.length > 0 && (
               <p className="text-[11px] text-[#5C585E] leading-relaxed">
-                Generation applies {1 + orderedLayers.length} pieces in sequence. Live shoes and accessories use Try-On Max when available.
+                Generation applies {1 + orderedLayers.length} pieces in sequence. Jacket/shoes/accessory layers use Try-On Max with “keep existing outfit” instructions so a dress is not replaced by trousers.
               </p>
             )}
 
