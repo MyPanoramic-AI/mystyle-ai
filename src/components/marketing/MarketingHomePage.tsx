@@ -26,11 +26,13 @@ import styleClassicImg from '../../assets/images/style_classic_tailored_17919803
 import styleMinimalImg from '../../assets/images/style_modern_minimal_1791980327769.jpg';
 import styleTrendyImg from '../../assets/images/style_trendy_bold_1791980328578.jpg';
 
-/** Clean retail imagery — several local full-body assets have AI limb artefacts. */
+/** Clean stock imagery — several local full-body assets have AI limb artefacts. */
 const shoppingLookImg =
   'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80';
 const weekendEaseImg =
   'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80';
+const familyTogetherImg =
+  'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=1200&q=80';
 
 interface MarketingHomePageProps {
   onSignIn: () => void;
@@ -77,15 +79,15 @@ const CAPABILITIES = [
     icon: ShoppingBag,
     title: 'South African shopping',
     body: 'Search looks across favourite SA retailers, compare prices, and save products that match your style profile and preferred price bands.',
-    image: weekendCasualImg,
-    alt: 'Casual shopping look inspiration',
+    image: shoppingLookImg,
+    alt: 'Shopping look inspiration with fashion bags',
   },
   {
     icon: Users,
     title: 'Family styling',
     body: 'Create profiles for family members, plan shared events, and invite another adult account by email so partners can accept or decline a link.',
-    image: weddingGuestImg,
-    alt: 'Celebration outfit for family occasions',
+    image: familyTogetherImg,
+    alt: 'Family together for shared styling and occasions',
   },
   {
     icon: Sparkles,
