@@ -147,7 +147,7 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
       case 'shopping':
         return 'Edit Shopping & Budget Preferences';
       case 'photos':
-        return 'Manage Styling Photographs';
+        return 'Manage photos · Portrait, front & back';
     }
   };
 

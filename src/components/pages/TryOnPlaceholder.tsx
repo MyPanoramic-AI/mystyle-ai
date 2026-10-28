@@ -105,13 +105,15 @@ function personOptions(photos?: TemporaryPhotos): { slot: PersonSlot; mediaId: s
     options.push({ slot: 'full_body_front', mediaId: photos.fullBodyFrontMediaId, url: photos.fullBodyFrontUrl, label: 'Full-body front' });
   }
   if (photos?.fullBodyAdditionalMediaId && photos.fullBodyAdditionalUrl) {
-    options.push({ slot: 'full_body_additional', mediaId: photos.fullBodyAdditionalMediaId, url: photos.fullBodyAdditionalUrl, label: 'Additional angle' });
+    options.push({ slot: 'full_body_additional', mediaId: photos.fullBodyAdditionalMediaId, url: photos.fullBodyAdditionalUrl, label: 'Full-body back' });
   }
   if (photos?.portraitMediaId && photos.profilePhotoUrl) {
     options.push({ slot: 'portrait', mediaId: photos.portraitMediaId, url: photos.profilePhotoUrl, label: 'Portrait' });
   }
   return options;
 }
+
+type ResultView = 'front' | 'back';
 
 function categoryFromText(raw?: string | null): TryOnCategory {
   const value = (raw || '').toLowerCase();
@@ -339,13 +341,18 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const [job, setJob] = useState<TryOnJobRecord | null>(null);
   const [fittings, setFittings] = useState<TryOnJobRecord[]>([]);
   const [compare, setCompare] = useState<'before' | 'after' | 'both'>('both');
+  const [resultByView, setResultByView] = useState<Partial<Record<ResultView, TryOnJobRecord>>>({});
+  const [activeResultView, setActiveResultView] = useState<ResultView>('front');
   const garmentInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<number | null>(null);
 
+  const frontPerson = options.find((item) => item.slot === 'full_body_front') || options.find((item) => item.slot !== 'full_body_additional');
+  const backPerson = options.find((item) => item.slot === 'full_body_additional');
   const activePhoto = options.find((item) => item.mediaId === personMediaId)?.url || preferredPerson?.url;
   const selectedGarment = accountGarments.find((item) => item.id === selectedGarmentId);
   const generationMode = availability?.generationMode || 'unavailable';
   const hasFullBody = Boolean(photos?.fullBodyFrontMediaId);
+  const hasBackPhoto = Boolean(backPerson?.mediaId);
 
   useEffect(() => {
     if (!options.some((item) => item.mediaId === personMediaId)) {
@@ -639,6 +646,110 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     tick();
   });
 
+  const resolveProviderId = (): TryOnProviderId | null => {
+    if (generationMode === 'unavailable') return null;
+    const providerId: TryOnProviderId = generationMode === 'live'
+      ? (orderedLayers.length > 0 || layerNeedsMax(orderedLayers)
+        ? 'fashn-tryon-max'
+        : (availability?.defaultLiveProviderId || 'fashn-tryon-v1.6'))
+      : 'mock';
+    if (generationMode === 'live' && orderedLayers.length > 0 && providerId === 'fashn-tryon-max') {
+      const maxReady = availability?.providers?.some((item) => item.id === 'fashn-tryon-max' && item.availability === 'ready');
+      if (!maxReady) return null;
+    }
+    return providerId;
+  };
+
+  const runTryOnPipeline = async (startPersonId: string, view: ResultView): Promise<TryOnJobRecord | null> => {
+    const providerId = resolveProviderId();
+    if (!providerId) {
+      if (generationMode === 'unavailable') {
+        showStatus(availability?.note || 'Virtual Try-On is currently unavailable. Your photographs have not been sent for AI processing.');
+      } else {
+        showStatus('Adding a jacket, shoes, or accessories on top of a look needs Try-On Max. Live Try-On Max is not ready on this server yet.');
+      }
+      return null;
+    }
+
+    setBusy(true);
+    setJob(null);
+    setStep('progress');
+    setLayerProgress(null);
+    const viewLabel = view === 'back' ? 'full-body back view' : 'front view';
+    const totalSteps = 1 + orderedLayers.length;
+    showStatus(
+      view === 'back'
+        ? `Generating ${viewLabel} with the same outfit…`
+        : orderedLayers.length > 0
+          ? `Building a layered look (${totalSteps} pieces)…`
+          : (generationMode === 'live' ? 'Starting virtual try-on…' : 'Starting local development demonstration…'),
+    );
+
+    let currentPersonId = startPersonId;
+    const pipeline: { label: string; category: TryOnCategory; payload: Awaited<ReturnType<typeof buildGarmentPayload>> }[] = [
+      {
+        label: shopBasePick?.name || preloadedGarment?.productName || selectedGarment?.name || 'Base garment',
+        category,
+        payload: await buildGarmentPayload(),
+      },
+      ...await Promise.all(orderedLayers.map(async (layer) => ({
+        label: layer.name,
+        category: layer.category,
+        payload: await buildPayloadFromPick(layer),
+      }))),
+    ];
+
+    let finalJob: TryOnJobRecord | null = null;
+    for (let index = 0; index < pipeline.length; index += 1) {
+      const piece = pipeline[index]!;
+      setLayerProgress(`${viewLabel}: layer ${index + 1} of ${pipeline.length} · ${piece.label}`);
+      showStatus(`Applying ${piece.label} (${index + 1}/${pipeline.length}) for ${viewLabel}…`);
+
+      const prepared = await accountApi.prepareTryOnJob({
+        personMediaId: currentPersonId,
+        category: piece.category,
+        providerId,
+        ...piece.payload,
+      });
+      if (!prepared.ok) {
+        setBusy(false);
+        setStep(view === 'back' && resultByView.front ? 'result' : 'confirm');
+        setLayerProgress(null);
+        showStatus(`Cannot generate yet: ${prepared.blockers.join(', ') || prepared.note}`);
+        return null;
+      }
+
+      const created = await accountApi.createTryOnJob({
+        personMediaId: currentPersonId,
+        category: piece.category,
+        providerId,
+        idempotencyKey: `ui-${view}-layer-${index}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+        ...piece.payload,
+      });
+      setJob(created);
+      const done = created.status === 'succeeded' || created.status === 'failed' || created.status === 'cancelled'
+        ? created
+        : await waitForJobCompletion(created.id);
+      setJob(done);
+      if (done.status !== 'succeeded' || !done.resultMediaId) {
+        throw new Error(done.errorMessage || `Layer "${piece.label}" did not produce a result.`);
+      }
+      currentPersonId = done.resultMediaId;
+      finalJob = done;
+    }
+
+    if (finalJob) {
+      setResultByView((current) => ({ ...current, [view]: finalJob! }));
+      setActiveResultView(view);
+      setJob(finalJob);
+    }
+    setBusy(false);
+    setLayerProgress(null);
+    setStep('result');
+    void refreshFittings();
+    return finalJob;
+  };
+
   const handleGenerate = async () => {
     if (!usesAccount) {
       showStatus('Sign in to use Virtual Try-On with your private photographs.');
@@ -652,109 +763,55 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       showStatus('Select a base garment before generating a fitting.');
       return;
     }
-    if (generationMode === 'unavailable') {
-      showStatus(availability?.note || 'Virtual Try-On is currently unavailable. Your photographs have not been sent for AI processing.');
-      return;
-    }
 
-    // Additive layers must use Try-On Max so prompts can keep the base dress/outfit underneath.
-    const providerId: TryOnProviderId = generationMode === 'live'
-      ? (orderedLayers.length > 0 || layerNeedsMax(orderedLayers)
-        ? 'fashn-tryon-max'
-        : (availability?.defaultLiveProviderId || 'fashn-tryon-v1.6'))
-      : 'mock';
-
-    if (generationMode === 'live' && orderedLayers.length > 0 && providerId === 'fashn-tryon-max') {
-      const maxReady = availability?.providers?.some((item) => item.id === 'fashn-tryon-max' && item.availability === 'ready');
-      if (!maxReady) {
-        showStatus('Adding a jacket, shoes, or accessories on top of a look needs Try-On Max. Live Try-On Max is not ready on this server yet.');
-        return;
-      }
-    }
-
-    setBusy(true);
-    setJob(null);
-    setStep('progress');
-    setLayerProgress(null);
-    const totalSteps = 1 + orderedLayers.length;
-    showStatus(
-      orderedLayers.length > 0
-        ? `Building a layered look (${totalSteps} pieces)…`
-        : (generationMode === 'live' ? 'Starting virtual try-on…' : 'Starting local development demonstration…'),
-    );
-
+    const view: ResultView = backPerson?.mediaId && personMediaId === backPerson.mediaId ? 'back' : 'front';
     try {
-      let currentPersonId = personMediaId;
-      const pipeline: { label: string; category: TryOnCategory; payload: Awaited<ReturnType<typeof buildGarmentPayload>> }[] = [
-        {
-          label: shopBasePick?.name || preloadedGarment?.productName || selectedGarment?.name || 'Base garment',
-          category,
-          payload: await buildGarmentPayload(),
-        },
-        ...await Promise.all(orderedLayers.map(async (layer) => ({
-          label: layer.name,
-          category: layer.category,
-          payload: await buildPayloadFromPick(layer),
-        }))),
-      ];
-
-      let finalJob: TryOnJobRecord | null = null;
-      for (let index = 0; index < pipeline.length; index += 1) {
-        const piece = pipeline[index]!;
-        setLayerProgress(`Layer ${index + 1} of ${pipeline.length}: ${piece.label}`);
-        showStatus(`Applying ${piece.label} (${index + 1}/${pipeline.length})…`);
-
-        const prepared = await accountApi.prepareTryOnJob({
-          personMediaId: currentPersonId,
-          category: piece.category,
-          providerId,
-          ...piece.payload,
-        });
-        if (!prepared.ok) {
-          setBusy(false);
-          setStep('confirm');
-          setLayerProgress(null);
-          showStatus(`Cannot generate yet: ${prepared.blockers.join(', ') || prepared.note}`);
-          return;
-        }
-
-        const created = await accountApi.createTryOnJob({
-          personMediaId: currentPersonId,
-          category: piece.category,
-          providerId,
-          idempotencyKey: `ui-layer-${index}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-          ...piece.payload,
-        });
-        setJob(created);
-        const done = created.status === 'succeeded' || created.status === 'failed' || created.status === 'cancelled'
-          ? created
-          : await waitForJobCompletion(created.id);
-        setJob(done);
-        if (done.status !== 'succeeded' || !done.resultMediaId) {
-          throw new Error(done.errorMessage || `Layer "${piece.label}" did not produce a result.`);
-        }
-        currentPersonId = done.resultMediaId;
-        finalJob = done;
-      }
-
-      setBusy(false);
-      setLayerProgress(null);
-      setStep('result');
-      void refreshFittings();
+      if (view === 'front') setResultByView({});
+      const finalJob = await runTryOnPipeline(personMediaId, view);
+      if (!finalJob) return;
       showStatus(
-        finalJob?.demonstration
+        finalJob.demonstration
           ? (orderedLayers.length > 0
             ? 'Layered local demonstration complete — not a real FASHN fitting.'
             : 'Local development demonstration complete — not a real FASHN fitting.')
           : (orderedLayers.length > 0
-            ? 'Layered virtual try-on complete. Shoes, jacket, and accessories were applied one after another.'
-            : 'Virtual try-on complete. This is an AI visualisation, not a precise physical fit guarantee.'),
+            ? 'Layered virtual try-on complete. Use Back view to see the rear when you have a back photo.'
+            : 'Virtual try-on complete. Use Back view to see the rear when you have a back photo.'),
       );
     } catch (error) {
       setBusy(false);
       setLayerProgress(null);
       setStep('confirm');
       showStatus(tryOnFailureMessage(error, 'The layered try-on could not be completed.'));
+    }
+  };
+
+  const handleGenerateBackView = async () => {
+    if (!usesAccount) {
+      showStatus('Sign in to use Virtual Try-On with your private photographs.');
+      return;
+    }
+    if (!garmentReady) {
+      showStatus('Select a base garment before generating a back view.');
+      return;
+    }
+    if (!backPerson?.mediaId) {
+      showStatus('Add a full-body back photo in My Profile → Manage Photos, then generate the back view.');
+      return;
+    }
+    try {
+      const finalJob = await runTryOnPipeline(backPerson.mediaId, 'back');
+      if (!finalJob) return;
+      showStatus(
+        finalJob.demonstration
+          ? 'Full-body back demonstration view ready — not a real FASHN fitting.'
+          : 'Full-body back try-on view ready. Toggle Front and Back to compare.',
+      );
+    } catch (error) {
+      setBusy(false);
+      setLayerProgress(null);
+      setStep(resultByView.front ? 'result' : 'confirm');
+      showStatus(tryOnFailureMessage(error, 'The back-view try-on could not be completed.'));
     }
   };
 
@@ -800,8 +857,17 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   };
 
   // Final “After” image MUST come from the job’s private result media — never garmentPreview / shop image.
-  const hasCompletedResult = Boolean(job?.status === 'succeeded' && job.resultMediaId);
-  const resultUrl = hasCompletedResult && job?.resultMediaId ? mediaDisplayUrl(job.resultMediaId) : undefined;
+  const activeViewJob = resultByView[activeResultView] || job;
+  const hasCompletedResult = Boolean(activeViewJob?.status === 'succeeded' && activeViewJob.resultMediaId);
+  const resultUrl = hasCompletedResult && activeViewJob?.resultMediaId ? mediaDisplayUrl(activeViewJob.resultMediaId) : undefined;
+  const beforePhotoForView = activeResultView === 'back' && backPerson?.url
+    ? backPerson.url
+    : (frontPerson?.url || activePhoto);
+  const selectResultView = (view: ResultView) => {
+    setActiveResultView(view);
+    const next = resultByView[view];
+    if (next) setJob(next);
+  };
   const blockers = generationBlockers(availability, usesAccount);
   const generateLabel = generationMode === 'unavailable'
     ? 'Virtual Try-On Unavailable'
@@ -1409,24 +1475,67 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           </div>
         )}
 
-        {step === 'result' && hasCompletedResult && resultUrl && job && (
+        {step === 'result' && hasCompletedResult && resultUrl && activeViewJob && (
           <div className="space-y-4" data-testid="tryon-result">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B49361]">
-                  {job.demonstration ? 'Demonstration output — not a real virtual try-on' : 'Provider try-on result'}
+                  {activeViewJob.demonstration ? 'Demonstration output — not a real virtual try-on' : 'Provider try-on result'}
                 </p>
                 <h2 className="font-serif text-lg font-semibold text-[#242326] mt-1">
-                  {job.demonstration ? 'Development demonstration result' : 'Virtual try-on result'}
+                  {activeViewJob.demonstration ? 'Development demonstration result' : 'Virtual try-on result'}
                 </h2>
               </div>
-              <span className="text-[11px] text-[#5C585E]">{job.label}</span>
+              <span className="text-[11px] text-[#5C585E]">{activeViewJob.label}</span>
             </div>
-            {job.demonstration && (
+            {activeViewJob.demonstration && (
               <p className="text-xs p-3 rounded-xl bg-[#F6F2EC] border border-[#242326]/8 text-[#5C585E]" data-testid="tryon-mock-banner">
                 Demonstration output — not a real virtual try-on. The image below is a local mock, not a FASHN provider result.
               </p>
             )}
+
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5C585E] mr-1">Angle</span>
+              <Button
+                type="button"
+                variant={activeResultView === 'front' ? 'primary' : 'secondary'}
+                size="sm"
+                disabled={!resultByView.front && activeResultView !== 'front'}
+                onClick={() => selectResultView('front')}
+              >
+                Front
+              </Button>
+              <Button
+                type="button"
+                variant={activeResultView === 'back' ? 'primary' : 'secondary'}
+                size="sm"
+                disabled={!resultByView.back}
+                onClick={() => {
+                  if (resultByView.back) selectResultView('back');
+                }}
+              >
+                Back
+              </Button>
+              {!resultByView.back && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    if (!hasBackPhoto) {
+                      showStatus('Add a full-body back photo in My Profile → Manage Photos first.');
+                      onNavigate('profile');
+                      return;
+                    }
+                    void handleGenerateBackView();
+                  }}
+                >
+                  {hasBackPhoto ? (busy ? 'Generating back…' : 'Generate back view') : 'Add back photo'}
+                </Button>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant={compare === 'both' ? 'primary' : 'secondary'} size="sm" icon={<Columns2 className="w-4 h-4" />} onClick={() => setCompare('both')}>
                 Before / After
@@ -1435,37 +1544,40 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               <Button type="button" variant={compare === 'after' ? 'primary' : 'secondary'} size="sm" onClick={() => setCompare('after')}>After</Button>
             </div>
             <div className={`grid gap-3 ${compare === 'both' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-              {(compare === 'before' || compare === 'both') && activePhoto && (
+              {(compare === 'before' || compare === 'both') && beforePhotoForView && (
                 <div className="rounded-2xl border border-[#242326]/10 overflow-hidden bg-white" data-testid="tryon-before">
-                  <img src={activePhoto} alt="Before — your original photo" className="w-full h-auto object-cover" />
-                  <p className="text-[11px] p-2 text-[#5C585E]">Before · your original photo</p>
+                  <img src={beforePhotoForView} alt="Before — your original photo" className="w-full h-auto object-cover" />
+                  <p className="text-[11px] p-2 text-[#5C585E]">
+                    Before · {activeResultView === 'back' ? 'your full-body back photo' : 'your front photo'}
+                  </p>
                 </div>
               )}
               {(compare === 'after' || compare === 'both') && (
                 <div className="rounded-2xl border border-[#B49361]/40 overflow-hidden bg-white" data-testid="tryon-after">
                   <img
                     src={resultUrl}
-                    alt={job.demonstration ? 'Demonstration try-on output' : 'Provider try-on result'}
+                    alt={activeViewJob.demonstration ? 'Demonstration try-on output' : 'Provider try-on result'}
                     className="w-full h-auto object-cover"
                     data-testid="tryon-result-image"
-                    data-result-media-id={job.resultMediaId}
+                    data-result-media-id={activeViewJob.resultMediaId}
+                    data-result-view={activeResultView}
                   />
                   <p className="text-[11px] p-2 text-[#5C585E]">
-                    After · {job.demonstration ? 'Demonstration output — not a real virtual try-on' : 'Provider try-on result'}
+                    After · {activeResultView === 'back' ? 'Full-body back view' : 'Front view'} · {activeViewJob.demonstration ? 'Demonstration output — not a real virtual try-on' : 'Provider try-on result'}
                   </p>
                 </div>
               )}
             </div>
             <p className="text-xs text-[#5C585E]">
-              The After image is the stored try-on result media for this job — not the shop garment preview.
-              It is saved privately on your account and is an AI visualisation, not a precise physical fit guarantee.
+              The After image is the stored try-on result for this angle — not the shop garment preview.
+              A back view uses your saved full-body back photograph with the same outfit. AI visualisation only, not a precise physical fit guarantee.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button type="button" variant="secondary" size="md" onClick={() => setStep('fittings')}>View previous results</Button>
-              <Button type="button" variant="secondary" size="md" icon={<Shirt className="w-4 h-4" />} onClick={() => { setJob(null); setStep('garment'); }}>
+              <Button type="button" variant="secondary" size="md" icon={<Shirt className="w-4 h-4" />} onClick={() => { setJob(null); setResultByView({}); setActiveResultView('front'); setStep('garment'); }}>
                 Try another garment
               </Button>
-              <Button type="button" variant="secondary" size="md" icon={<Trash2 className="w-4 h-4" />} onClick={() => void handleDeleteFitting(job.id)}>
+              <Button type="button" variant="secondary" size="md" icon={<Trash2 className="w-4 h-4" />} onClick={() => void handleDeleteFitting(activeViewJob.id)}>
                 Delete result
               </Button>
             </div>
@@ -1502,7 +1614,13 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                         <button
                           type="button"
                           className="w-14 h-[4.5rem] rounded-xl overflow-hidden border border-[#242326]/10 shrink-0 cursor-pointer"
-                          onClick={() => { setJob(item); setStep('result'); setCompare('both'); }}
+                          onClick={() => {
+                            setJob(item);
+                            setResultByView({ front: item });
+                            setActiveResultView('front');
+                            setStep('result');
+                            setCompare('both');
+                          }}
                         >
                           <img src={thumb} alt="" className="w-full h-full object-cover" />
                         </button>

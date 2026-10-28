@@ -731,37 +731,59 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
               </button>
             </div>
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
-                {photos.profilePhotoUrl ? (
-                  <img src={photos.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-5 h-5 text-[#5C585E]" />
-                )}
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex gap-2">
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
+                    {photos.profilePhotoUrl ? (
+                      <img src={photos.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-5 h-5 text-[#5C585E]" />
+                    )}
+                  </div>
+                  <span className="text-[9px] text-[#5C585E] mt-1 block">Portrait</span>
+                </div>
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
+                    {photos.fullBodyFrontUrl ? (
+                      <img src={photos.fullBodyFrontUrl} alt="Full-body front" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="w-5 h-5 text-[#5C585E]" />
+                    )}
+                  </div>
+                  <span className="text-[9px] text-[#5C585E] mt-1 block">Front</span>
+                </div>
+                <div className="text-center">
+                  <div className={`w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] flex items-center justify-center shrink-0 border ${
+                    photos.fullBodyAdditionalUrl ? 'border-[#242326]/10' : 'border-dashed border-[#866a40]/50'
+                  }`}>
+                    {photos.fullBodyAdditionalUrl ? (
+                      <img src={photos.fullBodyAdditionalUrl} alt="Full-body back" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="w-5 h-5 text-[#866a40]" />
+                    )}
+                  </div>
+                  <span className="text-[9px] font-semibold text-[#866a40] mt-1 block">Back</span>
+                </div>
               </div>
-              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
-                {photos.fullBodyFrontUrl ? (
-                  <img src={photos.fullBodyFrontUrl} alt="Front body" className="w-full h-full object-cover" />
-                ) : (
-                  <Camera className="w-5 h-5 text-[#5C585E]" />
-                )}
-              </div>
-              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
-                {photos.fullBodyAdditionalUrl ? (
-                  <img src={photos.fullBodyAdditionalUrl} alt="Additional angle" className="w-full h-full object-cover" />
-                ) : (
-                  <Camera className="w-5 h-5 text-[#5C585E]" />
-                )}
-              </div>
-              <div className="text-xs text-[#5C585E] leading-snug min-w-0">
+              <div className="text-xs text-[#5C585E] leading-snug min-w-0 pt-0.5">
                 <span>
                   {photos.profilePhotoUrl || photos.fullBodyFrontUrl || photos.fullBodyAdditionalUrl
                     ? (usesAccount ? 'Private styling photographs on this account' : 'Photos active in temporary browser memory')
                     : 'No fitting photos selected yet'}
                 </span>
                 <span className="block text-[10px] text-[#9C6A61] mt-0.5">
-                  Full-body photos power Virtual Try-On and on-device silhouette scanning. Scan reads proportions from your photo — it is not sent to external AI from Profile.
+                  Upload a <strong>full-body back</strong> photo to unlock Back view in Virtual Try-On. Front photos also power silhouette scanning (on-device — not sent to external AI from Profile).
                 </span>
+                {!photos.fullBodyAdditionalUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveEditSection('photos')}
+                    className="mt-1.5 text-[11px] font-semibold text-[#9C6A61] hover:text-[#794E46] cursor-pointer"
+                  >
+                    Add full-body back photo →
+                  </button>
+                )}
               </div>
             </div>
 

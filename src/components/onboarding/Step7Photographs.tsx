@@ -219,11 +219,11 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
             onRemove={() => handleRemovePhoto('fullBodyFrontUrl')}
           />
           <PhotoRow
-            title="3. Side or 45° Angle (Optional)"
-            emptyHint="For drape & outerwear depth"
-            status={statusLabel('fullBodyAdditionalUrl', 'For drape & outerwear depth')}
+            title="3. Full-body back"
+            emptyHint="Full length, facing away — unlocks try-on Back view"
+            status={statusLabel('fullBodyAdditionalUrl', 'Full length, facing away — unlocks try-on Back view')}
             previewUrl={photos.fullBodyAdditionalUrl}
-            alt="Additional angle preview"
+            alt="Full-body back preview"
             inputRef={additionalInputRef}
             busy={busySlot === 'full_body_additional'}
             disabled={usesAccount && !canUpload}
