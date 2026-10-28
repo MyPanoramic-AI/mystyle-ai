@@ -22,7 +22,7 @@ const CATEGORIES = new Set<GarmentCategory>(['tops', 'bottoms', 'one-pieces', 'o
 const QUALITIES = new Set<Quality>(['draft', 'standard', 'high']);
 const PROVIDERS = new Set<TryOnProviderId>(['mock', 'fashn-tryon-v1.6', 'fashn-tryon-max']);
 /** tryon_result allows sequential outfit layering (jacket/shoes/accessories on a prior fitting). */
-const PERSON_PURPOSES = new Set(['full_body_front', 'full_body_additional', 'profile_portrait', 'profile', 'tryon_result']);
+const PERSON_PURPOSES = new Set(['full_body_front', 'full_body_back', 'full_body_additional', 'profile_portrait', 'profile', 'tryon_result']);
 const GARMENT_PURPOSES = new Set(['garment_reference', 'wardrobe']);
 const ACTIVE = new Set(['queued', 'running']);
 

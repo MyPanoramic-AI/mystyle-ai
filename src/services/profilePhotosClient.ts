@@ -9,9 +9,11 @@ export function photosFromSlots(slots: ProfilePhotoSlots): TemporaryPhotos {
   return {
     portraitMediaId: slots.portraitMediaId ?? undefined,
     fullBodyFrontMediaId: slots.fullBodyFrontMediaId ?? undefined,
+    fullBodyBackMediaId: slots.fullBodyBackMediaId ?? undefined,
     fullBodyAdditionalMediaId: slots.fullBodyAdditionalMediaId ?? undefined,
     profilePhotoUrl: slots.portraitMediaId ? mediaDisplayUrl(slots.portraitMediaId) : undefined,
     fullBodyFrontUrl: slots.fullBodyFrontMediaId ? mediaDisplayUrl(slots.fullBodyFrontMediaId) : undefined,
+    fullBodyBackUrl: slots.fullBodyBackMediaId ? mediaDisplayUrl(slots.fullBodyBackMediaId) : undefined,
     fullBodyAdditionalUrl: slots.fullBodyAdditionalMediaId ? mediaDisplayUrl(slots.fullBodyAdditionalMediaId) : undefined,
   };
 }
@@ -19,18 +21,23 @@ export function photosFromSlots(slots: ProfilePhotoSlots): TemporaryPhotos {
 export function urlKeyForSlot(slot: ProfilePhotoSlot): keyof TemporaryPhotos {
   if (slot === 'portrait') return 'profilePhotoUrl';
   if (slot === 'full_body_front') return 'fullBodyFrontUrl';
+  if (slot === 'full_body_back') return 'fullBodyBackUrl';
   return 'fullBodyAdditionalUrl';
 }
 
 export function mediaKeyForSlot(slot: ProfilePhotoSlot): keyof TemporaryPhotos {
   if (slot === 'portrait') return 'portraitMediaId';
   if (slot === 'full_body_front') return 'fullBodyFrontMediaId';
+  if (slot === 'full_body_back') return 'fullBodyBackMediaId';
   return 'fullBodyAdditionalMediaId';
 }
 
-export function slotForUrlKey(key: 'profilePhotoUrl' | 'fullBodyFrontUrl' | 'fullBodyAdditionalUrl'): ProfilePhotoSlot {
+export type PhotoUrlKey = 'profilePhotoUrl' | 'fullBodyFrontUrl' | 'fullBodyBackUrl' | 'fullBodyAdditionalUrl';
+
+export function slotForUrlKey(key: PhotoUrlKey): ProfilePhotoSlot {
   if (key === 'profilePhotoUrl') return 'portrait';
   if (key === 'fullBodyFrontUrl') return 'full_body_front';
+  if (key === 'fullBodyBackUrl') return 'full_body_back';
   return 'full_body_additional';
 }
 

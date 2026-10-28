@@ -254,11 +254,12 @@ export interface ConsentStateResponse {
   notes: Record<string, string>;
 }
 
-export type ProfilePhotoSlot = 'portrait' | 'full_body_front' | 'full_body_additional';
+export type ProfilePhotoSlot = 'portrait' | 'full_body_front' | 'full_body_back' | 'full_body_additional';
 
 export interface ProfilePhotoSlots {
   portraitMediaId: string | null;
   fullBodyFrontMediaId: string | null;
+  fullBodyBackMediaId: string | null;
   fullBodyAdditionalMediaId: string | null;
 }
 

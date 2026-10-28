@@ -162,9 +162,11 @@ export interface UserProfile {
 export interface TemporaryPhotos {
   profilePhotoUrl?: string;
   fullBodyFrontUrl?: string;
+  fullBodyBackUrl?: string;
   fullBodyAdditionalUrl?: string;
   portraitMediaId?: string;
   fullBodyFrontMediaId?: string;
+  fullBodyBackMediaId?: string;
   fullBodyAdditionalMediaId?: string;
 }
 

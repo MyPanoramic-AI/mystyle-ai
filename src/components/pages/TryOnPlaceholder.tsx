@@ -47,7 +47,7 @@ interface TryOnPlaceholderProps {
   onClearOutfit?: () => void;
 }
 
-type PersonSlot = 'full_body_front' | 'full_body_additional' | 'portrait';
+type PersonSlot = 'full_body_front' | 'full_body_back' | 'full_body_additional' | 'portrait';
 type GarmentMode = 'existing' | 'shop' | 'upload';
 type Step = 'garment' | 'photo' | 'confirm' | 'progress' | 'result' | 'fittings';
 
@@ -104,8 +104,11 @@ function personOptions(photos?: TemporaryPhotos): { slot: PersonSlot; mediaId: s
   if (photos?.fullBodyFrontMediaId && photos.fullBodyFrontUrl) {
     options.push({ slot: 'full_body_front', mediaId: photos.fullBodyFrontMediaId, url: photos.fullBodyFrontUrl, label: 'Full-body front' });
   }
+  if (photos?.fullBodyBackMediaId && photos.fullBodyBackUrl) {
+    options.push({ slot: 'full_body_back', mediaId: photos.fullBodyBackMediaId, url: photos.fullBodyBackUrl, label: 'Full-body back' });
+  }
   if (photos?.fullBodyAdditionalMediaId && photos.fullBodyAdditionalUrl) {
-    options.push({ slot: 'full_body_additional', mediaId: photos.fullBodyAdditionalMediaId, url: photos.fullBodyAdditionalUrl, label: 'Full-body back' });
+    options.push({ slot: 'full_body_additional', mediaId: photos.fullBodyAdditionalMediaId, url: photos.fullBodyAdditionalUrl, label: '45° / side angle' });
   }
   if (photos?.portraitMediaId && photos.profilePhotoUrl) {
     options.push({ slot: 'portrait', mediaId: photos.portraitMediaId, url: photos.profilePhotoUrl, label: 'Portrait' });
@@ -346,8 +349,11 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const garmentInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<number | null>(null);
 
-  const frontPerson = options.find((item) => item.slot === 'full_body_front') || options.find((item) => item.slot !== 'full_body_additional');
-  const backPerson = options.find((item) => item.slot === 'full_body_additional');
+  const frontPerson = options.find((item) => item.slot === 'full_body_front')
+    || options.find((item) => item.slot !== 'full_body_back' && item.slot !== 'full_body_additional');
+  // Prefer dedicated back slot; fall back to older uploads that were stored as additional.
+  const backPerson = options.find((item) => item.slot === 'full_body_back')
+    || options.find((item) => item.slot === 'full_body_additional');
   const activePhoto = options.find((item) => item.mediaId === personMediaId)?.url || preferredPerson?.url;
   const selectedGarment = accountGarments.find((item) => item.id === selectedGarmentId);
   const generationMode = availability?.generationMode || 'unavailable';

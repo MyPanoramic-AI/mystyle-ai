@@ -21,11 +21,10 @@ import {
   fileToBase64,
   mediaDisplayUrl,
   mediaKeyForSlot,
+  type PhotoUrlKey,
   slotForUrlKey,
   urlKeyForSlot,
 } from '../../services/profilePhotosClient';
-
-type UrlPhotoKey = 'profilePhotoUrl' | 'fullBodyFrontUrl' | 'fullBodyAdditionalUrl';
 
 interface Step7PhotographsProps {
   photos: TemporaryPhotos;
@@ -54,6 +53,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
 }) => {
   const profileInputRef = useRef<HTMLInputElement>(null);
   const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
   const additionalInputRef = useRef<HTMLInputElement>(null);
   const [consentChecked, setConsentChecked] = useState(storageConsentGranted);
   const [busySlot, setBusySlot] = useState<ProfilePhotoSlot | null>(null);
@@ -65,12 +65,12 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
 
   const canUpload = !usesAccount || consentChecked;
 
-  const handleLocalFile = (key: UrlPhotoKey, file: File) => {
+  const handleLocalFile = (key: PhotoUrlKey, file: File) => {
     const objectUrl = URL.createObjectURL(file);
     onUpdatePhotos({ ...photos, [key]: objectUrl });
   };
 
-  const handleAccountFile = async (key: UrlPhotoKey, file: File) => {
+  const handleAccountFile = async (key: PhotoUrlKey, file: File) => {
     if (!onUploadSlot || !onGrantStorageConsent) return;
     const slot = slotForUrlKey(key);
     setBusySlot(slot);
@@ -92,7 +92,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
     }
   };
 
-  const handleFileChange = (key: UrlPhotoKey, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (key: PhotoUrlKey, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
@@ -107,7 +107,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
     handleLocalFile(key, file);
   };
 
-  const handleRemovePhoto = (key: UrlPhotoKey) => {
+  const handleRemovePhoto = (key: PhotoUrlKey) => {
     const slot = slotForUrlKey(key);
     if (usesAccount && onDeleteSlot && photos[mediaKeyForSlot(slot)]) {
       setBusySlot(slot);
@@ -131,7 +131,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
     onUpdatePhotos(updated);
   };
 
-  const statusLabel = (key: UrlPhotoKey, empty: string) => {
+  const statusLabel = (key: PhotoUrlKey, empty: string) => {
     if (!photos[key]) return empty;
     if (usesAccount && photos[mediaKeyForSlot(slotForUrlKey(key))]) return 'Saved privately to your account';
     return 'Photo selected (browser memory only)';
@@ -221,9 +221,22 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
           <PhotoRow
             title="3. Full-body back"
             emptyHint="Full length, facing away — unlocks try-on Back view"
-            status={statusLabel('fullBodyAdditionalUrl', 'Full length, facing away — unlocks try-on Back view')}
-            previewUrl={photos.fullBodyAdditionalUrl}
+            status={statusLabel('fullBodyBackUrl', 'Full length, facing away — unlocks try-on Back view')}
+            previewUrl={photos.fullBodyBackUrl}
             alt="Full-body back preview"
+            inputRef={backInputRef}
+            busy={busySlot === 'full_body_back'}
+            disabled={usesAccount && !canUpload}
+            onChoose={() => backInputRef.current?.click()}
+            onFile={(event) => handleFileChange('fullBodyBackUrl', event)}
+            onRemove={() => handleRemovePhoto('fullBodyBackUrl')}
+          />
+          <PhotoRow
+            title="4. 45° / side angle (Optional)"
+            emptyHint="For drape, outerwear depth, and another try-on angle"
+            status={statusLabel('fullBodyAdditionalUrl', 'For drape, outerwear depth, and another try-on angle')}
+            previewUrl={photos.fullBodyAdditionalUrl}
+            alt="45 degree angle preview"
             inputRef={additionalInputRef}
             busy={busySlot === 'full_body_additional'}
             disabled={usesAccount && !canUpload}

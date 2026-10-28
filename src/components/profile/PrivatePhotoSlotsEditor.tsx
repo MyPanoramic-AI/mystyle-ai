@@ -12,11 +12,10 @@ import {
   fileToBase64,
   mediaDisplayUrl,
   mediaKeyForSlot,
+  type PhotoUrlKey,
   slotForUrlKey,
   urlKeyForSlot,
 } from '../../services/profilePhotosClient';
-
-type UrlPhotoKey = 'profilePhotoUrl' | 'fullBodyFrontUrl' | 'fullBodyAdditionalUrl';
 
 export interface PrivatePhotoSlotsEditorProps {
   photos: TemporaryPhotos;
@@ -29,20 +28,28 @@ export interface PrivatePhotoSlotsEditorProps {
 }
 
 const SLOTS: {
-  key: UrlPhotoKey;
+  key: PhotoUrlKey;
   title: string;
   emptyHint: string;
   slot: ProfilePhotoSlot;
   emphasize?: boolean;
+  optional?: boolean;
 }[] = [
   { key: 'profilePhotoUrl', title: '1. Profile portrait', emptyHint: 'Head and shoulders', slot: 'portrait' },
   { key: 'fullBodyFrontUrl', title: '2. Full-body front', emptyHint: 'Full length, facing camera, arms slightly out', slot: 'full_body_front' },
   {
-    key: 'fullBodyAdditionalUrl',
+    key: 'fullBodyBackUrl',
     title: '3. Full-body back',
-    emptyHint: 'Full length, facing away — required to see the back of a try-on',
-    slot: 'full_body_additional',
+    emptyHint: 'Full length, facing away — unlocks try-on Back view',
+    slot: 'full_body_back',
     emphasize: true,
+  },
+  {
+    key: 'fullBodyAdditionalUrl',
+    title: '4. 45° / side angle (Optional)',
+    emptyHint: 'For drape, outerwear depth, and another try-on angle',
+    slot: 'full_body_additional',
+    optional: true,
   },
 ];
 
@@ -57,10 +64,12 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
 }) => {
   const profileInputRef = useRef<HTMLInputElement>(null);
   const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
   const additionalInputRef = useRef<HTMLInputElement>(null);
-  const refs: Record<UrlPhotoKey, React.RefObject<HTMLInputElement | null>> = {
+  const refs: Record<PhotoUrlKey, React.RefObject<HTMLInputElement | null>> = {
     profilePhotoUrl: profileInputRef,
     fullBodyFrontUrl: frontInputRef,
+    fullBodyBackUrl: backInputRef,
     fullBodyAdditionalUrl: additionalInputRef,
   };
   const [consentChecked, setConsentChecked] = useState(storageConsentGranted);
@@ -73,12 +82,12 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
 
   const canUpload = !usesAccount || consentChecked;
 
-  const handleLocalFile = (key: UrlPhotoKey, file: File) => {
+  const handleLocalFile = (key: PhotoUrlKey, file: File) => {
     const objectUrl = URL.createObjectURL(file);
     onUpdatePhotos({ ...photos, [key]: objectUrl });
   };
 
-  const handleAccountFile = async (key: UrlPhotoKey, file: File) => {
+  const handleAccountFile = async (key: PhotoUrlKey, file: File) => {
     if (!onUploadSlot || !onGrantStorageConsent) return;
     const slot = slotForUrlKey(key);
     setBusySlot(slot);
@@ -100,7 +109,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
     }
   };
 
-  const handleFileChange = (key: UrlPhotoKey, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (key: PhotoUrlKey, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
@@ -115,7 +124,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
     handleLocalFile(key, file);
   };
 
-  const handleRemovePhoto = (key: UrlPhotoKey) => {
+  const handleRemovePhoto = (key: PhotoUrlKey) => {
     const slot = slotForUrlKey(key);
     if (usesAccount && onDeleteSlot && photos[mediaKeyForSlot(slot)]) {
       setBusySlot(slot);
@@ -139,7 +148,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
     onUpdatePhotos(updated);
   };
 
-  const statusLabel = (key: UrlPhotoKey, empty: string) => {
+  const statusLabel = (key: PhotoUrlKey, empty: string) => {
     if (!photos[key]) return empty;
     if (usesAccount && photos[mediaKeyForSlot(slotForUrlKey(key))]) return 'Saved privately to your account';
     return 'Photo selected (browser memory only)';
@@ -166,10 +175,10 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
       )}
 
       <div className="rounded-xl border border-[#866a40]/25 bg-[#FAF7F2] px-3 py-2.5">
-        <p className="text-[11px] font-semibold text-[#242326]">Three private photo slots</p>
+        <p className="text-[11px] font-semibold text-[#242326]">Four private photo slots</p>
         <p className="text-[11px] text-[#5C585E] mt-0.5 leading-relaxed">
-          Portrait · Full-body <strong className="text-[#242326]">front</strong> · Full-body <strong className="text-[#242326]">back</strong>.
-          The back photo is what unlocks the Back view in Virtual Try-On.
+          Portrait · Full-body <strong className="text-[#242326]">front</strong> · Full-body <strong className="text-[#242326]">back</strong> · optional <strong className="text-[#242326]">45° / side</strong>.
+          The back photo unlocks Back view in Virtual Try-On.
         </p>
       </div>
 
@@ -194,7 +203,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
         {SLOTS.map((entry) => (
           <div
             key={entry.key}
-            id={entry.key === 'fullBodyAdditionalUrl' ? 'full-body-back-slot' : undefined}
+            id={entry.key === 'fullBodyBackUrl' ? 'full-body-back-slot' : undefined}
             className={`flex items-center justify-between p-4 rounded-2xl border bg-white ${
               entry.emphasize
                 ? 'border-[#866a40]/45 ring-1 ring-[#866a40]/15'
@@ -262,7 +271,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
                   disabled={!canUpload || busySlot === entry.slot}
                   icon={<Upload className="w-3.5 h-3.5" />}
                 >
-                  {entry.emphasize ? 'Upload back' : 'Choose'}
+                  {entry.emphasize ? 'Upload back' : entry.optional ? 'Add angle' : 'Choose'}
                 </Button>
               )}
             </div>

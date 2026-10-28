@@ -105,7 +105,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   const [silhouetteMessage, setSilhouetteMessage] = useState<string | null>(null);
 
   const completeness = profileService.calculateCompleteness(profile);
-  const hasFullBodyPhoto = Boolean(photos.fullBodyFrontUrl || photos.fullBodyAdditionalUrl);
+  const hasFullBodyPhoto = Boolean(photos.fullBodyFrontUrl || photos.fullBodyBackUrl || photos.fullBodyAdditionalUrl);
   const hasBodyMeasures = Boolean(
     Number(profile.sizes.bustCm) > 0
     && Number(profile.sizes.waistCm) > 0
@@ -116,7 +116,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
     setSilhouetteBusy(true);
     setSilhouetteMessage(null);
     try {
-      const photoUrls = [photos.fullBodyFrontUrl, photos.fullBodyAdditionalUrl].filter(
+      const photoUrls = [photos.fullBodyFrontUrl, photos.fullBodyBackUrl, photos.fullBodyAdditionalUrl].filter(
         (url): url is string => Boolean(url),
       );
 
@@ -732,7 +732,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
             </div>
 
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <div className="text-center">
                   <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
                     {photos.profilePhotoUrl ? (
@@ -755,27 +755,37 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 </div>
                 <div className="text-center">
                   <div className={`w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] flex items-center justify-center shrink-0 border ${
-                    photos.fullBodyAdditionalUrl ? 'border-[#242326]/10' : 'border-dashed border-[#866a40]/50'
+                    photos.fullBodyBackUrl ? 'border-[#242326]/10' : 'border-dashed border-[#866a40]/50'
                   }`}>
-                    {photos.fullBodyAdditionalUrl ? (
-                      <img src={photos.fullBodyAdditionalUrl} alt="Full-body back" className="w-full h-full object-cover" />
+                    {photos.fullBodyBackUrl ? (
+                      <img src={photos.fullBodyBackUrl} alt="Full-body back" className="w-full h-full object-cover" />
                     ) : (
                       <Camera className="w-5 h-5 text-[#866a40]" />
                     )}
                   </div>
                   <span className="text-[9px] font-semibold text-[#866a40] mt-1 block">Back</span>
                 </div>
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F6F2EC] border border-[#242326]/10 flex items-center justify-center shrink-0">
+                    {photos.fullBodyAdditionalUrl ? (
+                      <img src={photos.fullBodyAdditionalUrl} alt="45 degree angle" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="w-5 h-5 text-[#5C585E]" />
+                    )}
+                  </div>
+                  <span className="text-[9px] text-[#5C585E] mt-1 block">45°</span>
+                </div>
               </div>
               <div className="text-xs text-[#5C585E] leading-snug min-w-0 pt-0.5">
                 <span>
-                  {photos.profilePhotoUrl || photos.fullBodyFrontUrl || photos.fullBodyAdditionalUrl
+                  {photos.profilePhotoUrl || photos.fullBodyFrontUrl || photos.fullBodyBackUrl || photos.fullBodyAdditionalUrl
                     ? (usesAccount ? 'Private styling photographs on this account' : 'Photos active in temporary browser memory')
                     : 'No fitting photos selected yet'}
                 </span>
                 <span className="block text-[10px] text-[#9C6A61] mt-0.5">
-                  Upload a <strong>full-body back</strong> photo to unlock Back view in Virtual Try-On. Front photos also power silhouette scanning (on-device — not sent to external AI from Profile).
+                  Upload a <strong>full-body back</strong> photo to unlock Back view in Virtual Try-On. Optional 45° helps with drape. Front photos also power silhouette scanning (on-device — not sent to external AI from Profile).
                 </span>
-                {!photos.fullBodyAdditionalUrl && (
+                {!photos.fullBodyBackUrl && (
                   <button
                     type="button"
                     onClick={() => setActiveEditSection('photos')}

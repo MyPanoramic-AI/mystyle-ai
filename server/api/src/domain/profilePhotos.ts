@@ -3,24 +3,30 @@ import type { Sql } from '../db.js';
 import { hasGrantedConsent } from '../privacy/consent.js';
 import { assertPurpose, deleteOwnedMedia, saveMedia } from '../media/store.js';
 
-export const PHOTO_SLOTS = ['portrait', 'full_body_front', 'full_body_additional'] as const;
+export const PHOTO_SLOTS = ['portrait', 'full_body_front', 'full_body_back', 'full_body_additional'] as const;
 export type PhotoSlot = (typeof PHOTO_SLOTS)[number];
 
 const SLOT_COLUMN: Record<PhotoSlot, string> = {
   portrait: 'portrait_media_id',
   full_body_front: 'full_body_front_media_id',
+  full_body_back: 'full_body_back_media_id',
   full_body_additional: 'full_body_additional_media_id',
 };
 
 const SLOT_PURPOSE: Record<PhotoSlot, string> = {
   portrait: 'profile_portrait',
   full_body_front: 'full_body_front',
+  full_body_back: 'full_body_back',
   full_body_additional: 'full_body_additional',
 };
 
 export function assertPhotoSlot(value: unknown): PhotoSlot {
   if (typeof value !== 'string' || !PHOTO_SLOTS.includes(value as PhotoSlot)) {
-    throw new ApiError('invalid_slot', 'Photograph slot must be portrait, full_body_front, or full_body_additional.', 400);
+    throw new ApiError(
+      'invalid_slot',
+      'Photograph slot must be portrait, full_body_front, full_body_back, or full_body_additional.',
+      400,
+    );
   }
   return value as PhotoSlot;
 }
@@ -28,21 +34,25 @@ export function assertPhotoSlot(value: unknown): PhotoSlot {
 export function readProfilePhotoSlots(db: Sql, userId: string): {
   portraitMediaId: string | null;
   fullBodyFrontMediaId: string | null;
+  fullBodyBackMediaId: string | null;
   fullBodyAdditionalMediaId: string | null;
 } {
   const row = db.prepare(
     `SELECT portrait_media_id AS portraitMediaId, full_body_front_media_id AS fullBodyFrontMediaId,
+      full_body_back_media_id AS fullBodyBackMediaId,
       full_body_additional_media_id AS fullBodyAdditionalMediaId
      FROM customer_profiles WHERE user_id = ?`,
   ).get(userId) as {
     portraitMediaId: string | null;
     fullBodyFrontMediaId: string | null;
+    fullBodyBackMediaId: string | null;
     fullBodyAdditionalMediaId: string | null;
   } | undefined;
   if (!row) throw new ApiError('not_found', 'Profile not found.', 404);
   return {
     portraitMediaId: row.portraitMediaId ?? null,
     fullBodyFrontMediaId: row.fullBodyFrontMediaId ?? null,
+    fullBodyBackMediaId: row.fullBodyBackMediaId ?? null,
     fullBodyAdditionalMediaId: row.fullBodyAdditionalMediaId ?? null,
   };
 }
@@ -50,6 +60,7 @@ export function readProfilePhotoSlots(db: Sql, userId: string): {
 function slotMediaId(slots: ReturnType<typeof readProfilePhotoSlots>, slot: PhotoSlot): string | null {
   if (slot === 'portrait') return slots.portraitMediaId;
   if (slot === 'full_body_front') return slots.fullBodyFrontMediaId;
+  if (slot === 'full_body_back') return slots.fullBodyBackMediaId;
   return slots.fullBodyAdditionalMediaId;
 }
 

@@ -116,13 +116,20 @@ export default function App({ account }: { account: ReadyAccount }) {
       if (cancelled) return;
       const next = photosFromSlots(response.photos);
       setPhotos((previous) => {
-        const nextHas = Boolean(next.portraitMediaId || next.fullBodyFrontMediaId || next.fullBodyAdditionalMediaId);
+        const nextHas = Boolean(
+          next.portraitMediaId
+          || next.fullBodyFrontMediaId
+          || next.fullBodyBackMediaId
+          || next.fullBodyAdditionalMediaId,
+        );
         const previousHas = Boolean(
           previous.portraitMediaId
           || previous.fullBodyFrontMediaId
+          || previous.fullBodyBackMediaId
           || previous.fullBodyAdditionalMediaId
           || previous.profilePhotoUrl
           || previous.fullBodyFrontUrl
+          || previous.fullBodyBackUrl
           || previous.fullBodyAdditionalUrl,
         );
         // Do not replace in-memory photographs with an empty account payload.

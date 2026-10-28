@@ -10,6 +10,7 @@ const PURPOSES = new Set([
   'garment_reference',
   'profile_portrait',
   'full_body_front',
+  'full_body_back',
   'full_body_additional',
   'tryon_result',
 ]);
@@ -31,7 +32,7 @@ export function assertPurpose(purpose: unknown): string {
   if (typeof purpose !== 'string' || !PURPOSES.has(purpose)) {
     throw new ApiError(
       'invalid_purpose',
-      'Purpose must be wardrobe, profile, garment_reference, profile_portrait, full_body_front, full_body_additional, or tryon_result.',
+      'Purpose must be wardrobe, profile, garment_reference, profile_portrait, full_body_front, full_body_back, full_body_additional, or tryon_result.',
       400,
     );
   }
@@ -48,6 +49,7 @@ function clearMediaReferences(db: Sql, userId: string, mediaId: string): void {
   db.prepare('UPDATE wardrobe_items SET media_id = NULL WHERE media_id = ? AND user_id = ?').run(mediaId, userId);
   db.prepare('UPDATE customer_profiles SET portrait_media_id = NULL WHERE user_id = ? AND portrait_media_id = ?').run(userId, mediaId);
   db.prepare('UPDATE customer_profiles SET full_body_front_media_id = NULL WHERE user_id = ? AND full_body_front_media_id = ?').run(userId, mediaId);
+  db.prepare('UPDATE customer_profiles SET full_body_back_media_id = NULL WHERE user_id = ? AND full_body_back_media_id = ?').run(userId, mediaId);
   db.prepare('UPDATE customer_profiles SET full_body_additional_media_id = NULL WHERE user_id = ? AND full_body_additional_media_id = ?').run(userId, mediaId);
   db.prepare(
     `UPDATE tryon_jobs SET result_media_id = NULL WHERE user_id = ? AND result_media_id = ?`,
