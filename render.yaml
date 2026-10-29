@@ -49,6 +49,8 @@ services:
         value: gpt-5-mini
       - key: AI_ALLOW_LIVE
         value: "true"
+      - key: AI_LIVE_APPROVAL_ACK
+        value: i-approve-paid-openai-stylist
       - key: AI_MAX_BUDGET_USD
         value: "5"
       - key: AI_MAX_USER_BUDGET_USD

@@ -80,7 +80,7 @@ test('invalid production configuration fails safely without printing secrets', (
   );
   assert.throws(
     () => loadConfig(productionEnv({ AI_ALLOW_LIVE: 'true' })),
-    /AI_ALLOW_LIVE/,
+    /AI_LIVE_APPROVAL_ACK|AI_ALLOW_LIVE/,
   );
   assert.throws(
     () => loadConfig(productionEnv({ PAYMENTS_ENABLED: 'true' })),
@@ -208,7 +208,7 @@ test('migrations upgrade from an early schema fixture and remain idempotent', ()
       prior.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(file, new Date().toISOString());
     }
     const upgraded = migrate(prior, migrationsDir);
-    assert.deepEqual(upgraded, ['006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql', '010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql', '013_tryon_free_ai_image.sql', '014_body_silhouette.sql', '015_family_link_invites.sql']);
+    assert.deepEqual(upgraded, ['006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql', '010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql', '013_tryon_free_ai_image.sql', '014_body_silhouette.sql', '015_family_link_invites.sql', '016_shoe_preferences.sql', '017_full_body_back_photo.sql', '018_stylist_persona.sql']);
     assert.deepEqual(migrate(prior, migrationsDir), []);
     prior.prepare('PRAGMA foreign_key_check').all();
     prior.close();
@@ -299,9 +299,23 @@ test('assertProductionSafeConfig rejects localhost-only production origins', () 
 test('cleanup and paid external services stay disabled by default in production profile', () => {
   const config = loadConfig(productionEnv());
   assert.equal(config.retentionCleanupEnabled, false);
-  assert.throws(() => loadConfig(productionEnv({ AI_ALLOW_LIVE: 'true' })), /AI_ALLOW_LIVE/);
+  assert.throws(() => loadConfig(productionEnv({ AI_ALLOW_LIVE: 'true' })), /AI_LIVE_APPROVAL_ACK|AI_ALLOW_LIVE/);
   assert.throws(() => loadConfig(productionEnv({ TRYON_ALLOW_LIVE: 'true' })), /TRYON_ALLOW_LIVE|TRYON_LIVE_APPROVAL_ACK/);
   assert.throws(() => loadConfig(productionEnv({ PAYMENTS_ENABLED: 'true' })), /Payments/);
+});
+
+test('production accepts live OpenAI stylist only with explicit approval acknowledgement', () => {
+  assert.throws(
+    () => loadConfig(productionEnv({ AI_ALLOW_LIVE: 'true', AI_LIVE_APPROVAL_ACK: 'wrong' })),
+    /AI_LIVE_APPROVAL_ACK/,
+  );
+  const config = loadConfig(productionEnv({
+    AI_ALLOW_LIVE: 'true',
+    AI_LIVE_APPROVAL_ACK: 'i-approve-paid-openai-stylist',
+    AI_PROVIDER: 'openai',
+    AI_MODEL: 'gpt-5-mini',
+  }));
+  assert.equal(config.appEnv, 'production');
 });
 
 test('production accepts live try-on only with explicit approval acknowledgement', () => {

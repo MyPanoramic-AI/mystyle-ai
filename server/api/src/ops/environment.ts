@@ -80,6 +80,8 @@ export function assertProductionSafeConfig(input: {
   retentionCleanupAck?: string | null;
   allowedOrigins: string[];
   liveAiEnabled: boolean;
+  /** Must equal i-approve-paid-openai-stylist when live AI is enabled in staging/production. */
+  liveAiApprovalAck?: string | null;
   liveTryOnEnabled?: boolean;
   /** Must equal i-approve-paid-fashn-tryon when live try-on is enabled in staging/production. */
   liveTryOnApprovalAck?: string | null;
@@ -103,7 +105,11 @@ export function assertProductionSafeConfig(input: {
     }
   }
   if (!profile.allowLiveAiDefault && input.liveAiEnabled) {
-    throw new Error('Staging/production refuse AI_ALLOW_LIVE=true until a separate live-provider approval sets an override.');
+    if (input.liveAiApprovalAck !== 'i-approve-paid-openai-stylist') {
+      throw new Error(
+        'Staging/production refuse AI_ALLOW_LIVE=true until AI_LIVE_APPROVAL_ACK=i-approve-paid-openai-stylist is set.',
+      );
+    }
   }
   if (!profile.allowLiveAiDefault && input.liveTryOnEnabled) {
     if (input.liveTryOnApprovalAck !== 'i-approve-paid-fashn-tryon') {

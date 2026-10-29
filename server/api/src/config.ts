@@ -110,6 +110,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     retentionCleanupAck: env.API_RETENTION_CLEANUP_ACK ?? null,
     allowedOrigins,
     liveAiEnabled,
+    liveAiApprovalAck: env.AI_LIVE_APPROVAL_ACK ?? null,
     liveTryOnEnabled,
     liveTryOnApprovalAck: env.TRYON_LIVE_APPROVAL_ACK ?? null,
     paymentsEnabled: env.PAYMENTS_ENABLED === 'true',
