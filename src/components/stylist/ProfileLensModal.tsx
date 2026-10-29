@@ -82,7 +82,7 @@ export const ProfileLensModal: React.FC<ProfileLensModalProps> = ({
                 Adjust Styling Lens
               </h3>
               <p className="text-[11px] text-[#5C585E]">
-                Fine-tune Aria’s recommendations for {profile.personal.firstName || 'your session'}
+                Fine-tune {(profile.stylistPersona?.name || 'your stylist').trim() || 'your stylist'}’s recommendations for {profile.personal.firstName || 'your session'}
               </p>
             </div>
           </div>

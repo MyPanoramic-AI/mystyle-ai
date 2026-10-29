@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { Send, Image, Mic, MicOff, X, Sparkles, Paperclip, Check } from 'lucide-react';
+import { Send, Image, Mic, MicOff, X, Sparkles, Paperclip } from 'lucide-react';
 import { STARTER_SUGGESTIONS } from '../../data/stylistKnowledge';
+import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 
 // Sample wardrobe garment presets for quick test-drive
 const SAMPLE_GARMENTS = [
@@ -28,6 +29,7 @@ interface StylistInputBarProps {
   isGenerating: boolean;
   onSelectPrompt: (prompt: string) => void;
   inputPrefill?: string;
+  stylistName?: string;
 }
 
 export const StylistInputBar: React.FC<StylistInputBarProps> = ({
@@ -35,12 +37,22 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
   isGenerating,
   onSelectPrompt,
   inputPrefill = '',
+  stylistName = 'Aria',
 }) => {
   const [inputText, setInputText] = useState(inputPrefill);
   const [attachment, setAttachment] = useState<{ name: string; url: string } | null>(null);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
-  const [isListening, setIsListening] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    isListening,
+    isSupported,
+    error: voiceError,
+    clearError: clearVoiceError,
+    stop: stopListening,
+    toggle: toggleListening,
+  } = useSpeechDictation({
+    onTranscript: setInputText,
+  });
 
   // Sync incoming inputPrefill
   React.useEffect(() => {
@@ -53,6 +65,7 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
     if (e) e.preventDefault();
     if ((!inputText.trim() && !attachment) || isGenerating) return;
 
+    stopListening();
     onSendMessage(inputText.trim(), attachment || undefined);
     setInputText('');
     setAttachment(null);
@@ -87,16 +100,11 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
   };
 
   const handleToggleVoice = () => {
-    if (isListening) {
-      setIsListening(false);
-    } else {
-      setIsListening(true);
-      // Realistic simulated voice dictation
-      setTimeout(() => {
-        setInputText('Curate a chic evening dinner outfit that pairs well with gold accessories and comfortable heels.');
-        setIsListening(false);
-      }, 1800);
+    clearVoiceError();
+    if (!isSupported) {
+      return;
     }
+    toggleListening(inputText);
   };
 
   return (
@@ -145,12 +153,25 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
           </div>
         )}
 
-        {/* Listening Indicator */}
+        {/* Listening / voice status */}
         {isListening && (
-          <div className="flex items-center gap-2 text-xs text-[#9C6A61] font-medium bg-[#FAF7F2] px-3 py-1.5 rounded-lg border border-[#9C6A61]/20 animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-[#9C6A61]" />
-            <span>Listening to your styling question...</span>
+          <div className="flex items-center gap-2 text-xs text-[#9C6A61] font-medium bg-[#FAF7F2] px-3 py-1.5 rounded-lg border border-[#9C6A61]/20">
+            <span className="w-2 h-2 rounded-full bg-[#9C6A61] animate-pulse" />
+            <span>Listening — speak your styling question. Tap the mic to stop.</span>
           </div>
+        )}
+        {!isListening && voiceError && (
+          <div className="flex items-center justify-between gap-2 text-xs text-[#794E46] bg-[#FAF7F2] px-3 py-1.5 rounded-lg border border-[#9C6A61]/25" role="status">
+            <span>{voiceError}</span>
+            <button type="button" onClick={clearVoiceError} className="text-[11px] font-semibold cursor-pointer shrink-0">
+              Dismiss
+            </button>
+          </div>
+        )}
+        {!isSupported && (
+          <p className="text-[11px] text-[#5C585E] px-1">
+            Live voice dictation needs Chrome or Edge (with microphone permission).
+          </p>
         )}
 
         {/* Input Form */}
@@ -214,17 +235,19 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
             )}
           </div>
 
-          {/* Voice input button */}
+          {/* Voice input button — live browser speech-to-text */}
           <button
             type="button"
             onClick={handleToggleVoice}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors cursor-pointer shrink-0 ${
+            disabled={!isSupported || isGenerating}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
               isListening
                 ? 'bg-[#9C6A61] text-white border-[#9C6A61]'
                 : 'bg-[#F6F2EC] hover:bg-[#E5CDBE]/30 text-[#5C585E] hover:text-[#242326] border-[#242326]/10'
             }`}
-            title="Voice input"
-            aria-label="Voice input"
+            title={isSupported ? (isListening ? 'Stop listening' : 'Dictate with microphone') : 'Voice dictation not supported in this browser'}
+            aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+            aria-pressed={isListening}
           >
             {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
           </button>
@@ -235,7 +258,7 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask Aria... 'Style a look for Cape Town brunch', 'What shoes go with my dress?'"
+              placeholder={`Ask ${stylistName}... 'Style a look for Cape Town brunch', 'What shoes go with my dress?'`}
               rows={1}
               className="w-full bg-[#F6F2EC] focus:bg-white text-[#242326] placeholder-[#5C585E]/70 rounded-xl px-3.5 py-2.5 text-xs sm:text-[13px] border border-[#242326]/10 focus:border-[#9C6A61] focus:ring-1 focus:ring-[#9C6A61] outline-none transition-all resize-none max-h-32 min-h-[40px]"
             />

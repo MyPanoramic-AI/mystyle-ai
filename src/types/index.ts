@@ -129,6 +129,32 @@ export interface ShoePreferences {
   preferredStyles: PreferredShoeStyleId[];
 }
 
+/** How the personal stylist presents (not the customer's gender). */
+export type StylistGenderId = 'woman' | 'man' | 'non-binary' | 'neutral';
+
+/** Perceived age / life-stage energy of the stylist persona. */
+export type StylistAgeVibeId =
+  | 'mid-twenties'
+  | 'thirties'
+  | 'forties'
+  | 'fifties-plus'
+  | 'ageless';
+
+/** Conversational tone for the stylist. */
+export type StylistVoiceId =
+  | 'warm-encouraging'
+  | 'direct-practical'
+  | 'witty-playful'
+  | 'polished-editorial'
+  | 'calm-minimal';
+
+export interface StylistPersona {
+  name: string;
+  gender: StylistGenderId;
+  ageVibe: StylistAgeVibeId;
+  voice: StylistVoiceId;
+}
+
 export type FitPreference = 'relaxed' | 'regular' | 'fitted' | 'no-preference';
 export type ExperimentationLevel = 'classic' | 'balanced' | 'adventurous' | 'no-preference';
 
@@ -154,6 +180,7 @@ export interface UserProfile {
   colours: ColourPreferences;
   shopping: ShoppingPreferences;
   shoePreferences: ShoePreferences;
+  stylistPersona: StylistPersona;
   isOnboardingCompleted: boolean;
   onboardingStatus?: 'pending' | 'deferred' | 'completed';
   lastUpdated?: string;

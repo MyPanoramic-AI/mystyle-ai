@@ -11,6 +11,10 @@ const EXPERIMENTS = new Set(['classic', 'balanced', 'adventurous', 'no-preferenc
 const HEEL_COMFORT = new Set(['cannot-wear-heels', 'low-heels-only', 'block-heels-ok', 'high-heels-ok', 'no-preference']);
 const HEEL_OCCASION = new Set(['never', 'special-occasions', 'sometimes', 'often', 'no-preference']);
 const SHOE_STYLES = new Set(['sneakers', 'flats', 'loafers', 'boots', 'sandals', 'block-heels', 'pumps', 'stilettos']);
+const STYLIST_GENDERS = new Set(['woman', 'man', 'non-binary', 'neutral']);
+const STYLIST_AGE_VIBES = new Set(['mid-twenties', 'thirties', 'forties', 'fifties-plus', 'ageless']);
+const STYLIST_VOICES = new Set(['warm-encouraging', 'direct-practical', 'witty-playful', 'polished-editorial', 'calm-minimal']);
+const DEFAULT_STYLIST = { name: 'Aria', gender: 'woman', ageVibe: 'thirties', voice: 'warm-encouraging' };
 
 function text(value: unknown, max: number, field: string): string | null {
   if (value === undefined || value === null || value === '') return null;
@@ -85,6 +89,16 @@ export function getProfile(db: Sql, userId: string): Record<string, unknown> {
       heelOccasion: profile.shoe_heel_occasion ?? 'no-preference',
       preferredStyles: JSON.parse(String(profile.preferred_shoe_styles_json ?? '[]')),
     },
+    stylistName: profile.stylist_name ?? DEFAULT_STYLIST.name,
+    stylistGender: profile.stylist_gender ?? DEFAULT_STYLIST.gender,
+    stylistAgeVibe: profile.stylist_age_vibe ?? DEFAULT_STYLIST.ageVibe,
+    stylistVoice: profile.stylist_voice ?? DEFAULT_STYLIST.voice,
+    stylistPersona: {
+      name: profile.stylist_name ?? DEFAULT_STYLIST.name,
+      gender: profile.stylist_gender ?? DEFAULT_STYLIST.gender,
+      ageVibe: profile.stylist_age_vibe ?? DEFAULT_STYLIST.ageVibe,
+      voice: profile.stylist_voice ?? DEFAULT_STYLIST.voice,
+    },
     onboardingStatus: profile.onboarding_status ?? 'pending',
     completionStatus: profile.completion_status,
     measurements: measurements ?? null,
@@ -126,6 +140,22 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
     : enumValue(body.shoeHeelOccasion ?? nestedShoe?.heelOccasion, HEEL_OCCASION, 'shoeHeelOccasion');
   const preferredShoeStyles = shoeStyleList(body.preferredShoeStyles ?? nestedShoe?.preferredStyles)
     ?? JSON.parse(String(current.preferred_shoe_styles_json ?? '[]'));
+  const nestedStylist = (body.stylistPersona ?? null) as Record<string, unknown> | null;
+  const stylistNameRaw = body.stylistName === undefined && nestedStylist?.name === undefined
+    ? current.stylist_name
+    : text(body.stylistName ?? nestedStylist?.name, 40, 'stylistName');
+  const stylistName = stylistNameRaw === undefined
+    ? current.stylist_name
+    : (stylistNameRaw ?? DEFAULT_STYLIST.name);
+  const stylistGender = body.stylistGender === undefined && nestedStylist?.gender === undefined
+    ? current.stylist_gender
+    : enumValue(body.stylistGender ?? nestedStylist?.gender, STYLIST_GENDERS, 'stylistGender');
+  const stylistAgeVibe = body.stylistAgeVibe === undefined && nestedStylist?.ageVibe === undefined
+    ? current.stylist_age_vibe
+    : enumValue(body.stylistAgeVibe ?? nestedStylist?.ageVibe, STYLIST_AGE_VIBES, 'stylistAgeVibe');
+  const stylistVoice = body.stylistVoice === undefined && nestedStylist?.voice === undefined
+    ? current.stylist_voice
+    : enumValue(body.stylistVoice ?? nestedStylist?.voice, STYLIST_VOICES, 'stylistVoice');
   const country = body.country === undefined ? current.country : text(body.country, 80, 'country');
   const currency = body.currency === undefined ? current.currency : text(body.currency, 16, 'currency');
   const complete = Boolean(displayName) && styles.length > 0 && Boolean(tops) && Boolean(budget);
@@ -135,6 +165,7 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
       budget_tier=?, favourite_colours_json=?, avoid_colours_json=?, fashion_interests_json=?, fit_preference=?, experimentation=?,
       country=?, currency=?, age_range=?, shopping_priorities_json=?, favourite_retailers_json=?,
       shoe_heel_comfort=?, shoe_heel_occasion=?, preferred_shoe_styles_json=?,
+      stylist_name=?, stylist_gender=?, stylist_age_vibe=?, stylist_voice=?,
       onboarding_status=?, completion_status=?, updated_at=? WHERE user_id=?`,
   ).run(
     displayName,
@@ -157,6 +188,10 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
     shoeHeelComfort,
     shoeHeelOccasion,
     JSON.stringify(preferredShoeStyles),
+    stylistName ?? DEFAULT_STYLIST.name,
+    stylistGender ?? DEFAULT_STYLIST.gender,
+    stylistAgeVibe ?? DEFAULT_STYLIST.ageVibe,
+    stylistVoice ?? DEFAULT_STYLIST.voice,
     onboarding ?? 'pending',
     complete ? 'complete' : 'incomplete',
     stamp,

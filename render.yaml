@@ -42,3 +42,30 @@ services:
         sync: false
       - key: API_ADMIN_TOKEN
         generateValue: true
+      # OpenAI personal stylist (server-side only). Set OPENAI_API_KEY in the Dashboard.
+      - key: AI_PROVIDER
+        value: openai
+      - key: AI_MODEL
+        value: gpt-5-mini
+      - key: AI_ALLOW_LIVE
+        value: "true"
+      - key: AI_MAX_BUDGET_USD
+        value: "5"
+      - key: AI_MAX_USER_BUDGET_USD
+        value: "1"
+      - key: AI_MAX_LIVE_REQUESTS
+        value: "500"
+      - key: AI_MAX_OUTPUT_TOKENS
+        value: "1024"
+      - key: AI_MAX_INPUT_TOKENS
+        value: "4000"
+      - key: AI_TIMEOUT_MS
+        value: "20000"
+      - key: AI_INPUT_USD_PER_MILLION
+        value: "0.25"
+      - key: AI_CACHED_INPUT_USD_PER_MILLION
+        value: "0.025"
+      - key: AI_OUTPUT_USD_PER_MILLION
+        value: "2"
+      - key: OPENAI_API_KEY
+        sync: false

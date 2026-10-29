@@ -12,6 +12,7 @@
 
 import { UserProfile } from '../types';
 import { DEFAULT_SHOE_PREFERENCES } from '../data/shoePreferences';
+import { asStylistPersona, DEFAULT_STYLIST_PERSONA } from '../data/stylistPersona';
 
 const STORAGE_KEY = 'mystyle_ai_user_profile_v1';
 
@@ -50,6 +51,7 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
     heelOccasion: 'special-occasions',
     preferredStyles: ['flats', 'loafers', 'block-heels'],
   },
+  stylistPersona: { ...DEFAULT_STYLIST_PERSONA },
   isOnboardingCompleted: true,
   lastUpdated: new Date().toISOString(),
 };
@@ -77,6 +79,7 @@ export const profileService = {
               ? parsed.shoePreferences.preferredStyles
               : DEFAULT_SHOE_PREFERENCES.preferredStyles,
           },
+          stylistPersona: asStylistPersona(parsed.stylistPersona),
         };
       }
     } catch (e) {

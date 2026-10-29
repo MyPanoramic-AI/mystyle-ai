@@ -4,13 +4,14 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { UserProfile, TemporaryPhotos, PersonalDetails, ClothingSizes, ColourPreferences, ShoppingPreferences, ShoePreferences } from '../../types';
+import { UserProfile, TemporaryPhotos, PersonalDetails, ClothingSizes, ColourPreferences, ShoppingPreferences, ShoePreferences, StylistPersona } from '../../types';
 import { Step1Welcome } from './Step1Welcome';
 import { Step2PersonalDetails } from './Step2PersonalDetails';
 import { Step3ClothingSizes } from './Step3ClothingSizes';
 import { Step4PersonalStyle } from './Step4PersonalStyle';
 import { Step5ColoursPreferences } from './Step5ColoursPreferences';
 import { Step6ShoppingPreferences } from './Step6ShoppingPreferences';
+import { Step7StylistPersona } from './Step7StylistPersona';
 import { Step7Photographs } from './Step7Photographs';
 import { Step8Completion } from './Step8Completion';
 import { ArrowLeft, X } from 'lucide-react';
@@ -108,8 +109,14 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handlePhotographs = () => {
+  const handleStylistPersona = (stylistPersona: StylistPersona) => {
+    setProfile((prev) => ({ ...prev, stylistPersona }));
     setCurrentStep(8);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePhotographs = () => {
+    setCurrentStep(9);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -260,6 +267,15 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         )}
 
         {currentStep === 7 && (
+          <Step7StylistPersona
+            initialPersona={profile.stylistPersona}
+            onContinue={handleStylistPersona}
+            onBack={handleBack}
+            onSkip={handleSkipCurrentStep}
+          />
+        )}
+
+        {currentStep === 8 && (
           <Step7Photographs
             photos={photos}
             onUpdatePhotos={setPhotos}
@@ -274,7 +290,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           />
         )}
 
-        {currentStep === 8 && (
+        {currentStep === 9 && (
           <Step8Completion
             profile={profile}
             photos={photos}

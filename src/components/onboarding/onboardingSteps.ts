@@ -8,8 +8,9 @@ export const ONBOARDING_STEPS = [
   { number: 4, title: 'Personal Style' },
   { number: 5, title: 'Palette & Fit' },
   { number: 6, title: 'Smart Shopping' },
-  { number: 7, title: 'Styling Photographs' },
-  { number: 8, title: 'Completion' },
+  { number: 7, title: 'Your Stylist' },
+  { number: 8, title: 'Styling Photographs' },
+  { number: 9, title: 'Completion' },
 ] as const;
 
 export const ONBOARDING_STEP_COUNT = ONBOARDING_STEPS.length;

@@ -96,7 +96,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         {/* Name and time */}
         <div className={`flex items-center gap-2 text-[11px] text-[#5C585E] ${isStylist ? 'justify-start' : 'justify-end'}`}>
           <span className="font-semibold text-[#242326]">
-            {isStylist ? 'Aria · Lead AI Stylist' : profile.personal.firstName || 'You'}
+            {isStylist
+              ? `${(profile.stylistPersona?.name || 'Aria').trim() || 'Aria'} · Personal Stylist`
+              : profile.personal.firstName || 'You'}
           </span>
           <span>·</span>
           <span>{message.timestamp}</span>

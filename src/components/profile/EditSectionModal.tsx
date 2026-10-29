@@ -11,6 +11,7 @@ import {
   ColourPreferences,
   ShoppingPreferences,
   ShoePreferences,
+  StylistPersona,
   TemporaryPhotos,
   FitPreference,
   ExperimentationLevel,
@@ -19,7 +20,9 @@ import {
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { ShoePreferencesFields } from '../common/ShoePreferencesFields';
+import { StylistPersonaFields } from '../common/StylistPersonaFields';
 import { DEFAULT_SHOE_PREFERENCES } from '../../data/shoePreferences';
+import { DEFAULT_STYLIST_PERSONA } from '../../data/stylistPersona';
 import {
   STYLE_CATEGORIES,
   SWATCH_COLORS,
@@ -37,7 +40,7 @@ import {
   parseLengthCm,
 } from '../../utils/measurements';
 
-export type EditableSection = 'personal' | 'sizes' | 'styles' | 'colours' | 'shopping' | 'photos' | 'shoes';
+export type EditableSection = 'personal' | 'sizes' | 'styles' | 'colours' | 'shopping' | 'photos' | 'shoes' | 'stylist';
 
 interface EditSectionModalProps {
   section: EditableSection | null;
@@ -74,6 +77,9 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
   const [shoePreferences, setShoePreferences] = useState<ShoePreferences>(
     profile.shoePreferences ?? { ...DEFAULT_SHOE_PREFERENCES },
   );
+  const [stylistPersona, setStylistPersona] = useState<StylistPersona>(
+    profile.stylistPersona ?? { ...DEFAULT_STYLIST_PERSONA },
+  );
   const [styles, setStyles] = useState<string[]>(profile.styles);
   const [colours, setColours] = useState<ColourPreferences>(profile.colours);
   const [shopping, setShopping] = useState<ShoppingPreferences>(profile.shopping);
@@ -86,6 +92,7 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
     setPersonal(profile.personal);
     setSizes(profile.sizes);
     setShoePreferences(profile.shoePreferences ?? { ...DEFAULT_SHOE_PREFERENCES });
+    setStylistPersona(profile.stylistPersona ?? { ...DEFAULT_STYLIST_PERSONA });
     setStyles(profile.styles);
     setColours(profile.colours);
     setShopping(profile.shopping);
@@ -117,6 +124,10 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
       updated.shoePreferences = shoePreferences;
     }
     if (section === 'shoes') updated.shoePreferences = shoePreferences;
+    if (section === 'stylist') {
+      const name = stylistPersona.name.trim() || DEFAULT_STYLIST_PERSONA.name;
+      updated.stylistPersona = { ...stylistPersona, name };
+    }
     if (section === 'styles') updated.styles = styles;
     if (section === 'colours') updated.colours = colours;
     if (section === 'shopping') updated.shopping = shopping;
@@ -140,6 +151,8 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
         return 'Edit Sizes, Measurements & Shoe Preferences';
       case 'shoes':
         return 'Edit Shoe Preferences';
+      case 'stylist':
+        return 'Edit Your Personal Stylist';
       case 'styles':
         return 'Edit Style Aesthetics';
       case 'colours':
@@ -356,6 +369,15 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
               Tell us what you can comfortably wear so recommendations stay realistic — for example no high heels, or heels only for special occasions.
             </p>
             <ShoePreferencesFields value={shoePreferences} onChange={setShoePreferences} />
+          </div>
+        )}
+
+        {section === 'stylist' && (
+          <div className="space-y-3">
+            <p className="text-xs text-[#5C585E] leading-relaxed">
+              Customise who styles you — name, presentation, age vibe, and conversational tone.
+            </p>
+            <StylistPersonaFields value={stylistPersona} onChange={setStylistPersona} compact />
           </div>
         )}
 

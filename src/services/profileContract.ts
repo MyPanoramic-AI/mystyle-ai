@@ -6,9 +6,18 @@ import {
   ShoeHeelComfort,
   ShoeHeelOccasion,
   ShoePreferences,
+  StylistPersona,
   UserProfile,
 } from '../types';
 import { DEFAULT_SHOE_PREFERENCES } from '../data/shoePreferences';
+import {
+  asStylistAgeVibe,
+  asStylistGender,
+  asStylistName,
+  asStylistPersona,
+  asStylistVoice,
+  DEFAULT_STYLIST_PERSONA,
+} from '../data/stylistPersona';
 
 const BUDGETS = new Set<BudgetTier>(['under-300', '300-600', '600-1000', '1000-2000', '2000-plus', 'flexible']);
 const FITS = new Set<FitPreference>(['relaxed', 'regular', 'fitted', 'no-preference']);
@@ -88,6 +97,7 @@ export function emptyAccountProfile(): UserProfile {
     colours: { favoriteColors: [], avoidColors: [], fitPreference: 'no-preference', experimentation: 'no-preference' },
     shopping: { itemBudget: 'flexible', priorities: [], favoriteRetailers: [] },
     shoePreferences: { ...DEFAULT_SHOE_PREFERENCES },
+    stylistPersona: { ...DEFAULT_STYLIST_PERSONA },
     isOnboardingCompleted: false,
     onboardingStatus: 'pending',
   };
@@ -132,6 +142,17 @@ function asShoePreferences(body: Record<string, unknown>): ShoePreferences {
     heelComfort: asHeelComfort(nested?.heelComfort ?? body.shoeHeelComfort),
     heelOccasion: asHeelOccasion(nested?.heelOccasion ?? body.shoeHeelOccasion),
     preferredStyles: asShoeStyles(nested?.preferredStyles ?? body.preferredShoeStyles),
+  };
+}
+
+function asStylistPersonaFromApi(body: Record<string, unknown>): StylistPersona {
+  const nested = (body.stylistPersona ?? null) as Record<string, unknown> | null;
+  if (nested && typeof nested === 'object') return asStylistPersona(nested);
+  return {
+    name: asStylistName(body.stylistName),
+    gender: asStylistGender(body.stylistGender),
+    ageVibe: asStylistAgeVibe(body.stylistAgeVibe),
+    voice: asStylistVoice(body.stylistVoice),
   };
 }
 
@@ -181,6 +202,7 @@ export function fromApiProfile(body: Record<string, unknown>): UserProfile {
       favoriteRetailers: textList(body.favouriteRetailers),
     },
     shoePreferences: asShoePreferences(body),
+    stylistPersona: asStylistPersonaFromApi(body),
     isOnboardingCompleted: status === 'completed',
     onboardingStatus: status,
   };
@@ -218,6 +240,11 @@ export function toApiProfile(profile: UserProfile): Record<string, unknown> {
     shoeHeelComfort: profile.shoePreferences?.heelComfort ?? 'no-preference',
     shoeHeelOccasion: profile.shoePreferences?.heelOccasion ?? 'no-preference',
     preferredShoeStyles: profile.shoePreferences?.preferredStyles ?? [],
+    stylistName: profile.stylistPersona?.name ?? DEFAULT_STYLIST_PERSONA.name,
+    stylistGender: profile.stylistPersona?.gender ?? DEFAULT_STYLIST_PERSONA.gender,
+    stylistAgeVibe: profile.stylistPersona?.ageVibe ?? DEFAULT_STYLIST_PERSONA.ageVibe,
+    stylistVoice: profile.stylistPersona?.voice ?? DEFAULT_STYLIST_PERSONA.voice,
+    stylistPersona: profile.stylistPersona ?? { ...DEFAULT_STYLIST_PERSONA },
     onboardingStatus: profile.onboardingStatus ?? (profile.isOnboardingCompleted ? 'completed' : 'pending'),
     measurements: {
       heightCm: typeof heightCm === 'number' && Number.isInteger(heightCm) ? heightCm : null,
@@ -256,6 +283,7 @@ function readStoredProfile(store: BrowserStore): UserProfile | null {
         heelComfort: asHeelComfort(parsed.shoePreferences?.heelComfort),
         heelOccasion: asHeelOccasion(parsed.shoePreferences?.heelOccasion),
       },
+      stylistPersona: asStylistPersona(parsed.stylistPersona),
       styles: Array.isArray(parsed.styles) ? parsed.styles : [],
     };
   } catch {

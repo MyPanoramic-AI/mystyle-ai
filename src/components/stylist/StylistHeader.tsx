@@ -6,6 +6,7 @@
 import React from 'react';
 import { NavigationTab, StylistFilterLens, UserProfile } from '../../types';
 import { ArrowLeft, Sparkles, Sliders, RotateCcw, Compass } from 'lucide-react';
+import { resolveStylistPersona } from '../../data/stylistPersona';
 
 interface StylistHeaderProps {
   profile: UserProfile;
@@ -24,6 +25,7 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
   onNavigateHome,
   onOpenDiscover,
 }) => {
+  const stylist = resolveStylistPersona(profile);
   return (
     <div className="bg-white/95 backdrop-blur-md border-b border-[#242326]/10 px-4 sm:px-6 py-3.5 sticky top-14 sm:top-16 z-30 transition-all">
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
@@ -50,7 +52,7 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="font-serif text-sm sm:text-base font-semibold text-[#242326] leading-none">
-                  Aria
+                  {stylist.name}
                 </h1>
                 <span className="hidden sm:inline text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-[#9C6A61]/10 text-[#9C6A61]">
                   Personal Stylist

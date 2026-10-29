@@ -4,7 +4,7 @@ import type { Sql } from '../db.js';
 import type { RateLimiter } from '../auth/rateLimit.js';
 import { getPreferences, getProfile } from '../domain/profiles.js';
 import type { AiConfig } from './aiConfig.js';
-import { minimiseProfile, STYLE_SYSTEM_PROMPT, type StyleContext } from './context.js';
+import { buildStyleSystemPrompt, minimiseProfile, resolvePersonaFromProfile, type StyleContext } from './context.js';
 import { GeminiTextProvider } from './geminiProvider.js';
 import { OpenAiTextProvider } from './openaiProvider.js';
 import { assertLiveAllowed } from './guards.js';
@@ -117,7 +117,14 @@ async function produce(runtime: StylistRuntime, text: string, history: ProviderM
   const provider = providerFor(runtime.config, runtime.fetchImpl ?? fetch);
   if (isLive(runtime.config.provider)) assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId), liveAttempts(runtime.db));
   try {
-    const completed = await provider.complete({ system: STYLE_SYSTEM_PROMPT, messages: [...history, { role: 'user', text }], context });
+    let profileRecord: Record<string, unknown> | null = null;
+    try {
+      profileRecord = getProfile(runtime.db, userId);
+    } catch {
+      profileRecord = null;
+    }
+    const system = buildStyleSystemPrompt(resolvePersonaFromProfile(profileRecord));
+    const completed = await provider.complete({ system, messages: [...history, { role: 'user', text }], context });
     const validated = validateStylistReply(completed.reply, runtime.config.provider === 'mock' ? 'mock' : 'live');
     if (!validated) {
       return { reply: safeFallback(), draft: { status: 'failed', provider: provider.id, model: completed.model, usage: completed.usage, costUsd: null, costStatus: 'unpriced' } };

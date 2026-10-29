@@ -7,6 +7,7 @@ import React from 'react';
 import { UserProfile, TemporaryPhotos } from '../../types';
 import { Button } from '../common/Button';
 import { shoeHeelComfortLabel, shoeHeelOccasionLabel } from '../../data/shoePreferences';
+import { resolveStylistPersona, stylistPersonaSummary } from '../../data/stylistPersona';
 import { Sparkles, ArrowRight, CheckCircle2, User, Palette, Shirt, Tag } from 'lucide-react';
 
 interface Step8CompletionProps {
@@ -122,6 +123,11 @@ export const Step8Completion: React.FC<Step8CompletionProps> = ({
                 Budget: <strong className="text-[#242326] font-medium">{profile.shopping.itemBudget}</strong>
                 <br />
                 Fit: <strong className="text-[#242326] font-medium capitalize">{profile.colours.fitPreference}</strong>
+                <br />
+                Stylist:{' '}
+                <strong className="text-[#242326] font-medium">
+                  {stylistPersonaSummary(resolveStylistPersona(profile))}
+                </strong>
               </p>
             </div>
           </div>

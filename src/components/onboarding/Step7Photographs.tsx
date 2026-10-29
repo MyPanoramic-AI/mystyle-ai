@@ -142,7 +142,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
       <div className="rounded-3xl bg-white border border-[#242326]/10 shadow-sm p-6 sm:p-10">
         <div className="mb-6">
           <span className="text-xs font-semibold tracking-wider uppercase text-[#B49361] block mb-1">
-            {onboardingStepLabel(7)}
+            {onboardingStepLabel(8)}
           </span>
           <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-[#242326]">
             Upload Your Fitting Photos

@@ -14,6 +14,7 @@ import {
   StylistBeautyTip,
   StylistQuickAction,
 } from '../types';
+import { resolveStylistPersona } from './stylistPersona';
 
 import heroEditorialImg from '../assets/images/hero_editorial_fashion_1791978397716.jpg';
 import dateNightImg from '../assets/images/fashion_date_night_1791978397788.jpg';
@@ -393,6 +394,7 @@ export function getInitialConversation(
   incomingState?: StylistNavigationState
 ): ChatMessage[] {
   const firstName = profile.personal.firstName || 'there';
+  const stylistName = resolveStylistPersona(profile).name;
   const primaryStyle = profile.styles[0] || 'Classic & Elegant';
   const sizeSummary = profile.sizes.topsSize ? `Size ${profile.sizes.topsSize}` : 'tailored fits';
 
@@ -439,7 +441,7 @@ export function getInitialConversation(
       id: 'msg-welcome-standard',
       sender: 'stylist',
       timestamp: 'Just now',
-      text: `Good day, ${firstName}! I'm Aria, your MyStyle personal fashion stylist.\n\nI'm calibrated to your style DNA: **${profile.styles.slice(0, 2).join(' & ') || 'Classic Elegance'}**, your preferred palette of **${profile.colours.favoriteColors.slice(0, 3).join(', ') || 'Warm neutrals'}**, and top SA retailers like Woolworths and Superbalist.\n\nWhat occasion or outfit challenge can we create together today?`,
+      text: `Good day, ${firstName}! I'm ${stylistName}, your MyStyle personal fashion stylist.\n\nI'm calibrated to your style DNA: **${profile.styles.slice(0, 2).join(' & ') || 'Classic Elegance'}**, your preferred palette of **${profile.colours.favoriteColors.slice(0, 3).join(', ') || 'Warm neutrals'}**, and top SA retailers like Woolworths and Superbalist.\n\nWhat occasion or outfit challenge can we create together today?`,
       outfitCard: OUTFIT_CATALOG.workOffice,
       quickActions: STARTER_SUGGESTIONS.slice(0, 4),
     },

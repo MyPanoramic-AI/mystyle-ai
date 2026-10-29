@@ -27,6 +27,7 @@ import { Sparkles, MessageCircle } from 'lucide-react';
 import { AccountApiError, type StylistServerMessage } from '../../services/accountApi';
 import { toChatMessage } from '../../services/stylistView';
 import type { PreloadedGarment } from '../../types/shop';
+import { resolveStylistPersona } from '../../data/stylistPersona';
 
 export interface StylistConnection {
   aiConsent: boolean;
@@ -74,6 +75,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [serverReady, setServerReady] = useState(!connection);
   const [offerLocalDemo, setOfferLocalDemo] = useState(false);
 
+  const stylistName = resolveStylistPersona(profile).name;
   const [lens, setLens] = useState<StylistFilterLens>({
     occasion: state.occasionTitle || 'Everyday Versatile',
     formality: 'Smart-Casual',
@@ -387,7 +389,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div className="rounded-2xl px-4 py-3 bg-white border border-[#242326]/10 shadow-xs flex items-center gap-2">
-              <span className="text-xs text-[#5C585E] font-medium">{localDemo || !connection || serviceLabel.toLowerCase().includes('not a live') ? 'Aria is preparing a demonstration reply' : 'Aria is styling your look'}</span>
+              <span className="text-xs text-[#5C585E] font-medium">{localDemo || !connection || serviceLabel.toLowerCase().includes('not a live') ? `${stylistName} is preparing a demonstration reply` : `${stylistName} is styling your look`}</span>
               <div className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.3s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.15s]" />
@@ -406,6 +408,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         isGenerating={isTyping}
         onSelectPrompt={handleSelectPrompt}
         inputPrefill={inputPrefill}
+        stylistName={stylistName}
       />
 
       {/* Profile Lens Modal */}
@@ -427,7 +430,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         isOpen={isResetConfirmOpen}
         onClose={() => setIsResetConfirmOpen(false)}
         title="Start New Styling Session?"
-        subtitle="This will clear your current conversation history with Aria."
+        subtitle={`This will clear your current conversation history with ${stylistName}.`}
       >
         <div className="space-y-4 pt-2">
           <p className="text-xs text-[#5C585E] leading-relaxed">

@@ -26,6 +26,7 @@ import {
   Users,
   Layers,
   Footprints,
+  MessageCircle,
 } from 'lucide-react';
 import { savedLooksService } from '../../services/savedLooksService';
 import { familyService } from '../../services/familyService';
@@ -45,6 +46,12 @@ import {
   shoeHeelComfortLabel,
   shoeHeelOccasionLabel,
 } from '../../data/shoePreferences';
+import {
+  resolveStylistPersona,
+  stylistAgeVibeLabel,
+  stylistGenderLabel,
+  stylistVoiceLabel,
+} from '../../data/stylistPersona';
 import { FamilyLinkInvitePanel } from '../family/FamilyLinkInvitePanel';
 
 interface ProfileDashboardProps {
@@ -101,6 +108,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
     || shoePrefs.heelOccasion !== 'no-preference'
     || shoePrefs.preferredStyles.length > 0
   );
+  const stylistPersona = resolveStylistPersona(profile);
   const [silhouetteBusy, setSilhouetteBusy] = useState(false);
   const [silhouetteMessage, setSilhouetteMessage] = useState<string | null>(null);
 
@@ -317,6 +325,19 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                   </>
                 )}
               </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveEditSection('stylist')}
+                className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-[#9C6A61] hover:text-[#794E46] cursor-pointer"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>
+                  Stylist: {stylistPersona.name} · {stylistVoiceLabel(stylistPersona.voice)}
+                </span>
+                <Pencil className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
             </div>
           </div>
 
@@ -414,6 +435,57 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
 
       {/* Grid of Profile Section Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* CARD: PERSONAL STYLIST — first so it is easy to find and edit */}
+        <div
+          id="personal-stylist"
+          className="rounded-3xl bg-white border border-[#242326]/10 p-5 sm:p-6 shadow-xs flex flex-col justify-between md:col-span-2"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4 gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-[#9C6A61]/15 text-[#9C6A61] flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-serif text-base font-semibold text-[#242326]">
+                    Personal Stylist
+                  </h3>
+                  <p className="text-[11px] text-[#5C585E] mt-0.5">
+                    Change their name, presentation, age vibe, and how they talk with you.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveEditSection('stylist')}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#9C6A61] hover:bg-[#83554D] text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <Pencil className="w-3 h-3" />
+                <span>Edit stylist</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
+                <span className="text-[10px] text-[#5C585E] block">Name</span>
+                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistPersona.name}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
+                <span className="text-[10px] text-[#5C585E] block">Presentation</span>
+                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistGenderLabel(stylistPersona.gender)}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
+                <span className="text-[10px] text-[#5C585E] block">Age vibe</span>
+                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistAgeVibeLabel(stylistPersona.ageVibe)}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
+                <span className="text-[10px] text-[#5C585E] block">How they talk</span>
+                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistVoiceLabel(stylistPersona.voice)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* CARD 1: PERSONAL DETAILS */}
         <div className="rounded-3xl bg-white border border-[#242326]/10 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
           <div>
