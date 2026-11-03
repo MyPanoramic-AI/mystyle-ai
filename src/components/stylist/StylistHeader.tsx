@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { NavigationTab, StylistFilterLens, UserProfile } from '../../types';
-import { ArrowLeft, Sparkles, Sliders, RotateCcw, Compass } from 'lucide-react';
+import { ArrowLeft, Sparkles, Sliders, RotateCcw, Compass, FolderOpen } from 'lucide-react';
 import { resolveStylistPersona } from '../../data/stylistPersona';
 
 interface StylistHeaderProps {
@@ -15,6 +15,7 @@ interface StylistHeaderProps {
   onResetSession: () => void;
   onNavigateHome: () => void;
   onOpenDiscover?: () => void;
+  onOpenLibrary?: () => void;
 }
 
 export const StylistHeader: React.FC<StylistHeaderProps> = ({
@@ -24,6 +25,7 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
   onResetSession,
   onNavigateHome,
   onOpenDiscover,
+  onOpenLibrary,
 }) => {
   const stylist = resolveStylistPersona(profile);
   return (
@@ -77,27 +79,38 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
             <span className="truncate max-w-[130px]">{lens.occasion}</span>
           </button>
 
+          {/* Chat library */}
+          {onOpenLibrary && (
+            <button
+              onClick={onOpenLibrary}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-[#F6F2EC] border border-[#242326]/10 text-xs font-medium text-[#242326] transition-colors cursor-pointer"
+              title="Open chat library"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-[#9C6A61]" />
+              <span className="hidden sm:inline">Library</span>
+            </button>
+          )}
+
           {/* Explore Inspiration button */}
           {onOpenDiscover && (
             <button
               onClick={onOpenDiscover}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-[#F6F2EC] border border-[#242326]/10 text-xs font-medium text-[#242326] transition-colors cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-[#F6F2EC] border border-[#242326]/10 text-xs font-medium text-[#242326] transition-colors cursor-pointer"
               title="Explore style discovery & outfit inspirations"
             >
               <Compass className="w-3.5 h-3.5 text-[#9C6A61]" />
-              <span className="hidden sm:inline">Explore Inspiration</span>
-              <span className="sm:hidden">Discover</span>
+              <span>Explore Inspiration</span>
             </button>
           )}
 
-          {/* New consultation button */}
+          {/* New consultation button — keeps prior chats in the library */}
           <button
             onClick={onResetSession}
             className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF7F2] border border-[#242326]/12 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer"
-            title="Start new consultation"
+            title="Start a new chat (previous chats stay in your library)"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">New Session</span>
+            <span className="hidden sm:inline">New Chat</span>
           </button>
         </div>
       </div>

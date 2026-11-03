@@ -115,6 +115,8 @@ export interface NotificationSettings {
   pushEnabled: boolean;
   emailEnabled: boolean;
   smsEnabled: boolean;
+  /** Off = one stylist notification per day. On = more frequent tips. */
+  hearMoreFromMe: boolean;
   weeklyStyleDrop: boolean;
   weatherOutfitAlerts: boolean;
   creditRenewalReminders: boolean;

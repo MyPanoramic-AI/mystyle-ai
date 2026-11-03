@@ -501,7 +501,7 @@ export function generateStylistResponse(
   // 1. Photo attachment analysis
   if (attachment) {
     return {
-      text: `I've analyzed your uploaded piece: **${attachment.name}**!\n\nThis is a remarkably versatile silhouette. Here is how I would style it for maximum elegance:\n\n1. **High-Contrast Proportion**: Pair this item with sleek, tailored fluid trousers in cream or deep charcoal to balance volume.\n2. **Textural Interest**: Introduce smooth silk or soft knitwear to create luxury contrast against this fabric.\n3. **Footwear & Polish**: Anchor with pointed square-toe mules and delicate brushed gold jewelry.\n\nHere is a complete curated ensemble that works seamlessly with your aesthetic:`,
+      text: `Looking at your photo of **${attachment.name}**: the silhouette reads clean and intentional — soft structure, balanced proportion through the frame, and a polished-casual formality that works for day into early evening.\n\nHow you look in it: the piece sits as a clear hero; keep that focus and refine the rest of the outfit around it.\n\n1. **High-Contrast Proportion**: Pair with sleek, tailored fluid trousers in cream or deep charcoal to balance volume.\n2. **Textural Interest**: Introduce smooth silk or soft knitwear for luxury contrast against this fabric.\n3. **Footwear & Polish**: Anchor with pointed square-toe mules and delicate brushed gold jewelry.\n\nHere is a complete curated ensemble that works with your aesthetic:`,
       outfitCard: OUTFIT_CATALOG.workOffice,
       quickActions: [
         {

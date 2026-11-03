@@ -17,12 +17,18 @@ import {
   Key,
   Globe,
   MessageSquare,
+  HeartHandshake,
 } from 'lucide-react';
+import { WhatsAppConnectPanel } from '../profile/WhatsAppConnectPanel';
 
 interface AccountSettingsViewProps {
   settings: AccountSettings;
   onSaveSettings: (updated: AccountSettings) => void;
   accountMode?: boolean;
+  stylistName?: string;
+  onUnauthenticated?: () => void;
+  hearMoreFromMe?: boolean;
+  onHearMoreFromMeChange?: (value: boolean) => void;
 }
 
 const SA_CITIES = [
@@ -41,6 +47,10 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
   settings,
   onSaveSettings,
   accountMode = false,
+  stylistName = 'your stylist',
+  onUnauthenticated,
+  hearMoreFromMe = false,
+  onHearMoreFromMeChange,
 }) => {
   const [formData, setFormData] = useState<AccountSettings>(settings);
   const [success, setSuccess] = useState(false);
@@ -235,6 +245,39 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
           </div>
         </div>
 
+        {/* Stylist cadence */}
+        {onHearMoreFromMeChange && (
+          <div className="rounded-3xl bg-white border border-[#242326]/10 p-6 sm:p-7 shadow-xs">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-[#9C6A61]/10 text-[#9C6A61] flex items-center justify-center shrink-0">
+                  <HeartHandshake className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-serif text-base font-semibold text-[#242326]">
+                    Do you want to hear more from me?
+                  </h3>
+                  <p className="text-[11px] text-[#5C585E] mt-1 leading-relaxed">
+                    {hearMoreFromMe
+                      ? `${stylistName} will send more frequent styling tips and outfit nudges.`
+                      : `Off by default — ${stylistName} still sends one thoughtful tip each day. Turn this on when you want more.`}
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={hearMoreFromMe}
+                  onChange={(e) => onHearMoreFromMeChange(e.target.checked)}
+                  className="sr-only peer"
+                  aria-label="Do you want to hear more from me"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#9C6A61]"></div>
+              </label>
+            </div>
+          </div>
+        )}
+
         {/* Card 4: Connected Accounts */}
         <div className="rounded-3xl bg-white border border-[#242326]/10 p-6 sm:p-7 shadow-xs space-y-4">
           <h3 className="font-serif text-base font-semibold text-[#242326] flex items-center gap-2">
@@ -264,26 +307,30 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
               </button>
             </div>
 
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#242326]/6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-                  <MessageSquare className="w-4 h-4" />
+            {accountMode ? (
+              <WhatsAppConnectPanel enabled stylistName={stylistName} onUnauthenticated={onUnauthenticated} />
+            ) : (
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#242326]/6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-[#242326] block">WhatsApp Concierge Link</span>
+                    <span className="text-[11px] text-[#5C585E] block">
+                      {formData.linkedWhatsApp ? 'Linked for morning outfit inspiration drops' : 'Not linked'}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-xs font-semibold text-[#242326] block">WhatsApp Concierge Link</span>
-                  <span className="text-[11px] text-[#5C585E] block">
-                    {formData.linkedWhatsApp ? 'Linked for morning outfit inspiration drops' : 'Not linked'}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, linkedWhatsApp: !formData.linkedWhatsApp })}
+                  className="text-xs font-semibold text-[#9C6A61] hover:text-[#794E46] cursor-pointer"
+                >
+                  {formData.linkedWhatsApp ? 'Disconnect' : 'Connect'}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, linkedWhatsApp: !formData.linkedWhatsApp })}
-                className="text-xs font-semibold text-[#9C6A61] hover:text-[#794E46] cursor-pointer"
-              >
-                {formData.linkedWhatsApp ? 'Disconnect' : 'Connect'}
-              </button>
-            </div>
+            )}
           </div>
         </div>
 

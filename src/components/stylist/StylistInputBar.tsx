@@ -25,7 +25,7 @@ const SAMPLE_GARMENTS = [
 ];
 
 interface StylistInputBarProps {
-  onSendMessage: (text: string, attachment?: { name: string; url: string }) => void;
+  onSendMessage: (text: string, attachment?: { name: string; url: string; file?: File }) => void;
   isGenerating: boolean;
   onSelectPrompt: (prompt: string) => void;
   inputPrefill?: string;
@@ -40,7 +40,7 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
   stylistName = 'Aria',
 }) => {
   const [inputText, setInputText] = useState(inputPrefill);
-  const [attachment, setAttachment] = useState<{ name: string; url: string } | null>(null);
+  const [attachment, setAttachment] = useState<{ name: string; url: string; file?: File } | null>(null);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
@@ -86,9 +86,11 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
       setAttachment({
         name: file.name,
         url,
+        file,
       });
       setShowAttachmentMenu(false);
     }
+    e.target.value = '';
   };
 
   const handleSelectSample = (sample: { name: string; url: string }) => {

@@ -57,7 +57,7 @@ test('structured replies reject prices, links, and incomplete output', () => {
   assert.equal(validateStylistReply({ specialist: 'style' }, 'live'), null);
 });
 
-test('profile context keeps consent off and drops measurements', () => {
+test('profile context keeps consent off and drops identifying fields', () => {
   const profile = {
     displayName: 'Nandi',
     styles: ['classic'],
@@ -67,13 +67,14 @@ test('profile context keeps consent off and drops measurements', () => {
     shoppingPriorities: ['comfort'],
     favouriteRetailers: ['A local shop'],
     sizes: { tops: 'M', bottoms: null, dress: null, shoe: null },
-    measurements: { heightCm: 168 },
+    measurements: { heightCm: 168, weightKg: 62 },
     ageRange: '30-39',
   };
   assert.equal(minimiseProfile(profile, false), null);
   const context = minimiseProfile(profile, true);
   assert.equal(JSON.stringify(context).includes('Nandi'), false);
-  assert.equal(JSON.stringify(context).includes('168'), false);
+  assert.equal(context?.heightCm, 168);
+  assert.equal(context?.weightKg, 62);
   assert.deepEqual(context?.favouriteColours, ['chartreuse']);
 });
 

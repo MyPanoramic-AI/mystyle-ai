@@ -16,6 +16,12 @@ export interface AiConfig {
   inputUsdPerMillion: number | null;
   outputUsdPerMillion: number | null;
   cachedInputUsdPerMillion: number | null;
+  /** Stylist look visualization (OpenAI Images edits/generations). */
+  lookImageAllowLive: boolean;
+  lookImageModel: string;
+  lookImageQuality: 'low' | 'medium' | 'high';
+  lookImageTimeoutMs: number;
+  lookImageUsd: number;
 }
 
 function numberOrNull(raw: string | undefined): number | null {
@@ -27,8 +33,13 @@ function numberOrNull(raw: string | undefined): number | null {
 export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
   const provider = env.AI_PROVIDER === 'openai' ? 'openai' : env.AI_PROVIDER === 'gemini' ? 'gemini' : 'mock';
   const apiKey = provider === 'openai' ? env.OPENAI_API_KEY : provider === 'gemini' ? env.GEMINI_API_KEY : null;
+  const allowLive = env.AI_ALLOW_LIVE === 'true';
+  const lookImageAllowLive = env.AI_LOOK_IMAGE_ALLOW_LIVE === 'true'
+    || (env.AI_LOOK_IMAGE_ALLOW_LIVE !== 'false' && allowLive && provider === 'openai');
+  const qualityRaw = (env.AI_LOOK_IMAGE_QUALITY ?? 'low').trim().toLowerCase();
+  const lookImageQuality = qualityRaw === 'high' || qualityRaw === 'medium' ? qualityRaw : 'low';
   return {
-    allowLive: env.AI_ALLOW_LIVE === 'true',
+    allowLive,
     provider,
     model: env.AI_MODEL?.trim() || null,
     apiKey: apiKey?.trim() || null,
@@ -45,6 +56,11 @@ export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
     inputUsdPerMillion: numberOrNull(env.AI_INPUT_USD_PER_MILLION),
     outputUsdPerMillion: numberOrNull(env.AI_OUTPUT_USD_PER_MILLION),
     cachedInputUsdPerMillion: numberOrNull(env.AI_CACHED_INPUT_USD_PER_MILLION),
+    lookImageAllowLive,
+    lookImageModel: env.AI_LOOK_IMAGE_MODEL?.trim() || 'gpt-image-1',
+    lookImageQuality,
+    lookImageTimeoutMs: numberOrNull(env.AI_LOOK_IMAGE_TIMEOUT_MS) ?? 90_000,
+    lookImageUsd: numberOrNull(env.AI_LOOK_IMAGE_USD) ?? 0.04,
   };
 }
 

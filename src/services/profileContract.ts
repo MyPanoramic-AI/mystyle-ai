@@ -167,12 +167,14 @@ export function fromApiProfile(body: Record<string, unknown>): UserProfile {
     ? body.onboardingStatus
     : 'pending';
   const height = measurements?.heightCm;
+  const weight = measurements?.weightKg;
   const bodyShape = typeof body.bodyShape === 'string' ? body.bodyShape : undefined;
   return {
     personal: {
       firstName: typeof body.displayName === 'string' ? body.displayName : '',
       ageRange: typeof body.ageRange === 'string' ? body.ageRange : undefined,
       heightCm: typeof height === 'number' ? height : undefined,
+      weightKg: typeof weight === 'number' ? weight : undefined,
       country: typeof body.country === 'string' ? body.country : 'South Africa',
       currency: typeof body.currency === 'string' ? body.currency : 'ZAR (R)',
       bodyShape: bodyShape as UserProfile['personal']['bodyShape'],
@@ -217,6 +219,8 @@ function optionalCm(value: string | undefined): number | null {
 export function toApiProfile(profile: UserProfile): Record<string, unknown> {
   const height = profile.personal.heightCm;
   const heightCm = typeof height === 'number' ? height : typeof height === 'string' && height.trim() ? Number(height) : null;
+  const weight = profile.personal.weightKg;
+  const weightKg = typeof weight === 'number' ? weight : typeof weight === 'string' && weight.trim() ? Number(weight) : null;
   return {
     displayName: profile.personal.firstName,
     ageRange: profile.personal.ageRange ?? null,
@@ -248,6 +252,7 @@ export function toApiProfile(profile: UserProfile): Record<string, unknown> {
     onboardingStatus: profile.onboardingStatus ?? (profile.isOnboardingCompleted ? 'completed' : 'pending'),
     measurements: {
       heightCm: typeof heightCm === 'number' && Number.isInteger(heightCm) ? heightCm : null,
+      weightKg: typeof weightKg === 'number' && Number.isInteger(weightKg) ? weightKg : null,
       bustCm: optionalCm(profile.sizes.bustCm),
       waistCm: optionalCm(profile.sizes.waistCm),
       hipCm: optionalCm(profile.sizes.hipCm),
@@ -295,7 +300,7 @@ export function inspectBrowserStore(store: BrowserStore): ImportPreview | null {
   const blockedKeysPresent = NEVER_IMPORT_KEYS.filter((key) => store.getItem(key));
   const stored = readStoredProfile(store);
   if (!stored) return null;
-  const measurements = Boolean(stored.personal.heightCm || stored.sizes.bustCm || stored.sizes.waistCm || stored.sizes.hipCm);
+  const measurements = Boolean(stored.personal.heightCm || stored.personal.weightKg || stored.sizes.bustCm || stored.sizes.waistCm || stored.sizes.hipCm);
   return {
     displayName: stored.personal.firstName,
     styles: stored.styles,
@@ -325,7 +330,11 @@ export function buildImportProfile(current: UserProfile, store: BrowserStore, se
   if (selection.colours) next.colours = { ...stored.colours };
   if (selection.shopping) next.shopping = { ...stored.shopping };
   if (selection.measurements) {
-    next.personal = { ...next.personal, heightCm: stored.personal.heightCm };
+    next.personal = {
+      ...next.personal,
+      heightCm: stored.personal.heightCm,
+      weightKg: stored.personal.weightKg,
+    };
     next.sizes = {
       ...next.sizes,
       bustCm: stored.sizes.bustCm,

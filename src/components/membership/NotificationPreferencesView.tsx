@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NotificationSettings } from '../../types/membership';
 import {
   Bell,
@@ -16,6 +16,7 @@ import {
   Users,
   CheckCircle2,
   Sparkles,
+  HeartHandshake,
 } from 'lucide-react';
 
 interface NotificationPreferencesViewProps {
@@ -31,6 +32,10 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
 }) => {
   const [formData, setFormData] = useState<NotificationSettings>(settings);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setFormData(settings);
+  }, [settings]);
 
   const handleToggle = (key: keyof NotificationSettings, val: boolean) => {
     const updated = { ...formData, [key]: val };
@@ -53,8 +58,8 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
         </h2>
         <p className="text-xs text-[#5C585E]">
           {accountMode
-            ? 'These toggles are stored in this browser only. They do not register push, email, or SMS delivery for your signed-in account.'
-            : 'Receive intentional fashion alerts, morning weather outfit ideas, and credit replenishment updates without digital noise. Preferences stay in this browser only.'}
+            ? 'Saved to your account. By default you receive one stylist tip a day — turn on “hear more” below for more frequent updates.'
+            : 'Receive intentional fashion alerts without digital noise. By default: one tip a day. Preferences stay in this browser only.'}
         </p>
       </div>
 
@@ -63,11 +68,42 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>
             {accountMode
-              ? 'Browser demonstration notification preferences updated. No account delivery channels were changed.'
+              ? 'Notification preferences saved to your account.'
               : 'Notification preferences updated in this browser.'}
           </span>
         </div>
       )}
+
+      {/* Cadence: hear more from stylist */}
+      <div className="rounded-3xl bg-white border border-[#242326]/10 p-6 sm:p-7 shadow-xs">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-[#9C6A61]/10 text-[#9C6A61] flex items-center justify-center shrink-0">
+              <HeartHandshake className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-serif text-base font-semibold text-[#242326]">
+                Do you want to hear more from me?
+              </h3>
+              <p className="text-[11px] text-[#5C585E] mt-1 leading-relaxed">
+                {formData.hearMoreFromMe
+                  ? 'On — you will receive more frequent styling tips and outfit nudges through the day.'
+                  : 'Off — you still get one thoughtful stylist notification each day. Turn this on when you want more.'}
+              </p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={formData.hearMoreFromMe}
+              onChange={(e) => handleToggle('hearMoreFromMe', e.target.checked)}
+              className="sr-only peer"
+              aria-label="Do you want to hear more from me"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#9C6A61]"></div>
+          </label>
+        </div>
+      </div>
 
       {/* Card 1: Delivery Channels */}
       <div className="rounded-3xl bg-white border border-[#242326]/10 p-6 sm:p-7 shadow-xs space-y-4">

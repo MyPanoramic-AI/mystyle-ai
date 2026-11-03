@@ -93,10 +93,13 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
     return unsubscribe;
   }, []);
 
-  // Synchronize preloaded context from Discover or Stylist
+  // Synchronize preloaded context from Discover, Stylist, or Try-On Buy now
   useEffect(() => {
     if (preloadedContext) {
       setActiveTab('browse');
+      if (preloadedContext.pieces[0]) {
+        setSearchQuery(preloadedContext.pieces[0]);
+      }
       // If the context mentions an outfit category or piece, seed search or category
       if (preloadedContext.category) {
         const catMatch = [
@@ -114,6 +117,10 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
         if (catMatch) {
           setFilters((prev) => ({ ...prev, category: catMatch as ProductCategory }));
         }
+      }
+      if (preloadedContext.focusProductId) {
+        const focused = SHOP_PRODUCTS.find((product) => product.id === preloadedContext.focusProductId);
+        if (focused) setSelectedProduct(focused);
       }
     }
   }, [preloadedContext]);

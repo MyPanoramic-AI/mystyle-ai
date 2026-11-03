@@ -71,3 +71,30 @@ services:
         value: "2"
       - key: OPENAI_API_KEY
         sync: false
+      # Stylist look visualizations (hair, accessories) via OpenAI Images.
+      - key: AI_LOOK_IMAGE_ALLOW_LIVE
+        value: "true"
+      - key: AI_LOOK_IMAGE_MODEL
+        value: gpt-image-1
+      - key: AI_LOOK_IMAGE_QUALITY
+        value: low
+      - key: AI_LOOK_IMAGE_TIMEOUT_MS
+        value: "90000"
+      - key: AI_LOOK_IMAGE_USD
+        value: "0.04"
+      # Own SA WhatsApp Business number via Twilio BYON (not a Twilio-rented line).
+      # Register 0799927273 / +27799927273 in Twilio WhatsApp Self Sign-up, fill SID/token, then enable.
+      - key: WHATSAPP_ENABLED
+        value: "false"
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        value: "+27799927273"
+      - key: TWILIO_WHATSAPP_WEBHOOK_URL
+        value: https://mystyle-ai.onrender.com/api/whatsapp/webhook
+      - key: TWILIO_WHATSAPP_CONTENT_SID_STYLE_ALERT
+        sync: false
+      - key: TWILIO_WHATSAPP_SESSION_HOURS
+        value: "24"

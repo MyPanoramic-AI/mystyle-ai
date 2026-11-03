@@ -262,6 +262,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   pushEnabled: true,
   emailEnabled: true,
   smsEnabled: false,
+  hearMoreFromMe: false,
   weeklyStyleDrop: true,
   weatherOutfitAlerts: true,
   creditRenewalReminders: true,

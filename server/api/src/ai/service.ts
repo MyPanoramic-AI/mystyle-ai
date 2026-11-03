@@ -11,6 +11,11 @@ import { assertLiveAllowed } from './guards.js';
 import { MockTextProvider, type ProviderMessage, type ProviderUsage, type TextProvider } from './mockProvider.js';
 import { validateStylistReply, type StylistReply } from './schema.js';
 import { beautyUnavailable, routeSpecialist, shoppingUnavailable, tryOnUnavailable, wardrobeUnavailable } from './specialists.js';
+import { readOwnedMedia, saveMedia } from '../media/store.js';
+import { requireExternalPhotoConsentForVision } from '../domain/silhouette.js';
+import { readProfilePhotoSlots } from '../domain/profilePhotos.js';
+import type { ProviderImagePart } from './mockProvider.js';
+import { buildLookVisualPrompt, generateLookImage, wantsLookVisualization } from './lookImage.js';
 
 export interface StylistRuntime {
   db: Sql;
@@ -18,6 +23,9 @@ export interface StylistRuntime {
   now: () => number;
   limiter: RateLimiter;
   fetchImpl?: typeof fetch;
+  mediaDir?: string;
+  mediaMaxBytes?: number;
+  retentionMs?: number;
 }
 
 interface UsageDraft {
@@ -105,11 +113,22 @@ function safeFallback(): StylistReply {
     shoppingSearchIntent: null,
     tryOnIntent: false,
     savedLookIntent: false,
+    lookVisualIntent: false,
+    lookVisualPrompt: null,
+    generatedMediaId: null,
   };
 }
 
-async function produce(runtime: StylistRuntime, text: string, history: ProviderMessage[], context: StyleContext | null, userId: string, conversationId: string): Promise<{ reply: StylistReply; draft: UsageDraft }> {
-  const specialist = routeSpecialist(text);
+async function produce(
+  runtime: StylistRuntime,
+  text: string,
+  history: ProviderMessage[],
+  context: StyleContext | null,
+  userId: string,
+  conversationId: string,
+  images: ProviderImagePart[] = [],
+): Promise<{ reply: StylistReply; draft: UsageDraft }> {
+  const specialist = images.length ? 'style' : routeSpecialist(text);
   if (specialist === 'shopping') return { reply: shoppingUnavailable(text), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
   if (specialist === 'try_on') return { reply: tryOnUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
   if (specialist === 'beauty') return { reply: beautyUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
@@ -124,7 +143,10 @@ async function produce(runtime: StylistRuntime, text: string, history: ProviderM
       profileRecord = null;
     }
     const system = buildStyleSystemPrompt(resolvePersonaFromProfile(profileRecord));
-    const completed = await provider.complete({ system, messages: [...history, { role: 'user', text }], context });
+    const userTurn: ProviderMessage = images.length
+      ? { role: 'user', text, images }
+      : { role: 'user', text };
+    const completed = await provider.complete({ system, messages: [...history, userTurn], context });
     const validated = validateStylistReply(completed.reply, runtime.config.provider === 'mock' ? 'mock' : 'live');
     if (!validated) {
       return { reply: safeFallback(), draft: { status: 'failed', provider: provider.id, model: completed.model, usage: completed.usage, costUsd: null, costStatus: 'unpriced' } };
@@ -158,6 +180,7 @@ function contextFor(db: Sql, userId: string): StyleContext | null {
 
 export function stylistAvailability(config: AiConfig): Record<string, unknown> {
   const liveReady = isLive(config.provider) && config.allowLive && config.maxLiveRequests > 0 && Boolean(config.apiKey) && Boolean(config.model) && config.inputUsdPerMillion != null && config.outputUsdPerMillion != null && config.maxBudgetUsd > 0 && config.maxUserBudgetUsd > 0;
+  const lookImageReady = config.lookImageAllowLive && config.provider === 'openai' && Boolean(config.apiKey) && liveReady;
   return {
     provider: config.provider,
     liveEnabled: liveReady,
@@ -167,7 +190,101 @@ export function stylistAvailability(config: AiConfig): Record<string, unknown> {
     tryOn: 'not_connected',
     beauty: 'not_connected',
     wardrobe: 'not_connected',
+    lookImage: lookImageReady ? 'ready' : 'not_connected',
   };
+}
+
+function loadProfileReferenceImages(runtime: StylistRuntime, userId: string): ProviderImagePart[] {
+  if (!runtime.mediaDir) return [];
+  try {
+    const slots = readProfilePhotoSlots(runtime.db, userId);
+    const ids = [slots.portraitMediaId, slots.fullBodyFrontMediaId].filter((id): id is string => Boolean(id)).slice(0, 2);
+    const images: ProviderImagePart[] = [];
+    for (const id of ids) {
+      const ownedMedia = readOwnedMedia(runtime.db, runtime.mediaDir, userId, id);
+      images.push({ mimeType: ownedMedia.contentType, base64: ownedMedia.bytes.toString('base64') });
+    }
+    return images;
+  } catch {
+    return [];
+  }
+}
+
+async function maybeAttachLookImage(
+  runtime: StylistRuntime,
+  userId: string,
+  conversationId: string,
+  userText: string,
+  reply: StylistReply,
+  attachmentImages: ProviderImagePart[],
+): Promise<StylistReply> {
+  if (!wantsLookVisualization(userText, reply.lookVisualIntent)) return reply;
+  if (!runtime.config.lookImageAllowLive || runtime.config.provider !== 'openai' || !runtime.config.apiKey) {
+    return reply;
+  }
+  if (!runtime.mediaDir || runtime.mediaMaxBytes == null || runtime.retentionMs == null) return reply;
+
+  const lookCost = runtime.config.lookImageUsd;
+  if (spent(runtime.db) + lookCost > runtime.config.maxBudgetUsd) return reply;
+  if (spent(runtime.db, userId) + lookCost > runtime.config.maxUserBudgetUsd) return reply;
+
+  let references = attachmentImages.slice(0, 2);
+  if (!references.length) references = loadProfileReferenceImages(runtime, userId);
+
+  try {
+    if (references.length) requireExternalPhotoConsentForVision(runtime.db, userId);
+    const prompt = buildLookVisualPrompt({
+      userText,
+      modelPrompt: reply.lookVisualPrompt,
+      hasReferencePhoto: references.length > 0,
+    });
+    const image = await generateLookImage({
+      config: runtime.config,
+      prompt,
+      referenceImages: references,
+      fetchImpl: runtime.fetchImpl,
+    });
+    const saved = saveMedia({
+      db: runtime.db,
+      mediaDir: runtime.mediaDir,
+      userId,
+      bytes: image.bytes,
+      purpose: 'stylist_look_result',
+      now: runtime.now(),
+      maxBytes: runtime.mediaMaxBytes,
+      retentionMs: runtime.retentionMs,
+    });
+    recordUsage(runtime.db, userId, conversationId, 'stylist_look_image', {
+      status: 'succeeded',
+      provider: 'openai',
+      model: image.model,
+      usage: {
+        inputTokens: image.usage.inputTokens,
+        outputTokens: image.usage.outputTokens,
+        thoughtTokens: null,
+      },
+      costUsd: lookCost,
+      costStatus: 'estimate',
+      durationMs: image.durationMs,
+    }, runtime.now());
+    return {
+      ...reply,
+      lookVisualIntent: true,
+      generatedMediaId: saved.id,
+    };
+  } catch (error) {
+    const code = error instanceof ApiError ? error.code : error instanceof Error && 'code' in error ? String((error as { code?: string }).code) : 'look_image_failed';
+    logEvent('look_image_attach_failed', { code }, 'warn');
+    recordUsage(runtime.db, userId, conversationId, 'stylist_look_image', {
+      status: 'failed',
+      provider: 'openai',
+      model: runtime.config.lookImageModel,
+      usage: { inputTokens: null, outputTokens: null, thoughtTokens: null },
+      costUsd: null,
+      costStatus: 'unpriced',
+    }, runtime.now());
+    return reply;
+  }
 }
 
 export function createConversation(db: Sql, userId: string, now: number): Record<string, unknown> {
@@ -192,16 +309,32 @@ export function readConversation(db: Sql, userId: string, conversationId: string
   owned(db, userId, conversationId);
   const conversation = db.prepare('SELECT id, title, created_at AS createdAt, last_activity_at AS lastActivityAt FROM ai_conversations WHERE id = ?').get(conversationId) as Record<string, unknown>;
   const messages = (db.prepare(
-    'SELECT id, role, content, recommendation_json AS recommendationJson, provider, model, created_at AS createdAt FROM ai_messages WHERE conversation_id = ? ORDER BY created_at, id',
-  ).all(conversationId) as Record<string, unknown>[]).map((message) => ({
-    id: message.id,
-    role: message.role,
-    content: message.content,
-    recommendation: message.recommendationJson ? JSON.parse(String(message.recommendationJson)) : null,
-    provider: message.provider,
-    model: message.model,
-    createdAt: message.createdAt,
-  }));
+    `SELECT id, role, content, recommendation_json AS recommendationJson, provider, model, created_at AS createdAt,
+            attachment_media_ids_json AS attachmentMediaIdsJson
+     FROM ai_messages WHERE conversation_id = ? ORDER BY created_at, id`,
+  ).all(conversationId) as Record<string, unknown>[]).map((message) => {
+    let attachmentMediaIds: string[] = [];
+    if (typeof message.attachmentMediaIdsJson === 'string' && message.attachmentMediaIdsJson.trim()) {
+      try {
+        const parsed = JSON.parse(message.attachmentMediaIdsJson) as unknown;
+        if (Array.isArray(parsed)) {
+          attachmentMediaIds = parsed.filter((id): id is string => typeof id === 'string');
+        }
+      } catch {
+        attachmentMediaIds = [];
+      }
+    }
+    return {
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      recommendation: message.recommendationJson ? JSON.parse(String(message.recommendationJson)) : null,
+      provider: message.provider,
+      model: message.model,
+      createdAt: message.createdAt,
+      attachmentMediaIds,
+    };
+  });
   return { ...conversation, messages };
 }
 
@@ -222,10 +355,50 @@ export function usageFor(db: Sql, userId: string): Record<string, unknown> {
   return { spentUsd: spent(db, userId), entries: rows };
 }
 
-export async function sendMessage(runtime: StylistRuntime, userId: string, conversationId: string, text: string, idempotencyKey: string | null): Promise<Record<string, unknown>> {
+function resolveAttachmentImages(
+  runtime: StylistRuntime,
+  userId: string,
+  mediaIds: string[],
+): { mediaIds: string[]; images: ProviderImagePart[] } {
+  const unique = [...new Set(mediaIds.map((id) => id.trim()).filter(Boolean))].slice(0, 2);
+  if (!unique.length) return { mediaIds: [], images: [] };
+  if (!runtime.mediaDir) {
+    throw new ApiError('media_unavailable', 'Photograph storage is not configured on this server.', 503);
+  }
+  requireExternalPhotoConsentForVision(runtime.db, userId);
+  const images: ProviderImagePart[] = [];
+  for (const id of unique) {
+    const ownedMedia = readOwnedMedia(runtime.db, runtime.mediaDir, userId, id);
+    images.push({
+      mimeType: ownedMedia.contentType,
+      base64: ownedMedia.bytes.toString('base64'),
+    });
+  }
+  return { mediaIds: unique, images };
+}
+
+export async function sendMessage(
+  runtime: StylistRuntime,
+  userId: string,
+  conversationId: string,
+  text: string,
+  idempotencyKey: string | null,
+  mediaIds: string[] = [],
+): Promise<Record<string, unknown>> {
   owned(runtime.db, userId, conversationId);
-  const content = text.trim();
+  const attachments = resolveAttachmentImages(runtime, userId, mediaIds);
+  const content = text.trim()
+    || (attachments.images.length
+      ? 'I attached a photo — tell me how this look reads on me and how to style it.'
+      : '');
   if (!content || content.length > runtime.config.maxInputChars) throw new ApiError('invalid_message', 'The message must be between 1 and the configured length limit.', 400);
+  const modelContent = attachments.images.length
+    ? [
+      content,
+      '',
+      'You can see my attached photograph. Open with a specific description of what I am wearing / how I look in this photo (colours, cut, formality, proportion), then give styling advice. Do not ignore the image.',
+    ].join('\n').slice(0, runtime.config.maxInputChars)
+    : content;
   if (idempotencyKey && !/^[A-Za-z0-9_-]{8,80}$/.test(idempotencyKey)) throw new ApiError('invalid_message', 'The idempotency key is not valid.', 400);
   if (idempotencyKey) {
     const existing = runtime.db.prepare(
@@ -236,7 +409,8 @@ export async function sendMessage(runtime: StylistRuntime, userId: string, conve
     }
   }
   if (!runtime.limiter.consume(`stylist:${userId}`)) throw new ApiError('rate_limited', 'Too many stylist messages. Wait and try again.', 429);
-  const specialist = routeSpecialist(content);
+  // Attached photos must stay on the style/vision path — never divert to shopping/try-on stubs.
+  const specialist = attachments.images.length ? 'style' : routeSpecialist(content);
   const deliver = async () => {
     if (specialist === 'style' && isLive(runtime.config.provider)) {
       try {
@@ -251,21 +425,31 @@ export async function sendMessage(runtime: StylistRuntime, userId: string, conve
       .map((message) => ({ role: message.role, text: message.content }));
     const created = stamp(runtime.now());
     const userMessageId = randomUUID();
-    runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(userMessageId, conversationId, 'user', content, null, null, null, null, created);
+    const attachmentJson = attachments.mediaIds.length ? JSON.stringify(attachments.mediaIds) : null;
+    runtime.db.prepare(
+      `INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at, attachment_media_ids_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(userMessageId, conversationId, 'user', content, null, null, null, null, created, attachmentJson);
     try {
       const context = contextFor(runtime.db, userId);
-      const produced = await produce(runtime, content, history, context, userId, conversationId);
+      const produced = await produce(runtime, modelContent, history, context, userId, conversationId, attachments.images);
+      const reply = produced.draft.status === 'succeeded'
+        ? await maybeAttachLookImage(runtime, userId, conversationId, content, produced.reply, attachments.images)
+        : produced.reply;
       const assistantId = randomUUID();
       const answered = stamp(runtime.now());
-      runtime.db.prepare('INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-        assistantId, conversationId, 'assistant', produced.reply.responseText, JSON.stringify(produced.reply), produced.draft.provider, produced.draft.model, idempotencyKey, answered,
+      runtime.db.prepare(
+        `INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at, attachment_media_ids_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+      ).run(
+        assistantId, conversationId, 'assistant', reply.responseText, JSON.stringify(reply), produced.draft.provider, produced.draft.model, idempotencyKey, answered,
       );
       if (produced.draft.status === 'succeeded' || produced.draft.status === 'failed') {
         recordUsage(runtime.db, userId, conversationId, 'stylist_message', produced.draft, runtime.now());
       }
       const title = content.slice(0, 60);
       runtime.db.prepare(`UPDATE ai_conversations SET last_activity_at = ?, title = CASE WHEN title = 'New styling session' THEN ? ELSE title END WHERE id = ?`).run(answered, title, conversationId);
-      return { id: assistantId, role: 'assistant', content: produced.reply.responseText, recommendation: produced.reply, provider: produced.draft.provider, model: produced.draft.model, createdAt: answered, duplicate: false };
+      return { id: assistantId, role: 'assistant', content: reply.responseText, recommendation: reply, provider: produced.draft.provider, model: produced.draft.model, createdAt: answered, duplicate: false };
     } catch (error) {
       runtime.db.prepare('DELETE FROM ai_messages WHERE id = ? AND conversation_id = ? AND role = ?').run(userMessageId, conversationId, 'user');
       throw error;

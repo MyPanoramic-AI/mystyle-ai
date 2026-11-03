@@ -48,17 +48,20 @@ import {
 } from 'lucide-react';
 import { accountApi, AccountApiError, type MembershipCreditEntry, type MembershipPlanDefinition } from '../../services/accountApi';
 import { cataloguePlanToServerCode, serverCodeToCataloguePlan } from '../../services/membershipPlanMap';
+import { DEFAULT_NOTIFICATION_SETTINGS } from '../../data/membershipData';
 
 interface MembershipHubScreenProps {
   initialTab?: MembershipSubpageTab;
   onBack: () => void;
   usesAccount?: boolean;
+  onUnauthenticated?: () => void;
 }
 
 export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
   initialTab = 'membership',
   onBack,
   usesAccount = false,
+  onUnauthenticated,
 }) => {
   const [activeTab, setActiveTab] = useState<MembershipSubpageTab>(initialTab);
   const [membership, setMembership] = useState<UserMembership>(() => getMembership());
@@ -118,6 +121,15 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
     reloadAccountMembership().catch(() => {
       if (cancelled) return;
       setAccountError('Account membership could not be loaded. No membership has been assumed.');
+    });
+    void accountApi.getPreferences().then((prefs) => {
+      if (cancelled) return;
+      const notifications = (prefs.notifications && typeof prefs.notifications === 'object' && !Array.isArray(prefs.notifications))
+        ? prefs.notifications as Partial<NotificationSettings>
+        : {};
+      setNotificationSettings({ ...DEFAULT_NOTIFICATION_SETTINGS, ...notifications });
+    }).catch(() => {
+      // Keep browser defaults if preferences cannot be loaded.
     });
     return () => {
       cancelled = true;
@@ -187,7 +199,34 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
   };
 
   const handleSaveNotifications = (newSettings: NotificationSettings) => {
-    setNotificationSettings(updateNotificationSettings(newSettings));
+    setNotificationSettings(newSettings);
+    if (!usesAccount) {
+      updateNotificationSettings(newSettings);
+      return;
+    }
+    void accountApi.getPreferences().then((current) => (
+      accountApi.savePreferences({
+        ...current,
+        notifications: {
+          ...(current.notifications && typeof current.notifications === 'object' && !Array.isArray(current.notifications)
+            ? current.notifications
+            : {}),
+          ...newSettings,
+        },
+      })
+    )).then(() => {
+      setPreviewNotice(null);
+    }).catch((error: unknown) => {
+      setPreviewNotice(
+        error instanceof AccountApiError
+          ? error.message
+          : 'Notification preferences could not be saved to your account.',
+      );
+    });
+  };
+
+  const handleHearMoreFromMeChange = (value: boolean) => {
+    handleSaveNotifications({ ...notificationSettings, hearMoreFromMe: value });
   };
 
   const navTabs: { id: MembershipSubpageTab; label: string; icon: React.ReactNode }[] = [
@@ -372,6 +411,9 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
             settings={accountSettings}
             onSaveSettings={handleSaveAccount}
             accountMode={usesAccount}
+            onUnauthenticated={onUnauthenticated}
+            hearMoreFromMe={notificationSettings.hearMoreFromMe}
+            onHearMoreFromMeChange={handleHearMoreFromMeChange}
           />
         )}
 

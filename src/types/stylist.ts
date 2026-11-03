@@ -65,6 +65,8 @@ export interface ChatMessage {
   userAttachmentName?: string;
   /** Multiple wardrobe / look piece thumbnails shown with a user message. */
   userAttachments?: { name: string; url: string }[];
+  /** Server-generated stylist look visualization (OpenAI Images). */
+  lookImageUrl?: string;
   isSaved?: boolean;
 }
 

@@ -40,7 +40,12 @@ export function registerAccount(db: Sql, emailRaw: unknown, passwordRaw: unknown
     db.prepare(
       `INSERT INTO user_preferences (user_id, privacy_json, notifications_json, ai_personalisation_consent, marketing_opt_in, updated_at)
        VALUES (?, ?, ?, 0, 0, ?)`,
-    ).run(userId, JSON.stringify({ shareProfileWithStylist: false }), JSON.stringify({ productAlerts: false }), stamp);
+    ).run(
+      userId,
+      JSON.stringify({ shareProfileWithStylist: false }),
+      JSON.stringify({ productAlerts: false, hearMoreFromMe: false }),
+      stamp,
+    );
     const session = createSession(db, userId, now, sessionMs);
     db.prepare(
       `INSERT INTO audit_events (id, event_type, actor_user_id, resource_type, resource_id, metadata_json, created_at)

@@ -31,6 +31,7 @@ import {
   respondFamilyLinkInvite,
 } from '../domain/familyLinks.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
+import { ensureStarterWardrobeBasics } from '../domain/wardrobeBasics.js';
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
@@ -61,6 +62,16 @@ import { cleanupExpiredExports, createDataExport, downloadExport, readExportJob 
 import { listRetentionPolicies, retentionDryRun, runRetentionCleanup } from '../privacy/retention.js';
 import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
 import { createConversation, deleteConversation, listConversations, readConversation, recommendationsFor, sendMessage, stylistAvailability, usageFor } from '../ai/service.js';
+import { tryOnOpinionForUser } from '../ai/tryOnOpinion.js';
+import { loadWhatsAppConfig } from '../whatsapp/whatsappConfig.js';
+import {
+  createWhatsAppLinkCode,
+  getWhatsAppLinkForUser,
+  handleTwilioWhatsAppWebhook,
+  notifyNewPieceYoullLike,
+  unlinkWhatsApp,
+  whatsappStatus,
+} from '../whatsapp/service.js';
 import { loadTryOnConfig, type TryOnConfig } from '../tryon/tryonConfig.js';
 import {
   cancelTryOnJob,
@@ -116,6 +127,7 @@ export function createApp(deps: AppDeps): express.Express {
     requireVerifiedForSensitive: deps.config.requireVerifiedForSensitive,
   };
   app.use(express.json({ limit: '12mb' }));
+  app.use(express.urlencoded({ extended: false }));
   app.use((req, res, next) => {
     securityHeaders(res, !req.path.startsWith('/api'));
     const origin = req.header('origin');
@@ -481,7 +493,12 @@ export function createApp(deps: AppDeps): express.Express {
     res.json({ ok: true });
   }));
 
-  app.get('/api/wardrobe', route((req, res) => res.json({ items: listWardrobe(deps.db, requireUser(req).userId) })));
+  app.get('/api/wardrobe', route((req, res) => {
+    const user = requireUser(req);
+    const profile = getProfile(deps.db, user.userId);
+    ensureStarterWardrobeBasics(deps.db, user.userId, profile, deps.now());
+    res.json({ items: listWardrobe(deps.db, user.userId) });
+  }));
   app.post('/api/wardrobe', route((req, res) => {
     res.status(201).json(createWardrobeItem(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
   }));
@@ -794,7 +811,16 @@ export function createApp(deps: AppDeps): express.Express {
 
   const aiConfig = deps.aiConfig ?? loadAiConfig();
   const aiLimiter = new RateLimiter(aiConfig.messageRateLimit, aiConfig.messageRateWindowMs, deps.now);
-  const stylist = { db: deps.db, config: aiConfig, now: deps.now, limiter: aiLimiter, fetchImpl: deps.aiFetch };
+  const stylist = {
+    db: deps.db,
+    config: aiConfig,
+    now: deps.now,
+    limiter: aiLimiter,
+    fetchImpl: deps.aiFetch,
+    mediaDir: deps.config.mediaDir,
+    mediaMaxBytes: deps.config.mediaMaxBytes,
+    retentionMs: deps.config.retentionMs,
+  };
 
   app.get('/api/stylist/availability', route((req, res) => {
     requireUser(req);
@@ -822,9 +848,103 @@ export function createApp(deps: AppDeps): express.Express {
   app.post('/api/stylist/conversations/:id/messages', route((req, res) => {
     const userId = requireUser(req).userId;
     const text = typeof req.body?.text === 'string' ? req.body.text : '';
-    return sendMessage(stylist, userId, String(req.params.id), text, req.header('x-idempotency-key') ?? null).then((message) => {
+    const mediaIds = Array.isArray(req.body?.mediaIds)
+      ? (req.body.mediaIds as unknown[]).filter((id): id is string => typeof id === 'string').slice(0, 2)
+      : [];
+    return sendMessage(
+      stylist,
+      userId,
+      String(req.params.id),
+      text,
+      req.header('x-idempotency-key') ?? null,
+      mediaIds,
+    ).then((message) => {
       res.status(201).json({ message });
     });
+  }));
+  app.post('/api/stylist/try-on-opinion', route(async (req, res) => {
+    const userId = requireUser(req).userId;
+    const opinion = await tryOnOpinionForUser(stylist, userId, (req.body && typeof req.body === 'object') ? req.body as Record<string, unknown> : {});
+    res.json(opinion);
+  }));
+
+  const whatsappConfig = loadWhatsAppConfig();
+  app.get('/api/whatsapp/status', route((req, res) => {
+    const userId = requireUser(req).userId;
+    res.json({
+      ...whatsappStatus(whatsappConfig),
+      link: getWhatsAppLinkForUser(deps.db, userId),
+    });
+  }));
+  app.post('/api/whatsapp/link-code', route((req, res) => {
+    const userId = requireUser(req).userId;
+    res.status(201).json(createWhatsAppLinkCode(deps.db, userId, deps.now()));
+  }));
+  app.delete('/api/whatsapp/link', route((req, res) => {
+    unlinkWhatsApp(deps.db, requireUser(req).userId);
+    res.status(204).end();
+  }));
+  /** Stylist-initiated alert (e.g. new piece you'll like) to the signed-in user's linked WhatsApp. */
+  app.post('/api/whatsapp/notify/new-piece', route(async (req, res) => {
+    const userId = requireUser(req).userId;
+    const body = (req.body && typeof req.body === 'object') ? req.body as Record<string, unknown> : {};
+    const result = await notifyNewPieceYoullLike({
+      db: deps.db,
+      userId,
+      now: deps.now(),
+      config: whatsappConfig,
+      fetchImpl: deps.aiFetch,
+      piece: {
+        pieceName: typeof body.pieceName === 'string' ? body.pieceName : '',
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+        colour: typeof body.colour === 'string' ? body.colour : undefined,
+        category: typeof body.category === 'string' ? body.category : undefined,
+        retailerHint: typeof body.retailerHint === 'string' ? body.retailerHint : undefined,
+      },
+    });
+    res.status(201).json(result);
+  }));
+  app.post('/api/admin/whatsapp/notify/new-piece', route(async (req, res) => {
+    requireAdmin(req);
+    const body = (req.body && typeof req.body === 'object') ? req.body as Record<string, unknown> : {};
+    const userId = text(body.userId);
+    const result = await notifyNewPieceYoullLike({
+      db: deps.db,
+      userId,
+      now: deps.now(),
+      config: whatsappConfig,
+      fetchImpl: deps.aiFetch,
+      piece: {
+        pieceName: typeof body.pieceName === 'string' ? body.pieceName : '',
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+        colour: typeof body.colour === 'string' ? body.colour : undefined,
+        category: typeof body.category === 'string' ? body.category : undefined,
+        retailerHint: typeof body.retailerHint === 'string' ? body.retailerHint : undefined,
+      },
+    });
+    res.status(201).json(result);
+  }));
+  app.post('/api/whatsapp/webhook', route(async (req, res) => {
+    const params: Record<string, string> = {};
+    if (req.body && typeof req.body === 'object') {
+      for (const [key, value] of Object.entries(req.body as Record<string, unknown>)) {
+        if (typeof value === 'string') params[key] = value;
+      }
+    }
+    const configuredUrl = whatsappConfig.webhookPublicUrl;
+    const webhookUrl = configuredUrl
+      || `${deps.config.appPublicUrl.replace(/\/$/, '')}/api/whatsapp/webhook`;
+    const result = await handleTwilioWhatsAppWebhook({
+      db: deps.db,
+      stylist,
+      config: whatsappConfig,
+      now: deps.now(),
+      signature: req.header('x-twilio-signature') ?? undefined,
+      webhookUrl,
+      params,
+      fetchImpl: deps.aiFetch,
+    });
+    res.type('text/xml').send(result.twiml);
   }));
 
   app.get('/api/admin/accounts', route((req, res) => {

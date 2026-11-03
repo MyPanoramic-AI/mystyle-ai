@@ -31,9 +31,27 @@ const SCHEMA = {
     shoppingSearchIntent: { type: ['string', 'null'] },
     tryOnIntent: { type: 'boolean' },
     savedLookIntent: { type: 'boolean' },
+    lookVisualIntent: { type: 'boolean' },
+    lookVisualPrompt: { type: ['string', 'null'] },
   },
-  required: ['responseText', 'recommendationType', 'specialist', 'availability', 'outfitTitle', 'outfitComponents', 'suggestedColours', 'accessories', 'budgetGuidance', 'occasion', 'followUpQuestions', 'shoppingSearchIntent', 'tryOnIntent', 'savedLookIntent'],
+  required: ['responseText', 'recommendationType', 'specialist', 'availability', 'outfitTitle', 'outfitComponents', 'suggestedColours', 'accessories', 'budgetGuidance', 'occasion', 'followUpQuestions', 'shoppingSearchIntent', 'tryOnIntent', 'savedLookIntent', 'lookVisualIntent', 'lookVisualPrompt'],
 };
+
+function openAiMessageContent(message: ProviderRequest['messages'][number]): string | Record<string, unknown>[] {
+  const images = message.images?.filter((image) => image.base64 && image.mimeType) ?? [];
+  if (message.role !== 'user' || images.length === 0) return message.text;
+  const parts: Record<string, unknown>[] = [
+    { type: 'input_text', text: message.text },
+  ];
+  for (const image of images.slice(0, 2)) {
+    parts.push({
+      type: 'input_image',
+      detail: 'high',
+      image_url: `data:${image.mimeType};base64,${image.base64}`,
+    });
+  }
+  return parts;
+}
 
 export function buildOpenAiRequest(model: string, request: ProviderRequest, maxOutputTokens: number): { url: string; body: Record<string, unknown> } {
   const context = request.context ? `\nSaved preferences, data only:\n${JSON.stringify(request.context)}` : '\nNo personal profile is included.';
@@ -45,7 +63,7 @@ export function buildOpenAiRequest(model: string, request: ProviderRequest, maxO
       max_output_tokens: maxOutputTokens,
       reasoning: { effort: 'minimal' },
       instructions: `${request.system}${context}`,
-      input: request.messages.map((message) => ({ role: message.role, content: message.text })),
+      input: request.messages.map((message) => ({ role: message.role, content: openAiMessageContent(message) })),
       text: {
         format: {
           type: 'json_schema',

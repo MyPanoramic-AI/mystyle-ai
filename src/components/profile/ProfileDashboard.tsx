@@ -37,7 +37,7 @@ import { MembershipSubpageTab } from '../../types/membership';
 import { Crown, Coins, Shield, Bell, Settings } from 'lucide-react';
 import { AccountApiError, accountApi, type ProfilePhotoSlot } from '../../services/accountApi';
 import { fromApiProfile } from '../../services/profileContract';
-import { formatHeight } from '../../utils/measurements';
+import { formatHeight, formatWeight } from '../../utils/measurements';
 import { estimateSilhouetteFromCm, SILHOUETTE_OPTIONS } from '../../utils/silhouette';
 import { estimateSilhouetteFromPhotoUrls } from '../../utils/silhouetteFromPhoto';
 import type { StylingSilhouetteId } from '../../types';
@@ -53,6 +53,7 @@ import {
   stylistVoiceLabel,
 } from '../../data/stylistPersona';
 import { FamilyLinkInvitePanel } from '../family/FamilyLinkInvitePanel';
+import { WhatsAppConnectPanel } from './WhatsAppConnectPanel';
 
 interface ProfileDashboardProps {
   profile: UserProfile;
@@ -70,6 +71,7 @@ interface ProfileDashboardProps {
   onOpenMembership?: (tab?: MembershipSubpageTab) => void;
   wardrobeCounts?: { pieces: number; outfits: number } | null;
   usesAccount?: boolean;
+  onUnauthenticated?: () => void;
   storageConsentGranted?: boolean;
   onGrantStorageConsent?: () => Promise<void>;
   onUploadPhotoSlot?: (slot: ProfilePhotoSlot, imageBase64: string) => Promise<{ mediaId: string }>;
@@ -92,6 +94,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   onOpenMembership,
   wardrobeCounts = null,
   usesAccount = false,
+  onUnauthenticated,
   storageConsentGranted = false,
   onGrantStorageConsent,
   onUploadPhotoSlot,
@@ -483,6 +486,14 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistVoiceLabel(stylistPersona.voice)}</span>
               </div>
             </div>
+
+            <div className="mt-4">
+              <WhatsAppConnectPanel
+                enabled={usesAccount}
+                stylistName={stylistPersona.name}
+                onUnauthenticated={onUnauthenticated}
+              />
+            </div>
           </div>
         </div>
 
@@ -521,6 +532,14 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 <span className="font-medium text-[#242326]">
                   {profile.personal.heightCm
                     ? `${formatHeight(profile.personal.heightCm, 'cm')} · ${formatHeight(profile.personal.heightCm, 'ft')}`
+                    : 'Not specified'}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-[#242326]/6">
+                <span className="text-[#5C585E]">Weight:</span>
+                <span className="font-medium text-[#242326]">
+                  {profile.personal.weightKg
+                    ? `${formatWeight(profile.personal.weightKg, 'kg')} · ${formatWeight(profile.personal.weightKg, 'lb')}`
                     : 'Not specified'}
                 </span>
               </div>

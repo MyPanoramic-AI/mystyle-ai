@@ -267,15 +267,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </Button>
               </div>
 
-              {/* 3. Visit Retailer Action */}
-              <button
-                type="button"
+              {/* 3. Buy now / retailer checkout */}
+              <Button
+                variant="charcoal"
+                size="md"
+                fullWidth
+                icon={<ExternalLink className="w-4 h-4" />}
                 onClick={() => setShowRetailerNotice(true)}
-                className="w-full py-2 px-4 rounded-xl text-xs font-medium text-[#5C585E] hover:text-[#242326] hover:bg-[#FAF7F2] transition-colors border border-dashed border-[#242326]/15 flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Visit Retailer (Phase 2 Integration Note)</span>
-              </button>
+                Buy now at {product.retailer}
+              </Button>
+              <p className="text-[10px] text-center text-[#5C585E]">
+                Demo listing · live retailer checkout connects in Phase 2
+              </p>
             </div>
           </div>
         </div>
@@ -297,13 +301,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
             <div>
               <h3 className="font-serif text-lg font-semibold text-[#242326]">
-                No retailer checkout yet
+                Buy now — almost ready
               </h3>
               <p className="text-xs text-[#5C585E] mt-2 leading-relaxed">
-                Direct merchant checkout and live store redirection will become available once real retailer API integrations are connected in Phase 2.
+                You selected <span className="font-semibold text-[#242326]">{product.name}</span> from {product.retailer}
+                {product.demoPriceZar ? ` (demo R${product.demoPriceZar.toLocaleString('en-ZA')})` : ''}.
+                Live checkout opens at the retailer once store integrations are connected.
               </p>
               <p className="text-xs text-[#5C585E] mt-1.5 leading-relaxed">
-                No URLs or mock purchase flows are simulated to protect transaction accuracy.
+                Save the piece to your wishlist meanwhile so it stays with your look.
               </p>
             </div>
             <div className="pt-2 flex justify-end">

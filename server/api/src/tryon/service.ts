@@ -418,6 +418,8 @@ export function listTryOnGarments(db: Sql, userId: string): {
     previewUrl: string;
     authorised: true;
     note: string;
+    fabric: string | null;
+    pairingNotes: string | null;
   }[];
   preferredSource: 'wardrobe' | 'garment_reference' | 'upload';
   shop: {
@@ -426,12 +428,20 @@ export function listTryOnGarments(db: Sql, userId: string): {
   };
 } {
   const wardrobe = db.prepare(
-    `SELECT id, name, category, media_id AS mediaId
+    `SELECT id, name, category, media_id AS mediaId, fabric, notes, pairing_notes AS pairingNotes
      FROM wardrobe_items
      WHERE user_id = ? AND media_id IS NOT NULL
      ORDER BY updated_at DESC
      LIMIT 40`,
-  ).all(userId) as { id: string; name: string; category: string | null; mediaId: string }[];
+  ).all(userId) as {
+    id: string;
+    name: string;
+    category: string | null;
+    mediaId: string;
+    fabric: string | null;
+    notes: string | null;
+    pairingNotes: string | null;
+  }[];
   const references = db.prepare(
     `SELECT id AS mediaId, purpose, created_at AS createdAt
      FROM media_assets
@@ -450,7 +460,9 @@ export function listTryOnGarments(db: Sql, userId: string): {
       mediaId: item.mediaId,
       previewUrl: `/api/media/${item.mediaId}`,
       authorised: true as const,
-      note: 'Private wardrobe photograph stored on this account.',
+      note: item.notes?.trim() || 'Private wardrobe photograph stored on this account.',
+      fabric: item.fabric?.trim() || null,
+      pairingNotes: item.pairingNotes?.trim() || null,
     })),
     ...references.map((item, index) => ({
       id: `garment_reference:${item.mediaId}`,
@@ -462,6 +474,8 @@ export function listTryOnGarments(db: Sql, userId: string): {
       previewUrl: `/api/media/${item.mediaId}`,
       authorised: true as const,
       note: 'Private garment reference uploaded for try-on.',
+      fabric: null,
+      pairingNotes: null,
     })),
   ];
   const preferredSource = wardrobe.length > 0

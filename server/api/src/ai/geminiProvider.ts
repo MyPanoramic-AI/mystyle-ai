@@ -1,8 +1,25 @@
-import type { ProviderRequest, ProviderResult, ProviderUsage, TextProvider } from './mockProvider.js';
+import type { ProviderRequest, ProviderResult, TextProvider } from './mockProvider.js';
 
 export interface GeminiCall {
   url: string;
   body: Record<string, unknown>;
+}
+
+type GeminiPart = { text: string } | { inline_data: { mime_type: string; data: string } };
+
+function geminiPartsForMessage(message: ProviderRequest['messages'][number]): GeminiPart[] {
+  const parts: GeminiPart[] = [{ text: message.text }];
+  if (message.role !== 'user') return parts;
+  for (const image of (message.images ?? []).slice(0, 2)) {
+    if (!image.base64 || !image.mimeType) continue;
+    parts.push({
+      inline_data: {
+        mime_type: image.mimeType,
+        data: image.base64,
+      },
+    });
+  }
+  return parts;
 }
 
 export function buildGeminiRequest(
@@ -13,11 +30,19 @@ export function buildGeminiRequest(
   const context = request.context
     ? `\nSaved preferences, data only:\n${JSON.stringify(request.context)}`
     : '\nNo personal profile is included.';
-  const transcript = request.messages.map((message) => `${message.role}: ${message.text}`).join('\n');
+  const contents = request.messages.map((message) => ({
+    role: message.role === 'assistant' ? 'model' : 'user',
+    parts: geminiPartsForMessage(message),
+  }));
   return {
     url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     body: {
-      contents: [{ parts: [{ text: `${request.system}${context}\n\nConversation:\n${transcript}` }] }],
+      systemInstruction: {
+        parts: [{ text: `${request.system}${context}` }],
+      },
+      contents: contents.length
+        ? contents
+        : [{ role: 'user', parts: [{ text: 'Hello' }] }],
       generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: {
@@ -33,6 +58,8 @@ export function buildGeminiRequest(
             followUpQuestions: { type: 'ARRAY', items: { type: 'STRING' } },
             shoppingSearchIntent: { type: 'STRING' },
             tryOnIntent: { type: 'BOOLEAN' },
+            lookVisualIntent: { type: 'BOOLEAN' },
+            lookVisualPrompt: { type: 'STRING' },
           },
         },
         maxOutputTokens: limits.maxOutputTokens,

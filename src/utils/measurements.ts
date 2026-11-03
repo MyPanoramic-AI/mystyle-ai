@@ -4,6 +4,7 @@
 
 export type HeightUnit = 'cm' | 'm' | 'ft';
 export type LengthUnit = 'cm' | 'in';
+export type WeightUnit = 'kg' | 'lb';
 
 export function parseHeightCm(value: number | string | undefined | null): number | undefined {
   if (value == null || value === '') return undefined;
@@ -68,4 +69,26 @@ export function formatLengthDisplay(cmRaw: string | undefined | null, unit: Leng
   if (cm == null) return '';
   if (unit === 'in') return String(cmToInches(cm));
   return String(cm);
+}
+
+export function parseWeightKg(value: number | string | undefined | null): number | undefined {
+  if (value == null || value === '') return undefined;
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return Math.round(n);
+}
+
+export function kgToLb(kg: number): number {
+  return Math.round(kg * 2.20462);
+}
+
+export function lbToKg(lb: number): number {
+  return Math.round(lb / 2.20462);
+}
+
+export function formatWeight(kg: number | string | undefined | null, unit: WeightUnit = 'kg'): string {
+  const value = parseWeightKg(kg);
+  if (value == null) return 'Not specified';
+  if (unit === 'lb') return `${kgToLb(value)} lb`;
+  return `${value} kg`;
 }

@@ -40,7 +40,10 @@ export function conceptCard(message: StylistServerMessage): StylistOutfitRecomme
   const recommendation = message.recommendation;
   if (!recommendation || recommendation.availability === 'not_connected') return undefined;
   const components = Array.isArray(recommendation.outfitComponents) ? recommendation.outfitComponents : [];
-  if (!components.length && typeof recommendation.outfitTitle !== 'string') return undefined;
+  const generatedMediaId = typeof recommendation.generatedMediaId === 'string' && recommendation.generatedMediaId.trim()
+    ? recommendation.generatedMediaId.trim()
+    : null;
+  if (!components.length && typeof recommendation.outfitTitle !== 'string' && !generatedMediaId) return undefined;
   const pieces = components.slice(0, 6).map((item) => {
     const piece = item && typeof item === 'object' ? item as Record<string, unknown> : {};
     return {
@@ -51,12 +54,30 @@ export function conceptCard(message: StylistServerMessage): StylistOutfitRecomme
     };
   });
   const colours = Array.isArray(recommendation.suggestedColours) ? recommendation.suggestedColours.filter((item): item is string => typeof item === 'string') : [];
+  const accessories = Array.isArray(recommendation.accessories)
+    ? recommendation.accessories.filter((item): item is string => typeof item === 'string')
+    : [];
+  if (!pieces.length && accessories.length) {
+    for (const name of accessories.slice(0, 4)) {
+      pieces.push({ name, retailer: 'Style suggestion', priceZar: 0, category: 'accessories' });
+    }
+  }
   return {
     id: message.id,
-    title: typeof recommendation.outfitTitle === 'string' ? recommendation.outfitTitle : 'Outfit concept',
-    aesthetic: 'Style suggestion',
-    occasion: typeof recommendation.occasion === 'string' ? recommendation.occasion : 'Outfit concept',
-    imageUrl: imageFor(typeof recommendation.occasion === 'string' ? recommendation.occasion : ''),
+    title: typeof recommendation.outfitTitle === 'string'
+      ? recommendation.outfitTitle
+      : generatedMediaId
+        ? 'Look visualization'
+        : 'Outfit concept',
+    aesthetic: generatedMediaId ? 'Generated look' : 'Style suggestion',
+    occasion: typeof recommendation.occasion === 'string'
+      ? recommendation.occasion
+      : generatedMediaId
+        ? 'Styled look'
+        : 'Outfit concept',
+    imageUrl: generatedMediaId
+      ? `/api/media/${generatedMediaId}`
+      : imageFor(typeof recommendation.occasion === 'string' ? recommendation.occasion : ''),
     stylistRationale: message.content,
     pieces,
     palette: (colours.length ? colours : ['ivory']).slice(0, 4).map(swatch),
@@ -78,11 +99,26 @@ export function followUps(message: StylistServerMessage): StylistQuickAction[] {
 }
 
 export function toChatMessage(message: StylistServerMessage): ChatMessage {
+  const attachmentIds = Array.isArray(message.attachmentMediaIds) ? message.attachmentMediaIds : [];
+  const userAttachments = message.role === 'user'
+    ? attachmentIds.map((id, index) => ({
+      name: attachmentIds.length > 1 ? `Photo ${index + 1}` : 'Attached photo',
+      url: `/api/media/${id}`,
+    }))
+    : undefined;
   return {
     id: message.id,
     sender: message.role === 'assistant' ? 'stylist' : 'user',
     timestamp: 'Saved',
     text: message.content,
+    userAttachmentUrl: userAttachments?.[0]?.url,
+    userAttachmentName: userAttachments?.[0]?.name,
+    userAttachments,
+    lookImageUrl: message.role === 'assistant'
+      && typeof message.recommendation?.generatedMediaId === 'string'
+      && message.recommendation.generatedMediaId.trim()
+      ? `/api/media/${message.recommendation.generatedMediaId.trim()}`
+      : undefined,
     outfitCard: message.role === 'assistant' ? conceptCard(message) : undefined,
     quickActions: message.role === 'assistant' ? followUps(message) : undefined,
   };

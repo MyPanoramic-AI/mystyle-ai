@@ -591,6 +591,7 @@ export default function App({ account }: { account: ReadyAccount }) {
         <MembershipHubScreen
           initialTab={membershipInitialTab}
           usesAccount={account.mode === 'account'}
+          onUnauthenticated={() => account.requireSignIn()}
           onBack={() => {
             setActiveSubpage(null);
             setCurrentTab('profile');
@@ -643,6 +644,8 @@ export default function App({ account }: { account: ReadyAccount }) {
             aiConsent: account.aiConsent,
             onEnableConsent: () => account.setAiConsent(true),
             availability: account.stylist.availability,
+            list: account.stylist.list,
+            open: account.stylist.open,
             restore: account.stylist.restore,
             startFresh: account.stylist.startFresh,
             send: account.stylist.send,
@@ -660,11 +663,18 @@ export default function App({ account }: { account: ReadyAccount }) {
           familyMemberName={tryOnFamilyMemberName}
           photos={photos}
           usesAccount={account.mode === 'account'}
+          onUnauthenticated={() => account.requireSignIn()}
           onClearGarment={() => {
             setTryOnPreloadedGarment(null);
             setTryOnFamilyMemberName(null);
           }}
           onClearOutfit={() => setTryOnPreloadedLook(null)}
+          onBuyTriedOn={(context) => {
+            setShopPreloadedContext(context);
+            setActiveSubpage(null);
+            setCurrentTab('shop');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
         />
       )}
 
@@ -695,6 +705,7 @@ export default function App({ account }: { account: ReadyAccount }) {
           onOpenMembership={handleOpenMembership}
           wardrobeCounts={wardrobeCounts}
           usesAccount={account.mode === 'account'}
+          onUnauthenticated={() => account.requireSignIn()}
           storageConsentGranted={photoStorageConsent}
           onGrantStorageConsent={async () => {
             await accountApi.setPrivacyConsent({ purpose: 'private_photo_storage', granted: true, captureMethod: 'settings_toggle' });

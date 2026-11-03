@@ -57,11 +57,30 @@ export interface AccountApi {
   getPreferences(): Promise<Record<string, unknown>>;
   savePreferences(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   stylistAvailability(): Promise<StylistAvailability>;
-  stylistConversations(): Promise<{ conversations: { id: string; title: string; lastActivityAt: string }[] }>;
-  createStylistConversation(): Promise<{ id: string }>;
-  stylistConversation(id: string): Promise<{ id: string; messages: StylistServerMessage[] }>;
-  sendStylistMessage(id: string, text: string, idempotencyKey: string): Promise<{ message: StylistServerMessage }>;
+  stylistConversations(): Promise<{ conversations: { id: string; title: string; lastActivityAt: string; createdAt?: string }[] }>;
+  createStylistConversation(): Promise<{ id: string; title?: string; createdAt?: string; lastActivityAt?: string }>;
+  stylistConversation(id: string): Promise<{ id: string; title?: string; createdAt?: string; lastActivityAt?: string; messages: StylistServerMessage[] }>;
+  sendStylistMessage(
+    id: string,
+    text: string,
+    idempotencyKey: string,
+    mediaIds?: string[],
+  ): Promise<{ message: StylistServerMessage }>;
   deleteStylistConversation(id: string): Promise<void>;
+  uploadStylistAttachment(imageBase64: string): Promise<{ id: string; contentType: string; byteSize: number }>;
+  stylistTryOnOpinion(body: {
+    pieces: { name: string; category?: string | null }[];
+    view?: 'front' | 'back';
+    demonstration?: boolean;
+  }): Promise<{
+    stylistName: string;
+    voiceLabel: string;
+    verdict: 'flatters' | 'mixed' | 'miss';
+    headline: string;
+    body: string;
+    tips: string[];
+    source: 'local' | 'live';
+  }>;
   wardrobeItems(): Promise<{ items: WardrobeRecord[] }>;
   createWardrobeItem(body: Record<string, unknown>): Promise<WardrobeRecord>;
   updateWardrobeItem(id: string, body: Record<string, unknown>): Promise<WardrobeRecord>;
@@ -133,6 +152,51 @@ export interface AccountApi {
   listTryOnFittings(): Promise<{ fittings: TryOnJobRecord[] }>;
   cancelTryOnJob(id: string): Promise<TryOnJobRecord>;
   deleteTryOnJob(id: string): Promise<{ deleted: true; id: string }>;
+  whatsappStatus(): Promise<WhatsAppStatusResponse>;
+  createWhatsAppLinkCode(): Promise<WhatsAppLinkCodeResponse>;
+  unlinkWhatsApp(): Promise<void>;
+  notifyWhatsAppNewPiece(body: {
+    pieceName: string;
+    reason?: string;
+    colour?: string;
+    category?: string;
+  }): Promise<WhatsAppNotifyResult>;
+}
+
+export interface WhatsAppLinkState {
+  linked: boolean;
+  phoneE164: string | null;
+  linkedAt: string | null;
+  lastInboundAt?: string | null;
+  lastOutboundAt?: string | null;
+  proactiveOptIn?: boolean;
+}
+
+export interface WhatsAppStatusResponse {
+  enabled: boolean;
+  fromNumberConfigured: boolean;
+  fromNumber?: string | null;
+  fromNumberMasked: string | null;
+  proactiveTemplatesConfigured?: boolean;
+  linkInstructions: string;
+  link: WhatsAppLinkState;
+}
+
+export interface WhatsAppLinkCodeResponse {
+  code: string;
+  expiresAt: string;
+  fromNumber: string | null;
+  messageHint: string;
+}
+
+export interface WhatsAppNotifyResult {
+  ok: boolean;
+  kind: string;
+  delivery: string;
+  phoneE164Masked: string | null;
+  stylistName: string;
+  pieceName: string;
+  twilioSid: string | null;
 }
 
 export type TryOnCategory = 'tops' | 'bottoms' | 'one-pieces' | 'outerwear' | 'shoes' | 'bags' | 'accessories';
@@ -178,6 +242,8 @@ export interface TryOnGarmentOption {
   previewUrl: string;
   authorised: true;
   note: string;
+  fabric?: string | null;
+  pairingNotes?: string | null;
 }
 
 export interface TryOnGarmentsResponse {
@@ -428,6 +494,7 @@ export interface StylistServerMessage {
   provider: string | null;
   createdAt: string;
   duplicate?: boolean;
+  attachmentMediaIds?: string[];
 }
 
 interface RequestOptions {
@@ -519,13 +586,19 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     stylistConversations: () => request('/api/stylist/conversations'),
     createStylistConversation: () => request('/api/stylist/conversations', { method: 'POST', csrf: true }),
     stylistConversation: (id) => request(`/api/stylist/conversations/${id}`),
-    sendStylistMessage: (id, text, idempotencyKey) => request(`/api/stylist/conversations/${id}/messages`, {
+    sendStylistMessage: (id, text, idempotencyKey, mediaIds) => request(`/api/stylist/conversations/${id}/messages`, {
       method: 'POST',
-      body: { text },
+      body: { text, mediaIds: mediaIds?.length ? mediaIds : undefined },
       csrf: true,
       headers: { 'x-idempotency-key': idempotencyKey },
     }),
     deleteStylistConversation: (id) => request(`/api/stylist/conversations/${id}`, { method: 'DELETE', csrf: true }),
+    stylistTryOnOpinion: (body) => request('/api/stylist/try-on-opinion', { method: 'POST', body, csrf: true }),
+    uploadStylistAttachment: (imageBase64) => request('/api/media', {
+      method: 'POST',
+      body: { purpose: 'stylist_attachment', imageBase64 },
+      csrf: true,
+    }),
     wardrobeItems: () => request('/api/wardrobe'),
     createWardrobeItem: (body) => request('/api/wardrobe', { method: 'POST', body, csrf: true }),
     updateWardrobeItem: (id, body) => request(`/api/wardrobe/${id}`, { method: 'PATCH', body, csrf: true }),
@@ -605,6 +678,10 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     listTryOnFittings: () => request('/api/tryon/fittings'),
     cancelTryOnJob: (id) => request(`/api/tryon/jobs/${id}/cancel`, { method: 'POST', csrf: true }),
     deleteTryOnJob: (id) => request(`/api/tryon/jobs/${id}`, { method: 'DELETE', csrf: true }),
+    whatsappStatus: () => request('/api/whatsapp/status'),
+    createWhatsAppLinkCode: () => request('/api/whatsapp/link-code', { method: 'POST', csrf: true }),
+    unlinkWhatsApp: () => request('/api/whatsapp/link', { method: 'DELETE', csrf: true }),
+    notifyWhatsAppNewPiece: (body) => request('/api/whatsapp/notify/new-piece', { method: 'POST', body, csrf: true }),
   };
 }
 

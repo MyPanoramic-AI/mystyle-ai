@@ -3,6 +3,7 @@ import type { Sql } from '../db.js';
 import { recordConsent } from '../privacy/consent.js';
 import { readProfilePhotoSlots } from './profilePhotos.js';
 import { assertSilhouetteId, readSilhouette, saveSilhouette } from './silhouette.js';
+import { ensureStarterWardrobeBasics } from './wardrobeBasics.js';
 
 const ONBOARDING = new Set(['pending', 'deferred', 'completed']);
 const BUDGETS = new Set(['under-300', '300-600', '600-1000', '1000-2000', '2000-plus', 'flexible']);
@@ -47,6 +48,15 @@ function cm(value: unknown, field: string): number | null | undefined {
   return value;
 }
 
+function kg(value: unknown, field: string): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 30 || value > 250) {
+    throw new ApiError('invalid_measurement', `${field} must be a whole number from 30 to 250, or empty.`, 400);
+  }
+  return value;
+}
+
 function enumValue(value: unknown, allowed: Set<string>, field: string): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
@@ -57,9 +67,9 @@ function enumValue(value: unknown, allowed: Set<string>, field: string): string 
 export function getProfile(db: Sql, userId: string): Record<string, unknown> {
   const profile = db.prepare('SELECT * FROM customer_profiles WHERE user_id = ?').get(userId) as Record<string, unknown> | undefined;
   if (!profile) throw new ApiError('not_found', 'Profile not found.', 404);
-  const measurements = db.prepare('SELECT height_cm AS heightCm, bust_cm AS bustCm, waist_cm AS waistCm, hip_cm AS hipCm FROM profile_measurements WHERE user_id = ?').get(userId) as
-    | Record<string, number | null>
-    | undefined;
+  const measurements = db.prepare(
+    'SELECT height_cm AS heightCm, weight_kg AS weightKg, bust_cm AS bustCm, waist_cm AS waistCm, hip_cm AS hipCm FROM profile_measurements WHERE user_id = ?',
+  ).get(userId) as Record<string, number | null> | undefined;
   const silhouette = readSilhouette(db, userId);
   return {
     displayName: profile.display_name,
@@ -206,13 +216,19 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
     } else {
       const values = raw as Record<string, unknown>;
       const height = cm(values.heightCm, 'heightCm');
+      const weight = kg(values.weightKg, 'weightKg');
       const bust = cm(values.bustCm, 'bustCm');
       const waist = cm(values.waistCm, 'waistCm');
       const hip = cm(values.hipCm, 'hipCm');
       db.prepare(
-        `INSERT INTO profile_measurements (user_id, height_cm, bust_cm, waist_cm, hip_cm) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(user_id) DO UPDATE SET height_cm=excluded.height_cm, bust_cm=excluded.bust_cm, waist_cm=excluded.waist_cm, hip_cm=excluded.hip_cm`,
-      ).run(userId, height ?? null, bust ?? null, waist ?? null, hip ?? null);
+        `INSERT INTO profile_measurements (user_id, height_cm, weight_kg, bust_cm, waist_cm, hip_cm) VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           height_cm=excluded.height_cm,
+           weight_kg=excluded.weight_kg,
+           bust_cm=excluded.bust_cm,
+           waist_cm=excluded.waist_cm,
+           hip_cm=excluded.hip_cm`,
+      ).run(userId, height ?? null, weight ?? null, bust ?? null, waist ?? null, hip ?? null);
     }
   }
   if (body.bodyShape !== undefined) {
@@ -229,7 +245,9 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
       saveSilhouette(db, userId, assertSilhouetteId(body.bodyShape), source, now);
     }
   }
-  return getProfile(db, userId);
+  const profile = getProfile(db, userId);
+  ensureStarterWardrobeBasics(db, userId, profile, now);
+  return profile;
 }
 
 export function getPreferences(db: Sql, userId: string): Record<string, unknown> {

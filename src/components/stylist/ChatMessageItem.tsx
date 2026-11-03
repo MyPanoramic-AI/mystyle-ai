@@ -158,8 +158,26 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           {renderFormattedText(message.text)}
         </div>
 
-        {/* Embedded Outfit Recommendation Card */}
-        {message.outfitCard && (
+        {/* Generated look visualization (hair, accessories, styled finish) */}
+        {isStylist && message.lookImageUrl && (
+          <div className="rounded-2xl overflow-hidden border border-[#242326]/10 shadow-xs bg-white max-w-sm">
+            <div className="aspect-3/4 bg-[#242326]/5">
+              <ImageWithFallback
+                src={message.lookImageUrl}
+                alt="Generated look"
+                className="w-full h-full object-cover"
+                fallbackTitle="Generated look"
+              />
+            </div>
+            <div className="px-3 py-2 text-[11px] text-[#5C585E] flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-[#9C6A61]" />
+              <span>Look visualization</span>
+            </div>
+          </div>
+        )}
+
+        {/* Embedded Outfit Recommendation Card (skip when a look image already shows the visual) */}
+        {message.outfitCard && !message.lookImageUrl && (
           <OutfitRecommendationCard
             outfit={message.outfitCard}
             profile={profile}

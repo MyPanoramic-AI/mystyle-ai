@@ -35,14 +35,18 @@ export interface ReadyAccount {
   saveProfile: (profile: UserProfile) => Promise<UserProfile>;
   deferOnboarding: () => Promise<UserProfile>;
   logout: () => Promise<void>;
+  /** Clear a stale browser session and return to sign-in (e.g. after API 401). */
+  requireSignIn: (message?: string) => void;
   leaveDemo: () => void;
   aiConsent: boolean;
   setAiConsent: (value: boolean) => Promise<void>;
   stylist: {
     availability: () => Promise<{ acceptingMessages: boolean; liveEnabled: boolean; label: string }>;
+    list: () => Promise<{ conversations: { id: string; title: string; lastActivityAt: string; createdAt?: string }[] }>;
+    open: (id: string) => Promise<{ id: string; title?: string; messages: import('../services/accountApi').StylistServerMessage[] }>;
     restore: () => Promise<{ id: string; messages: import('../services/accountApi').StylistServerMessage[] }>;
     startFresh: () => Promise<{ id: string; messages: import('../services/accountApi').StylistServerMessage[] }>;
-    send: (id: string, text: string, idempotencyKey: string) => Promise<import('../services/accountApi').StylistServerMessage>;
+    send: (id: string, text: string, idempotencyKey: string, mediaIds?: string[]) => Promise<import('../services/accountApi').StylistServerMessage>;
     remove: (id: string) => Promise<void>;
   } | null;
   wardrobe: AccountWardrobe | null;
@@ -220,16 +224,24 @@ export function AccountRoot() {
     }
   }
 
+  function requireSignIn(message = 'Your session has ended. Sign in again.'): void {
+    generation.current += 1;
+    void savedLooksService.useAccount(null);
+    void savedProductsService.useAccount(null);
+    setUserId(null);
+    setEmail(null);
+    setEmailVerified(false);
+    setProfile(emptyAccountProfile());
+    setMode('account');
+    setFormError(message);
+    setAuthBoot({ panel: 'login', message });
+    setSignedOutView('auth');
+    setPhase('signed-out');
+  }
+
   function endSessionIfExpired(error: unknown): void {
     if (error instanceof AccountApiError && error.status === 401) {
-      generation.current += 1;
-      setUserId(null);
-      setEmail(null);
-      setEmailVerified(false);
-      setProfile(emptyAccountProfile());
-      setMode('account');
-      setFormError('Your session has ended. Sign in again.');
-      setPhase('signed-out');
+      requireSignIn();
     }
   }
 
@@ -285,6 +297,7 @@ export function AccountRoot() {
       setMode('account');
       setPhase('signed-out');
     },
+    requireSignIn,
     leaveDemo: () => {
       setMode('account');
       void restore();
@@ -298,6 +311,15 @@ export function AccountRoot() {
     },
     stylist: mode === 'account' ? {
       availability: () => accountApi.stylistAvailability(),
+      list: () => accountApi.stylistConversations(),
+      open: async (id) => {
+        const conversation = await accountApi.stylistConversation(id);
+        return {
+          id: conversation.id,
+          title: conversation.title,
+          messages: conversation.messages,
+        };
+      },
       restore: async () => {
         const listed = await accountApi.stylistConversations();
         const existing = listed.conversations[0];
@@ -309,7 +331,9 @@ export function AccountRoot() {
         const created = await accountApi.createStylistConversation();
         return { id: created.id, messages: [] };
       },
-      send: async (id, text, idempotencyKey) => (await accountApi.sendStylistMessage(id, text, idempotencyKey)).message,
+      send: async (id, text, idempotencyKey, mediaIds) => (
+        await accountApi.sendStylistMessage(id, text, idempotencyKey, mediaIds)
+      ).message,
       remove: (id) => accountApi.deleteStylistConversation(id),
     } : null,
     wardrobe,
@@ -643,7 +667,7 @@ function ImportReview({
           <Choice checked={selection.sizes} onChange={() => toggle('sizes')} label="Clothing sizes, without measurements" />
           <Choice checked={selection.colours} onChange={() => toggle('colours')} label="Colours, fit, and experimentation" />
           <Choice checked={selection.shopping} onChange={() => toggle('shopping')} label="Budget, priorities, and retailers" />
-          <Choice checked={selection.measurements} onChange={() => toggle('measurements')} label="Optional measurements, including height" />
+          <Choice checked={selection.measurements} onChange={() => toggle('measurements')} label="Optional measurements, including height and weight" />
         </div>
         {error ? <p className="mt-4 text-sm text-[#91635a]" role="alert">{error}</p> : null}
         <div className="mt-6 flex flex-col gap-3">

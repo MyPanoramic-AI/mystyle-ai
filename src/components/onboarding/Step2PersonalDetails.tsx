@@ -8,8 +8,9 @@ import { onboardingStepLabel } from './onboardingSteps';
 import { PersonalDetails } from '../../types';
 import { Button } from '../common/Button';
 import { HeightField } from '../common/HeightField';
-import { parseHeightCm } from '../../utils/measurements';
-import { ArrowLeft, ArrowRight, User } from 'lucide-react';
+import { WeightField } from '../common/WeightField';
+import { parseHeightCm, parseWeightKg } from '../../utils/measurements';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface Step2PersonalDetailsProps {
   initialData: PersonalDetails;
@@ -31,6 +32,7 @@ export const Step2PersonalDetails: React.FC<Step2PersonalDetailsProps> = ({
   const [firstName, setFirstName] = useState(initialData.firstName || '');
   const [ageRange, setAgeRange] = useState(initialData.ageRange || '25–34');
   const [heightCm, setHeightCm] = useState<number | undefined>(parseHeightCm(initialData.heightCm));
+  const [weightKg, setWeightKg] = useState<number | undefined>(parseWeightKg(initialData.weightKg));
   const [country, setCountry] = useState(initialData.country || 'South Africa');
   const [currency, setCurrency] = useState(initialData.currency || 'ZAR (R)');
 
@@ -40,6 +42,7 @@ export const Step2PersonalDetails: React.FC<Step2PersonalDetailsProps> = ({
       firstName: firstName.trim(),
       ageRange,
       heightCm,
+      weightKg,
       country,
       currency,
     });
@@ -105,10 +108,13 @@ export const Step2PersonalDetails: React.FC<Step2PersonalDetailsProps> = ({
             </div>
           </div>
 
-          {/* Height with unit choice (Optional) */}
-          <div>
-            <p className="text-[11px] text-[#5C585E] mb-1.5">Optional · used for dress and trouser length</p>
+          {/* Height & weight (Optional) */}
+          <div className="space-y-4">
+            <p className="text-[11px] text-[#5C585E]">
+              Optional · height helps with dress and trouser length; weight helps with overall proportion guidance.
+            </p>
             <HeightField valueCm={heightCm} onChangeCm={setHeightCm} />
+            <WeightField valueKg={weightKg} onChangeKg={setWeightKg} />
           </div>
 
           {/* Country & Currency */}

@@ -208,7 +208,7 @@ test('migrations upgrade from an early schema fixture and remain idempotent', ()
       prior.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(file, new Date().toISOString());
     }
     const upgraded = migrate(prior, migrationsDir);
-    assert.deepEqual(upgraded, ['006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql', '010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql', '013_tryon_free_ai_image.sql', '014_body_silhouette.sql', '015_family_link_invites.sql', '016_shoe_preferences.sql', '017_full_body_back_photo.sql', '018_stylist_persona.sql']);
+    assert.deepEqual(upgraded, ['006_family_plans.sql', '007_beauty_studio.sql', '008_membership_accounting.sql', '009_privacy_controls.sql', '010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql', '013_tryon_free_ai_image.sql', '014_body_silhouette.sql', '015_family_link_invites.sql', '016_shoe_preferences.sql', '017_full_body_back_photo.sql', '018_stylist_persona.sql', '019_whatsapp_channel.sql', '020_whatsapp_outbound.sql', '021_ai_message_attachments.sql', '022_profile_weight.sql']);
     assert.deepEqual(migrate(prior, migrationsDir), []);
     prior.prepare('PRAGMA foreign_key_check').all();
     prior.close();

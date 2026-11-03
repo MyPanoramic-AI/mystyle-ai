@@ -17,6 +17,9 @@ function unavailable(specialist: StylistReply['specialist'], recommendationType:
     shoppingSearchIntent: null,
     tryOnIntent: false,
     savedLookIntent: false,
+    lookVisualIntent: false,
+    lookVisualPrompt: null,
+    generatedMediaId: null,
     ...extra,
   };
 }
@@ -28,7 +31,7 @@ export function shoppingUnavailable(request: string): StylistReply {
 }
 
 export function tryOnUnavailable(): StylistReply {
-  return unavailable('try_on', 'try_on_unavailable', 'Virtual try-on is not connected. I cannot generate or analyse a photograph. I can still describe an outfit concept if you tell me the occasion.', {
+  return unavailable('try_on', 'try_on_unavailable', 'Virtual try-on (FASHN) is not connected, so I cannot generate a try-on photograph. Upload a photo in this chat and I can still describe how the look reads and how to style it.', {
     tryOnIntent: true,
   });
 }
@@ -44,7 +47,9 @@ export function wardrobeUnavailable(): StylistReply {
 export function routeSpecialist(text: string): 'style' | 'shopping' | 'try_on' | 'beauty' | 'wardrobe' {
   const value = text.toLowerCase();
   if (/\b(try-on|try on|virtual try)\b/.test(value)) return 'try_on';
-  if (/\b(makeup|hairstyle|nail polish|nails)\b/.test(value)) return 'beauty';
+  // Look visualizations (hair/accessories on a photo) stay on the style path.
+  const lookVisual = /\b(generate|visuali[sz]e|show me|create an? image|style my hair|change my hair|restyle|add accessories|with accessories|make me look|show (me )?how (it|this) (would|could) look)\b/.test(value);
+  if (!lookVisual && /\b(makeup|hairstyle|nail polish|nails|beauty studio)\b/.test(value)) return 'beauty';
   if (/\b(buy|purchase|in stock|product link|add to cart|shop this)\b/.test(value) || /\bretailers?\b/.test(value)) return 'shopping';
   if (/\b(my wardrobe|clothes i own|already own)\b/.test(value)) return 'wardrobe';
   return 'style';

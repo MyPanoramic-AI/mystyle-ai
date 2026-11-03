@@ -21,22 +21,51 @@ import { StylistHeader } from './StylistHeader';
 import { ChatMessageItem } from './ChatMessageItem';
 import { StylistInputBar } from './StylistInputBar';
 import { ProfileLensModal } from './ProfileLensModal';
+import { StylistChatLibrary, type StylistLibraryItem } from './StylistChatLibrary';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
-import { Sparkles, MessageCircle } from 'lucide-react';
-import { AccountApiError, type StylistServerMessage } from '../../services/accountApi';
+import { Sparkles } from 'lucide-react';
+import { AccountApiError, accountApi, type StylistServerMessage } from '../../services/accountApi';
 import { toChatMessage } from '../../services/stylistView';
+import { fileToBase64 } from '../../services/profilePhotosClient';
 import type { PreloadedGarment } from '../../types/shop';
 import { resolveStylistPersona } from '../../data/stylistPersona';
+
+const STYLING_WAIT_LINES = [
+  'Still thinking how this would look…',
+  'Playing with colours and proportions…',
+  'Imagining the finished look on you…',
+  'Tweaking hair and accessories…',
+  'Holding fabrics up to the light…',
+  'Almost ready with your look…',
+  'Finding the piece that flatters you most…',
+  'Sketching a little magic for you…',
+] as const;
+
+function waitLineFor(stylistName: string, index: number, demo: boolean): string {
+  if (demo) {
+    const demoLines = [
+      `${stylistName} is preparing a demonstration reply…`,
+      'Putting together a sample suggestion…',
+      'Almost ready with a demo look…',
+    ];
+    return demoLines[index % demoLines.length]!;
+  }
+  const line = STYLING_WAIT_LINES[index % STYLING_WAIT_LINES.length]!;
+  if (index % 4 === 0) return `${stylistName} is styling your look…`;
+  return line;
+}
 
 export interface StylistConnection {
   aiConsent: boolean;
   onEnableConsent: () => Promise<void>;
   availability: () => Promise<{ acceptingMessages: boolean; liveEnabled: boolean; label: string }>;
+  list: () => Promise<{ conversations: StylistLibraryItem[] }>;
+  open: (id: string) => Promise<{ id: string; title?: string; messages: StylistServerMessage[] }>;
   restore: () => Promise<{ id: string; messages: StylistServerMessage[] }>;
   /** Always create an empty conversation for a focused look consult. */
   startFresh: () => Promise<{ id: string; messages: StylistServerMessage[] }>;
-  send: (id: string, text: string, idempotencyKey: string) => Promise<StylistServerMessage>;
+  send: (id: string, text: string, idempotencyKey: string, mediaIds?: string[]) => Promise<StylistServerMessage>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -65,6 +94,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     getInitialConversation(profile, state)
   );
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [waitLineIndex, setWaitLineIndex] = useState(0);
   const [isLensModalOpen, setIsLensModalOpen] = useState<boolean>(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
   const [inputPrefill, setInputPrefill] = useState<string>('');
@@ -74,6 +104,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [localDemo, setLocalDemo] = useState(false);
   const [serverReady, setServerReady] = useState(!connection);
   const [offerLocalDemo, setOfferLocalDemo] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryItems, setLibraryItems] = useState<StylistLibraryItem[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
 
   const stylistName = resolveStylistPersona(profile).name;
   const [lens, setLens] = useState<StylistFilterLens>({
@@ -92,7 +126,18 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages, isTyping, waitLineIndex]);
+
+  useEffect(() => {
+    if (!isTyping) {
+      setWaitLineIndex(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setWaitLineIndex((current) => current + 1);
+    }, 2800);
+    return () => window.clearInterval(timer);
+  }, [isTyping]);
 
   useEffect(() => {
     if (!connection) return;
@@ -162,11 +207,14 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     };
   };
 
-  const sendServerText = (id: string, typed: string) => {
+  const sendServerText = (id: string, typed: string, mediaIds: string[] = []) => {
     const idempotencyKey = `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-    void connection!.send(id, typed, idempotencyKey).then((message) => {
+    void connection!.send(id, typed, idempotencyKey, mediaIds).then((message) => {
       setMessages((prev) => [...prev, toChatMessage(message)]);
       setIsTyping(false);
+      if (mediaIds.length) {
+        setServiceNotice(null);
+      }
     }).catch((error: unknown) => {
       setIsTyping(false);
       const failed: ChatMessage = {
@@ -245,29 +293,22 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
 
   const handleUserSend = (
     text: string,
-    attachment?: { name: string; url: string }
+    attachment?: { name: string; url: string; file?: File }
   ) => {
     if (!text.trim() && !attachment) return;
     const typed = text.trim();
-    if (connection && !localDemo && attachment) {
-      setServiceNotice('Photographs are not uploaded to the live stylist. Your typed question is what gets sent.');
-    }
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: 'user',
       timestamp: 'Just now',
-      text: typed || 'I attached a photo for reference in this chat.',
+      text: typed || 'I attached a photo for styling advice.',
       userAttachmentUrl: attachment?.url,
       userAttachmentName: attachment?.name,
       userAttachments: attachment ? [{ name: attachment.name, url: attachment.url }] : undefined,
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    if (connection && !localDemo && !typed) {
-      setServiceNotice('Add a question about your look — photos alone are not sent to the live stylist.');
-      return;
-    }
     setIsTyping(true);
 
     if (!connection || localDemo) {
@@ -293,38 +334,147 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       setServiceNotice(serviceNotice ?? 'The stylist is not ready for a saved conversation.');
       return;
     }
-    sendServerText(conversationId, typed);
+
+    if (!attachment) {
+      sendServerText(conversationId, typed);
+      return;
+    }
+
+    void (async () => {
+      try {
+        let file = attachment.file;
+        if (!file && attachment.url.startsWith('blob:')) {
+          const blob = await fetch(attachment.url).then((response) => response.blob());
+          file = new File([blob], attachment.name || 'stylist-photo.jpg', { type: blob.type || 'image/jpeg' });
+        }
+        if (!file) {
+          // Sample Unsplash garments: fetch and upload so the live stylist can see them too.
+          const blob = await fetch(attachment.url).then((response) => response.blob());
+          file = new File([blob], attachment.name || 'sample-garment.jpg', { type: blob.type || 'image/jpeg' });
+        }
+        await accountApi.setPrivacyConsent({
+          purpose: 'private_photo_storage',
+          granted: true,
+          captureMethod: 'stylist_photo_attach',
+        });
+        await accountApi.setPrivacyConsent({
+          purpose: 'external_photo_ai',
+          granted: true,
+          captureMethod: 'stylist_photo_attach',
+        });
+        const uploaded = await accountApi.uploadStylistAttachment(await fileToBase64(file));
+        setServiceNotice(`${stylistName} can see your photo and will style from it.`);
+        sendServerText(conversationId, typed, [uploaded.id]);
+      } catch (error: unknown) {
+        setIsTyping(false);
+        setServiceNotice(
+          error instanceof AccountApiError
+            ? error.message
+            : 'That photograph could not be uploaded to the stylist.',
+        );
+      }
+    })();
   };
 
   const handleSelectPrompt = (prompt: string) => {
     handleUserSend(prompt);
   };
 
-  const handleResetSession = () => {
+  const refreshLibrary = async () => {
+    if (!connection) return;
+    setLibraryLoading(true);
+    setLibraryError(null);
+    try {
+      const listed = await connection.list();
+      setLibraryItems(listed.conversations);
+    } catch (error: unknown) {
+      setLibraryError(error instanceof AccountApiError ? error.message : 'Your chat library could not be loaded.');
+    } finally {
+      setLibraryLoading(false);
+    }
+  };
+
+  const handleOpenLibrary = () => {
+    if (!connection || localDemo) {
+      setServiceNotice('Sign in to save and reopen chats with your stylist.');
+      return;
+    }
+    setLibraryOpen(true);
+    void refreshLibrary();
+  };
+
+  const handleOpenLibraryChat = (id: string) => {
+    if (!connection) return;
+    setLibraryLoading(true);
+    setLibraryError(null);
+    void connection.open(id).then((opened) => {
+      setConversationId(opened.id);
+      setMessages(
+        opened.messages.length
+          ? opened.messages.map(toChatMessage)
+          : getInitialConversation(profile, undefined),
+      );
+      setLibraryOpen(false);
+      setServiceNotice(null);
+      onClearState();
+    }).catch((error: unknown) => {
+      setLibraryError(error instanceof AccountApiError ? error.message : 'That chat could not be opened.');
+    }).finally(() => {
+      setLibraryLoading(false);
+    });
+  };
+
+  const handleDeleteLibraryChat = (id: string) => {
+    if (!connection) return;
+    void connection.remove(id).then(async () => {
+      setLibraryItems((prev) => prev.filter((item) => item.id !== id));
+      if (conversationId === id) {
+        const next = await connection.restore();
+        setConversationId(next.id);
+        setMessages(
+          next.messages.length
+            ? next.messages.map(toChatMessage)
+            : getInitialConversation(profile, undefined),
+        );
+      }
+      await refreshLibrary();
+    }).catch((error: unknown) => {
+      setLibraryError(error instanceof AccountApiError ? error.message : 'That chat could not be deleted.');
+    });
+  };
+
+  const handleStartFreshChat = () => {
     const resetLocal = () => {
       setMessages(getInitialConversation(profile, undefined));
+      setConversationId(null);
       onClearState();
       setIsResetConfirmOpen(false);
+      setLibraryOpen(false);
     };
-    if (!connection || localDemo || !conversationId) {
+    if (!connection || localDemo) {
       resetLocal();
       return;
     }
-    void connection.remove(conversationId).then(async () => {
-      const next = await connection.restore();
-      setConversationId(next.id);
+    void connection.startFresh().then((fresh) => {
+      setConversationId(fresh.id);
       setMessages(getInitialConversation(profile, undefined));
-      setServiceNotice('The saved conversation was deleted.');
+      setServiceNotice('Started a new chat. Earlier conversations stay in your library.');
       onClearState();
       setIsResetConfirmOpen(false);
+      setLibraryOpen(false);
+      void refreshLibrary();
     }).catch((error: unknown) => {
-      setServiceNotice(error instanceof AccountApiError ? error.message : 'The conversation could not be deleted.');
+      setServiceNotice(error instanceof AccountApiError ? error.message : 'A new chat could not be started.');
       setIsResetConfirmOpen(false);
     });
   };
 
+  const handleResetSession = () => {
+    handleStartFreshChat();
+  };
+
   return (
-    <div className="flex flex-col min-h-[calc(100vh-140px)] -mt-6 -mx-4 sm:-mx-6">
+    <div className="relative flex flex-col min-h-[calc(100vh-140px)] -mt-6 -mx-4 sm:-mx-6">
       {/* Stylist Top Header */}
       <StylistHeader
         profile={profile}
@@ -333,6 +483,22 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         onResetSession={() => setIsResetConfirmOpen(true)}
         onNavigateHome={() => onNavigate('home')}
         onOpenDiscover={onOpenDiscover}
+        onOpenLibrary={connection && !localDemo ? handleOpenLibrary : undefined}
+      />
+
+      <div className="relative flex-1 flex flex-col min-h-0">
+      <StylistChatLibrary
+        open={libraryOpen}
+        stylistName={stylistName}
+        conversations={libraryItems}
+        activeId={conversationId}
+        loading={libraryLoading}
+        error={libraryError}
+        onClose={() => setLibraryOpen(false)}
+        onRefresh={() => void refreshLibrary()}
+        onOpen={handleOpenLibraryChat}
+        onDelete={handleDeleteLibraryChat}
+        onNewChat={handleStartFreshChat}
       />
 
       {/* Chat Messages Scroll Container */}
@@ -388,9 +554,18 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
             <div className="w-8 h-8 rounded-full bg-[#9C6A61] text-white flex items-center justify-center shrink-0 shadow-xs">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <div className="rounded-2xl px-4 py-3 bg-white border border-[#242326]/10 shadow-xs flex items-center gap-2">
-              <span className="text-xs text-[#5C585E] font-medium">{localDemo || !connection || serviceLabel.toLowerCase().includes('not a live') ? `${stylistName} is preparing a demonstration reply` : `${stylistName} is styling your look`}</span>
-              <div className="flex items-center gap-1">
+            <div className="rounded-2xl px-4 py-3 bg-white border border-[#242326]/10 shadow-xs flex items-center gap-2 max-w-[85%]">
+              <span
+                key={waitLineIndex}
+                className="text-xs text-[#5C585E] font-medium animate-in fade-in duration-300"
+              >
+                {waitLineFor(
+                  stylistName,
+                  waitLineIndex,
+                  localDemo || !connection || serviceLabel.toLowerCase().includes('not a live'),
+                )}
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.3s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.15s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce" />
@@ -410,6 +585,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         inputPrefill={inputPrefill}
         stylistName={stylistName}
       />
+      </div>
 
       {/* Profile Lens Modal */}
       <ProfileLensModal
@@ -429,12 +605,12 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       <Modal
         isOpen={isResetConfirmOpen}
         onClose={() => setIsResetConfirmOpen(false)}
-        title="Start New Styling Session?"
-        subtitle={`This will clear your current conversation history with ${stylistName}.`}
+        title="Start a new chat?"
+        subtitle={`Begin a fresh conversation with ${stylistName}.`}
       >
         <div className="space-y-4 pt-2">
           <p className="text-xs text-[#5C585E] leading-relaxed">
-            Your saved wardrobe items and personal style preferences will remain intact. Only the current chat messages will be refreshed.
+            Your current chat stays in the library so you can reopen it anytime. Wardrobe items and style preferences are unchanged.
           </p>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#242326]/10">
@@ -450,7 +626,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
               size="sm"
               onClick={handleResetSession}
             >
-              Start Fresh Session
+              New Chat
             </Button>
           </div>
         </div>

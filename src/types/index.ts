@@ -78,6 +78,8 @@ export interface PersonalDetails {
   firstName: string;
   ageRange?: string;
   heightCm?: number | string;
+  /** Optional body weight in kilograms (canonical). */
+  weightKg?: number | string;
   country: string;
   currency: string;
   /** Styling silhouette preference (hourglass, pear, …) — not a medical assessment. */

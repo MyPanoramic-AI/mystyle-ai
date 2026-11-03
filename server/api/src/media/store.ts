@@ -13,6 +13,8 @@ const PURPOSES = new Set([
   'full_body_back',
   'full_body_additional',
   'tryon_result',
+  'stylist_attachment',
+  'stylist_look_result',
 ]);
 
 export function inspectImage(bytes: Buffer): string {
@@ -32,7 +34,7 @@ export function assertPurpose(purpose: unknown): string {
   if (typeof purpose !== 'string' || !PURPOSES.has(purpose)) {
     throw new ApiError(
       'invalid_purpose',
-      'Purpose must be wardrobe, profile, garment_reference, profile_portrait, full_body_front, full_body_back, full_body_additional, or tryon_result.',
+      'Purpose must be wardrobe, profile, garment_reference, profile_portrait, full_body_front, full_body_back, full_body_additional, tryon_result, stylist_attachment, or stylist_look_result.',
       400,
     );
   }

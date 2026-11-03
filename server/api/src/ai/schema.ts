@@ -25,6 +25,12 @@ export interface StylistReply {
   shoppingSearchIntent: string | null;
   tryOnIntent: boolean;
   savedLookIntent: boolean;
+  /** Model asks for a look visualization image. */
+  lookVisualIntent: boolean;
+  /** Short image brief from the model (optional). */
+  lookVisualPrompt: string | null;
+  /** Server-filled after OpenAI Images succeeds. */
+  generatedMediaId: string | null;
 }
 
 const TYPES = new Set<RecommendationType>(['style_suggestion', 'clarification', 'shopping_unavailable', 'try_on_unavailable']);
@@ -83,5 +89,8 @@ export function validateStylistReply(value: unknown, source: 'mock' | 'live'): S
     shoppingSearchIntent: text(raw.shoppingSearchIntent, 160),
     tryOnIntent: raw.tryOnIntent === true,
     savedLookIntent: raw.savedLookIntent === true,
+    lookVisualIntent: raw.lookVisualIntent === true,
+    lookVisualPrompt: text(raw.lookVisualPrompt, 700),
+    generatedMediaId: null,
   };
 }

@@ -9,6 +9,8 @@ import { FashionLook } from '../../types/discover';
 import { PreloadedGarment } from '../../types/shop';
 import { Button } from '../common/Button';
 import { ImageWithFallback } from '../common/ImageWithFallback';
+import { ZoomableImageViewer } from '../common/ZoomableImageViewer';
+import { ProductDetailModal } from '../shop/ProductDetailModal';
 import {
   Camera,
   Upload,
@@ -17,11 +19,13 @@ import {
   Sparkles,
   X,
   User,
-  Columns2,
   Trash2,
   RefreshCw,
   Shirt,
+  MessageCircle,
+  ShoppingBag,
 } from 'lucide-react';
+import type { ShopPreloadedContext } from './ShopPlaceholder';
 import {
   AccountApiError,
   accountApi,
@@ -34,6 +38,12 @@ import {
 import { fileToBase64, mediaDisplayUrl } from '../../services/profilePhotosClient';
 import { SHOP_PRODUCTS, rankProductsForProfile } from '../../data/shopData';
 import type { Product } from '../../types/shop';
+import { buildLocalTryOnOpinion, type TryOnOpinion } from '../../data/tryOnStylistOpinion';
+import {
+  describeShopProduct,
+  describeTryOnGarment,
+  type GarmentStylingCopy,
+} from '../../data/tryOnGarmentCopy';
 
 interface TryOnPlaceholderProps {
   onNavigate: (tab: NavigationTab) => void;
@@ -43,8 +53,11 @@ interface TryOnPlaceholderProps {
   familyMemberName?: string | null;
   photos?: TemporaryPhotos;
   usesAccount?: boolean;
+  onUnauthenticated?: () => void;
   onClearGarment?: () => void;
   onClearOutfit?: () => void;
+  /** Open Shop focused on the garment that was just tried on. */
+  onBuyTriedOn?: (context: ShopPreloadedContext) => void;
 }
 
 type PersonSlot = 'full_body_front' | 'full_body_back' | 'full_body_additional' | 'portrait';
@@ -188,6 +201,42 @@ interface BrowsePhoto {
   productId?: string;
   retailer?: string;
   priceZar?: number;
+  fabric?: string | null;
+  notes?: string | null;
+  pairingNotes?: string | null;
+  shortDescription?: string | null;
+  longDescription?: string | null;
+  stylingSuggestions?: string[];
+}
+
+function GarmentDescriptionCard({
+  title,
+  copy,
+}: {
+  title: string;
+  copy: GarmentStylingCopy;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#B49361]/30 bg-[#FAF7F2] p-4 space-y-2.5" data-testid="tryon-garment-description">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#866a40]">Before you try it on</p>
+        <h3 className="font-serif text-base font-semibold text-[#242326] mt-0.5">{title}</h3>
+      </div>
+      <p className="text-xs text-[#5C585E] leading-relaxed">{copy.overview}</p>
+      <ul className="space-y-1.5">
+        {copy.bullets.map((line) => (
+          <li key={line} className="text-[11px] text-[#5C585E] leading-relaxed flex gap-2">
+            <span className="text-[#B49361] shrink-0 mt-0.5">·</span>
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function isUnauthorised(error: unknown): boolean {
+  return error instanceof AccountApiError && error.status === 401;
 }
 
 function tryOnFailureMessage(error: unknown, fallback: string): string {
@@ -304,8 +353,10 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   familyMemberName,
   photos,
   usesAccount = false,
+  onUnauthenticated,
   onClearGarment,
   onClearOutfit,
+  onBuyTriedOn,
 }) => {
   const options = useMemo(() => personOptions(photos), [photos]);
   const preferredPerson = options.find((item) => item.slot === 'full_body_front') || options[0];
@@ -343,9 +394,11 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const [busy, setBusy] = useState(false);
   const [job, setJob] = useState<TryOnJobRecord | null>(null);
   const [fittings, setFittings] = useState<TryOnJobRecord[]>([]);
-  const [compare, setCompare] = useState<'before' | 'after' | 'both'>('both');
   const [resultByView, setResultByView] = useState<Partial<Record<ResultView, TryOnJobRecord>>>({});
   const [activeResultView, setActiveResultView] = useState<ResultView>('front');
+  const [stylistOpinion, setStylistOpinion] = useState<TryOnOpinion | null>(null);
+  const [buyProduct, setBuyProduct] = useState<Product | null>(null);
+  const [opinionLoading, setOpinionLoading] = useState(false);
   const garmentInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<number | null>(null);
 
@@ -389,7 +442,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     }
   }, [preloadedGarment, hasFullBody, preferredPerson?.mediaId]);
 
-  const categorizedAccountGarments = useMemo(() => {
+  const categorizedAccountGarments = useMemo((): BrowsePhoto[] => {
     return accountGarments.map((item) => {
       const mapped = normalizeTryOnCategory(item.category);
       return {
@@ -397,34 +450,116 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         name: item.name,
         category: mapped,
         imageUrl: mediaDisplayUrl(item.mediaId),
-        source: item.source === 'wardrobe' ? 'wardrobe' as const : 'upload' as const,
+        source: item.source === 'wardrobe' ? 'wardrobe' : 'upload',
         mediaId: item.mediaId,
         wardrobeItemId: item.wardrobeItemId ?? undefined,
-      } satisfies BrowsePhoto;
+        fabric: item.fabric ?? null,
+        notes: item.note ?? null,
+        pairingNotes: item.pairingNotes ?? null,
+        shortDescription: null,
+        longDescription: null,
+        stylingSuggestions: [],
+      };
     });
   }, [accountGarments]);
 
-  const browsePhotos = useMemo(() => {
+  const browsePhotos = useMemo((): BrowsePhoto[] => {
     const fromAccount = categorizedAccountGarments.filter((item) => (
       browseCategory === 'uncategorized'
         ? item.category === 'uncategorized'
         : item.category === browseCategory
     ));
-    const fromShop = browseCategory === 'uncategorized'
+    const fromShop: BrowsePhoto[] = browseCategory === 'uncategorized'
       ? []
       : shopProductsForTryOnCategory(browseCategory, profile).map((product) => ({
         id: `shop:${product.id}`,
         name: product.name,
         category: browseCategory,
         imageUrl: product.imageUrl,
-        source: 'shop' as const,
+        source: 'shop',
         productId: product.id,
         retailer: product.retailer,
         priceZar: product.demoPriceZar,
-      } satisfies BrowsePhoto));
+        fabric: null,
+        notes: null,
+        pairingNotes: null,
+        shortDescription: product.shortDescription,
+        longDescription: product.longDescription,
+        stylingSuggestions: product.stylingSuggestions,
+      }));
     // Wardrobe / uploads first, then profile-ranked shop pieces.
     return [...fromAccount, ...fromShop];
   }, [browseCategory, categorizedAccountGarments, profile]);
+
+  const selectedBrowseId = garmentMode === 'existing' && selectedGarmentId
+    ? selectedGarmentId
+    : garmentMode === 'shop' && shopBasePick
+      ? shopBasePick.id
+      : garmentMode === 'shop' && preloadedGarment
+        ? `shop:${preloadedGarment.productId}`
+        : '';
+
+  const selectedBrowsePhoto = useMemo(() => {
+    if (!selectedBrowseId) return null;
+    return browsePhotos.find((photo) => photo.id === selectedBrowseId)
+      ?? categorizedAccountGarments.find((photo) => photo.id === selectedBrowseId)
+      ?? null;
+  }, [browsePhotos, categorizedAccountGarments, selectedBrowseId]);
+
+  const selectedGarmentCopy = useMemo((): GarmentStylingCopy | null => {
+    if (garmentMode === 'upload' && garmentFile) {
+      return describeTryOnGarment({
+        name: garmentFile.name.replace(/\.[^.]+$/, '') || 'Uploaded garment',
+        category,
+        source: 'upload',
+        profile,
+      });
+    }
+    if (selectedBrowsePhoto) {
+      if (selectedBrowsePhoto.source === 'shop' && selectedBrowsePhoto.productId) {
+        const product = SHOP_PRODUCTS.find((item) => item.id === selectedBrowsePhoto.productId);
+        if (product) return describeShopProduct(product, profile);
+      }
+      return describeTryOnGarment({
+        name: selectedBrowsePhoto.name,
+        category: selectedBrowsePhoto.category,
+        fabric: selectedBrowsePhoto.fabric,
+        notes: selectedBrowsePhoto.notes,
+        pairingNotes: selectedBrowsePhoto.pairingNotes,
+        shortDescription: selectedBrowsePhoto.shortDescription,
+        longDescription: selectedBrowsePhoto.longDescription,
+        stylingSuggestions: selectedBrowsePhoto.stylingSuggestions,
+        source: selectedBrowsePhoto.source === 'wardrobe' ? 'wardrobe' : selectedBrowsePhoto.source === 'shop' ? 'shop' : 'upload',
+        profile,
+      });
+    }
+    if (shopBasePick?.productId) {
+      const product = SHOP_PRODUCTS.find((item) => item.id === shopBasePick.productId);
+      if (product) return describeShopProduct(product, profile);
+    }
+    if (preloadedGarment) {
+      const product = SHOP_PRODUCTS.find((item) => item.id === preloadedGarment.productId);
+      if (product) return describeShopProduct(product, profile);
+      return describeTryOnGarment({
+        name: preloadedGarment.productName,
+        category: preloadedGarment.category,
+        source: 'shop',
+        profile,
+      });
+    }
+    if (selectedGarment) {
+      return describeTryOnGarment({
+        name: selectedGarment.name,
+        category: selectedGarment.category,
+        fabric: selectedGarment.fabric,
+        notes: selectedGarment.note,
+        pairingNotes: selectedGarment.pairingNotes,
+        source: selectedGarment.source === 'wardrobe' ? 'wardrobe' : 'garment_reference',
+        profile,
+      });
+    }
+    return null;
+  }, [category, garmentFile, garmentMode, preloadedGarment, profile, selectedBrowsePhoto, selectedGarment, shopBasePick]);
 
   const browseCategoryTabs = useMemo(() => {
     const counts = new Map<BrowseCategory, number>();
@@ -467,6 +602,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       setAccountGarments(garments.garments);
       setShopNote(garments.shop.note);
       setFittings(listed.fittings);
+      setStatusMessage(null);
       if (!preloadedGarment && garments.garments.length > 0) {
         setGarmentMode('existing');
         setSelectedGarmentId(garments.garments[0]!.id);
@@ -475,17 +611,33 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       } else if (!preloadedGarment) {
         setGarmentMode(garments.preferredSource === 'upload' ? 'upload' : 'existing');
       }
-    }).catch(() => undefined);
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      if (isUnauthorised(error)) {
+        onUnauthenticated?.();
+        setStatusMessage('Your session has ended. Sign in again to continue.');
+        return;
+      }
+      setStatusMessage(null);
+    });
     return () => {
       cancelled = true;
     };
-  }, [usesAccount, preloadedGarment]);
+  }, [usesAccount, preloadedGarment, onUnauthenticated]);
 
   useEffect(() => () => {
     if (pollRef.current) window.clearInterval(pollRef.current);
   }, []);
 
   const showStatus = (message: string) => setStatusMessage(message);
+
+  const handleAccountError = (error: unknown, fallback: string): string => {
+    if (isUnauthorised(error)) {
+      onUnauthenticated?.();
+      return 'Your session has ended. Sign in again to continue.';
+    }
+    return tryOnFailureMessage(error, fallback);
+  };
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -518,7 +670,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         stopPolling();
         setBusy(false);
         setStep('confirm');
-        showStatus(error instanceof AccountApiError ? error.message : 'The try-on job could not be refreshed.');
+        showStatus(handleAccountError(error, 'The try-on job could not be refreshed.'));
       });
     }, 400);
   };
@@ -571,14 +723,6 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     || (garmentMode === 'upload' && garmentFile),
   );
 
-  const selectedBrowseId = garmentMode === 'existing' && selectedGarmentId
-    ? selectedGarmentId
-    : garmentMode === 'shop' && shopBasePick
-      ? shopBasePick.id
-      : garmentMode === 'shop' && preloadedGarment
-        ? `shop:${preloadedGarment.productId}`
-        : '';
-
   const orderedLayers = useMemo(() => {
     const picks: LayerPick[] = [];
     for (const meta of LAYER_META) {
@@ -587,6 +731,28 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     }
     return picks;
   }, [layers]);
+
+  const layerCopies = useMemo(() => {
+    return orderedLayers.map((layer) => {
+      if (layer.productId) {
+        const product = SHOP_PRODUCTS.find((item) => item.id === layer.productId);
+        if (product) return { layer, copy: describeShopProduct(product, profile) };
+      }
+      const wardrobe = accountGarments.find((item) => item.mediaId === layer.mediaId || item.wardrobeItemId === layer.wardrobeItemId);
+      return {
+        layer,
+        copy: describeTryOnGarment({
+          name: layer.name,
+          category: layer.category,
+          fabric: wardrobe?.fabric,
+          notes: wardrobe?.note,
+          pairingNotes: wardrobe?.pairingNotes,
+          source: layer.source === 'shop' ? 'shop' : layer.source === 'wardrobe' ? 'wardrobe' : 'upload',
+          profile,
+        }),
+      };
+    });
+  }, [accountGarments, orderedLayers, profile]);
 
   const buildPayloadFromPick = async (pick: {
     imageUrl?: string;
@@ -651,6 +817,47 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     };
     tick();
   });
+
+  const currentLookPieces = (): { name: string; category?: string | null }[] => {
+    const baseName = shopBasePick?.name || preloadedGarment?.productName || selectedGarment?.name || 'Base garment';
+    return [
+      { name: baseName, category },
+      ...orderedLayers.map((layer) => ({ name: layer.name, category: layer.category })),
+    ];
+  };
+
+  const requestStylistOpinion = async (finalJob: TryOnJobRecord, view: ResultView) => {
+    const pieces = currentLookPieces();
+    const local = buildLocalTryOnOpinion({
+      profile,
+      pieces,
+      view,
+      demonstration: Boolean(finalJob.demonstration),
+    });
+    setStylistOpinion(local);
+    if (!usesAccount) return;
+    setOpinionLoading(true);
+    try {
+      const remote = await accountApi.stylistTryOnOpinion({
+        pieces,
+        view,
+        demonstration: Boolean(finalJob.demonstration),
+      });
+      setStylistOpinion({
+        stylistName: remote.stylistName,
+        voiceLabel: remote.voiceLabel,
+        verdict: remote.verdict,
+        headline: remote.headline,
+        body: remote.body,
+        tips: remote.tips,
+        source: remote.source,
+      });
+    } catch {
+      // Keep the local persona-aware opinion if the live call is unavailable.
+    } finally {
+      setOpinionLoading(false);
+    }
+  };
 
   const resolveProviderId = (): TryOnProviderId | null => {
     if (generationMode === 'unavailable') return null;
@@ -748,6 +955,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       setResultByView((current) => ({ ...current, [view]: finalJob! }));
       setActiveResultView(view);
       setJob(finalJob);
+      void requestStylistOpinion(finalJob, view);
     }
     setBusy(false);
     setLayerProgress(null);
@@ -772,7 +980,10 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
 
     const view: ResultView = backPerson?.mediaId && personMediaId === backPerson.mediaId ? 'back' : 'front';
     try {
-      if (view === 'front') setResultByView({});
+      if (view === 'front') {
+        setResultByView({});
+        setStylistOpinion(null);
+      }
       const finalJob = await runTryOnPipeline(personMediaId, view);
       if (!finalJob) return;
       showStatus(
@@ -788,7 +999,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       setBusy(false);
       setLayerProgress(null);
       setStep('confirm');
-      showStatus(tryOnFailureMessage(error, 'The layered try-on could not be completed.'));
+      showStatus(handleAccountError(error, 'The layered try-on could not be completed.'));
     }
   };
 
@@ -817,7 +1028,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       setBusy(false);
       setLayerProgress(null);
       setStep(resultByView.front ? 'result' : 'confirm');
-      showStatus(tryOnFailureMessage(error, 'The back-view try-on could not be completed.'));
+      showStatus(handleAccountError(error, 'The back-view try-on could not be completed.'));
     }
   };
 
@@ -833,7 +1044,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         showStatus('Try-on cancelled.');
       }
     } catch (error) {
-      showStatus(error instanceof AccountApiError ? error.message : 'That job could not be cancelled.');
+      showStatus(handleAccountError(error, 'That job could not be cancelled.'));
     }
   };
 
@@ -844,7 +1055,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       setAvailability(next);
       showStatus('External photograph AI consent is recorded.');
     } catch (error) {
-      showStatus(error instanceof AccountApiError ? error.message : 'Consent could not be saved.');
+      showStatus(handleAccountError(error, 'Consent could not be saved.'));
     }
   };
 
@@ -858,7 +1069,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
       await refreshFittings();
       showStatus('Fitting removed from this account.');
     } catch (error) {
-      showStatus(error instanceof AccountApiError ? error.message : 'That fitting could not be removed.');
+      showStatus(handleAccountError(error, 'That fitting could not be removed.'));
     }
   };
 
@@ -866,9 +1077,57 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const activeViewJob = resultByView[activeResultView] || job;
   const hasCompletedResult = Boolean(activeViewJob?.status === 'succeeded' && activeViewJob.resultMediaId);
   const resultUrl = hasCompletedResult && activeViewJob?.resultMediaId ? mediaDisplayUrl(activeViewJob.resultMediaId) : undefined;
-  const beforePhotoForView = activeResultView === 'back' && backPerson?.url
-    ? backPerson.url
-    : (frontPerson?.url || activePhoto);
+
+  const buyableProduct = useMemo((): Product | null => {
+    const productId = shopBasePick?.productId
+      || selectedBrowsePhoto?.productId
+      || preloadedGarment?.productId
+      || null;
+    if (productId) {
+      const match = SHOP_PRODUCTS.find((item) => item.id === productId);
+      if (match) return match;
+    }
+    const label = (activeViewJob?.label || shopBasePick?.name || preloadedGarment?.productName || selectedGarment?.name || '')
+      .trim()
+      .toLowerCase();
+    if (!label) return null;
+    return SHOP_PRODUCTS.find((item) => item.name.toLowerCase() === label)
+      || SHOP_PRODUCTS.find((item) => label.includes(item.name.toLowerCase()) || item.name.toLowerCase().includes(label))
+      || null;
+  }, [activeViewJob?.label, preloadedGarment, selectedBrowsePhoto?.productId, selectedGarment?.name, shopBasePick]);
+
+  const buyContext = useMemo((): ShopPreloadedContext => {
+    const name = buyableProduct?.name
+      || shopBasePick?.name
+      || preloadedGarment?.productName
+      || selectedGarment?.name
+      || activeViewJob?.label
+      || 'Tried-on garment';
+    const shopCategory = buyableProduct?.category
+      || preloadedGarment?.category
+      || shopBasePick?.category
+      || selectedGarment?.category
+      || category
+      || 'All';
+    return {
+      outfitTitle: `Buy ${name}`,
+      category: String(shopCategory),
+      pieces: [name],
+      focusProductId: buyableProduct?.id,
+    };
+  }, [activeViewJob?.label, buyableProduct, category, preloadedGarment, selectedGarment, shopBasePick]);
+
+  const handleBuyNow = () => {
+    if (buyableProduct) {
+      setBuyProduct(buyableProduct);
+      return;
+    }
+    if (onBuyTriedOn) {
+      onBuyTriedOn(buyContext);
+      return;
+    }
+    onNavigate('shop');
+  };
   const selectResultView = (view: ResultView) => {
     setActiveResultView(view);
     const next = resultByView[view];
@@ -1089,10 +1348,11 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                           }`}
                         >
                           <img src={photo.imageUrl} alt={photo.name} className="w-full h-full object-cover" />
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pt-6 pb-1.5">
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-1.5 pt-6 pb-1.5">
                             <p className="text-[10px] font-semibold text-white truncate leading-tight">{photo.name}</p>
-                            <p className="text-[9px] text-white/80 capitalize">
+                            <p className="text-[9px] text-white/85 capitalize truncate">
                               {photo.source === 'wardrobe' ? 'Wardrobe' : photo.source === 'upload' ? 'Uploaded' : 'Shop'}
+                              {photo.fabric ? ` · ${photo.fabric}` : photo.shortDescription ? ` · ${photo.shortDescription}` : ''}
                             </p>
                           </div>
                         </button>
@@ -1145,6 +1405,13 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               <p className="text-[11px] text-[#5C585E]">
                 Selected: <span className="font-semibold text-[#242326]">{shopBasePick?.name || selectedGarment?.name || preloadedGarment?.productName}</span>
               </p>
+            )}
+
+            {selectedGarmentCopy && garmentReady && (
+              <GarmentDescriptionCard
+                title={shopBasePick?.name || selectedGarment?.name || preloadedGarment?.productName || garmentFile?.name || 'Selected garment'}
+                copy={selectedGarmentCopy}
+              />
             )}
 
             <div className="rounded-2xl border border-[#242326]/10 bg-[#FAF7F2] p-4 space-y-3">
@@ -1240,6 +1507,17 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                                 <img src={mediaDisplayUrl(item.mediaId)} alt={item.name} className="w-full h-full object-cover" />
                               </div>
                               <p className="p-1.5 text-[10px] font-medium text-[#242326] line-clamp-2">{item.name}</p>
+                              <p className="px-1.5 pb-1.5 text-[9px] text-[#5C585E] line-clamp-2">
+                                {item.fabric || describeTryOnGarment({
+                                  name: item.name,
+                                  category: item.category,
+                                  fabric: item.fabric,
+                                  notes: item.note,
+                                  pairingNotes: item.pairingNotes,
+                                  source: item.source === 'wardrobe' ? 'wardrobe' : 'garment_reference',
+                                  profile,
+                                }).fabricFeel}
+                              </p>
                             </button>
                           ))}
                         </div>
@@ -1273,6 +1551,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                               <ImageWithFallback src={product.imageUrl} alt={product.name} className="w-full h-full" imageClassName="object-cover" />
                             </div>
                             <p className="p-1.5 text-[10px] font-medium text-[#242326] line-clamp-2">{product.name}</p>
+                            <p className="px-1.5 text-[9px] text-[#5C585E] line-clamp-2">{product.shortDescription}</p>
                             <p className="px-1.5 pb-1.5 text-[10px] text-[#5C585E]">R{product.demoPriceZar.toLocaleString('en-ZA')}</p>
                           </button>
                         ))}
@@ -1383,6 +1662,21 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                 </div>
               ))}
             </div>
+
+            {selectedGarmentCopy && (
+              <GarmentDescriptionCard
+                title={shopBasePick?.name || selectedGarment?.name || preloadedGarment?.productName || 'Base garment'}
+                copy={selectedGarmentCopy}
+              />
+            )}
+            {layerCopies.map(({ layer, copy }) => (
+              <GarmentDescriptionCard
+                key={`desc-${layer.category}-${layer.name}`}
+                title={`${layer.category} · ${layer.name}`}
+                copy={copy}
+              />
+            ))}
+
             {orderedLayers.length > 0 && (
               <p className="text-[11px] text-[#5C585E] leading-relaxed">
                 Generation applies {1 + orderedLayers.length} pieces in sequence. Jacket/shoes/accessory layers use Try-On Max with “keep existing outfit” instructions so a dress is not replaced by trousers.
@@ -1542,45 +1836,89 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant={compare === 'both' ? 'primary' : 'secondary'} size="sm" icon={<Columns2 className="w-4 h-4" />} onClick={() => setCompare('both')}>
-                Before / After
-              </Button>
-              <Button type="button" variant={compare === 'before' ? 'primary' : 'secondary'} size="sm" onClick={() => setCompare('before')}>Before</Button>
-              <Button type="button" variant={compare === 'after' ? 'primary' : 'secondary'} size="sm" onClick={() => setCompare('after')}>After</Button>
-            </div>
-            <div className={`grid gap-3 ${compare === 'both' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-              {(compare === 'before' || compare === 'both') && beforePhotoForView && (
-                <div className="rounded-2xl border border-[#242326]/10 overflow-hidden bg-white" data-testid="tryon-before">
-                  <img src={beforePhotoForView} alt="Before — your original photo" className="w-full h-auto object-cover" />
-                  <p className="text-[11px] p-2 text-[#5C585E]">
-                    Before · {activeResultView === 'back' ? 'your full-body back photo' : 'your front photo'}
-                  </p>
-                </div>
-              )}
-              {(compare === 'after' || compare === 'both') && (
-                <div className="rounded-2xl border border-[#B49361]/40 overflow-hidden bg-white" data-testid="tryon-after">
-                  <img
-                    src={resultUrl}
-                    alt={activeViewJob.demonstration ? 'Demonstration try-on output' : 'Provider try-on result'}
-                    className="w-full h-auto object-cover"
-                    data-testid="tryon-result-image"
-                    data-result-media-id={activeViewJob.resultMediaId}
-                    data-result-view={activeResultView}
-                  />
-                  <p className="text-[11px] p-2 text-[#5C585E]">
-                    After · {activeResultView === 'back' ? 'Full-body back view' : 'Front view'} · {activeViewJob.demonstration ? 'Demonstration output — not a real virtual try-on' : 'Provider try-on result'}
-                  </p>
-                </div>
-              )}
-            </div>
+            <ZoomableImageViewer
+              src={resultUrl}
+              alt={activeViewJob.demonstration ? 'Demonstration try-on output' : 'Provider try-on result'}
+              caption={`${activeResultView === 'back' ? 'Full-body back view' : 'Front view'} · ${activeViewJob.demonstration ? 'Demonstration output — not a real virtual try-on' : 'Virtual try-on result'}`}
+              data-testid="tryon-result-image"
+              mediaId={activeViewJob.resultMediaId ?? undefined}
+              viewLabel={activeResultView}
+            />
             <p className="text-xs text-[#5C585E]">
-              The After image is the stored try-on result for this angle — not the shop garment preview.
+              This is the stored try-on result for this angle — not the shop garment preview.
               A back view uses your saved full-body back photograph with the same outfit. AI visualisation only, not a precise physical fit guarantee.
             </p>
+
+            {(stylistOpinion || opinionLoading) && (
+              <div
+                className={`rounded-2xl border p-4 sm:p-5 space-y-2.5 ${
+                  stylistOpinion?.verdict === 'miss'
+                    ? 'bg-[#FAF7F2] border-[#9C6A61]/35'
+                    : stylistOpinion?.verdict === 'flatters'
+                      ? 'bg-[#F6F2EC] border-[#B49361]/40'
+                      : 'bg-white border-[#242326]/10'
+                }`}
+                data-testid="tryon-stylist-opinion"
+                role="status"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#9C6A61]/15 text-[#9C6A61] flex items-center justify-center shrink-0">
+                      <MessageCircle className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#B49361]">
+                        {stylistOpinion?.stylistName || 'Your stylist'} · opinion
+                      </p>
+                      <h3 className="font-serif text-base font-semibold text-[#242326] leading-snug">
+                        {opinionLoading && !stylistOpinion
+                          ? 'Your stylist is reviewing this look…'
+                          : stylistOpinion?.headline}
+                      </h3>
+                    </div>
+                  </div>
+                  {stylistOpinion && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-lg bg-white/80 border border-[#242326]/8 text-[#5C585E] shrink-0">
+                      {stylistOpinion.verdict === 'flatters' ? 'Suits you' : stylistOpinion.verdict === 'miss' ? 'Not ideal' : 'Mixed'}
+                      {stylistOpinion.source === 'live' ? ' · Live' : ''}
+                    </span>
+                  )}
+                </div>
+                {stylistOpinion && (
+                  <>
+                    <p className="text-xs sm:text-sm text-[#5C585E] leading-relaxed">{stylistOpinion.body}</p>
+                    {stylistOpinion.tips.length > 0 && (
+                      <ul className="space-y-1">
+                        {stylistOpinion.tips.map((tip) => (
+                          <li key={tip} className="text-[11px] text-[#5C585E] flex gap-2">
+                            <span className="text-[#B49361] shrink-0">·</span>
+                            <span>{tip}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="text-[10px] text-[#5C585E]/80">
+                      Voice: {stylistOpinion.voiceLabel}. Styling commentary only — not a physical fit guarantee.
+                      {opinionLoading ? ' Refreshing with your live stylist…' : ''}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                icon={<ShoppingBag className="w-4 h-4" />}
+                onClick={handleBuyNow}
+                data-testid="tryon-buy-now"
+              >
+                Buy now
+              </Button>
               <Button type="button" variant="secondary" size="md" onClick={() => setStep('fittings')}>View previous results</Button>
-              <Button type="button" variant="secondary" size="md" icon={<Shirt className="w-4 h-4" />} onClick={() => { setJob(null); setResultByView({}); setActiveResultView('front'); setStep('garment'); }}>
+              <Button type="button" variant="secondary" size="md" icon={<Shirt className="w-4 h-4" />} onClick={() => { setJob(null); setResultByView({}); setActiveResultView('front'); setStylistOpinion(null); setStep('garment'); }}>
                 Try another garment
               </Button>
               <Button type="button" variant="secondary" size="md" icon={<Trash2 className="w-4 h-4" />} onClick={() => void handleDeleteFitting(activeViewJob.id)}>
@@ -1625,7 +1963,6 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                             setResultByView({ front: item });
                             setActiveResultView('front');
                             setStep('result');
-                            setCompare('both');
                           }}
                         >
                           <img src={thumb} alt="" className="w-full h-full object-cover" />
@@ -1655,6 +1992,27 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           </div>
         )}
       </div>
+
+      <ProductDetailModal
+        product={buyProduct}
+        isOpen={Boolean(buyProduct)}
+        onClose={() => setBuyProduct(null)}
+        onTryItem={(garment) => {
+          setBuyProduct(null);
+          setGarmentMode('shop');
+          setShopBasePick({
+            id: `shop:${garment.productId}`,
+            name: garment.productName,
+            category: categoryFromText(garment.category),
+            imageUrl: garment.imageUrl,
+            source: 'shop',
+            productId: garment.productId,
+            retailer: garment.retailer,
+            priceZar: garment.priceZar,
+          });
+          setStep('garment');
+        }}
+      />
     </div>
   );
 };

@@ -12,6 +12,8 @@ export interface ShopPreloadedContext {
   outfitTitle: string;
   category: string;
   pieces: string[];
+  /** When set, Shop opens this catalogue product for purchase. */
+  focusProductId?: string;
 }
 
 interface ShopPlaceholderProps {

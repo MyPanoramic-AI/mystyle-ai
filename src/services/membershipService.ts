@@ -296,9 +296,11 @@ export const updatePrivacySettings = (settings: PrivacySettings): PrivacySetting
 export const getNotificationSettings = (): NotificationSettings => {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-    return raw ? JSON.parse(raw) : DEFAULT_NOTIFICATION_SETTINGS;
+    if (!raw) return { ...DEFAULT_NOTIFICATION_SETTINGS };
+    const parsed = JSON.parse(raw) as Partial<NotificationSettings>;
+    return { ...DEFAULT_NOTIFICATION_SETTINGS, ...parsed };
   } catch {
-    return DEFAULT_NOTIFICATION_SETTINGS;
+    return { ...DEFAULT_NOTIFICATION_SETTINGS };
   }
 };
 

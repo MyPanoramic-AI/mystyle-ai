@@ -33,6 +33,7 @@ import {
 import type { ProfilePhotoSlot } from '../../services/accountApi';
 import { PrivatePhotoSlotsEditor } from './PrivatePhotoSlotsEditor';
 import { HeightField } from '../common/HeightField';
+import { WeightField } from '../common/WeightField';
 import {
   type LengthUnit,
   formatLengthDisplay,
@@ -205,6 +206,10 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
             <HeightField
               valueCm={personal.heightCm}
               onChangeCm={(heightCm) => setPersonal({ ...personal, heightCm })}
+            />
+            <WeightField
+              valueKg={personal.weightKg}
+              onChangeKg={(weightKg) => setPersonal({ ...personal, weightKg })}
             />
             <div className="grid grid-cols-2 gap-3">
               <div>
