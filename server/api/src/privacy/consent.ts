@@ -12,7 +12,13 @@ export const CONSENT_PURPOSES = [
 
 export type ConsentPurpose = (typeof CONSENT_PURPOSES)[number];
 
-const CAPTURE_METHODS = new Set(['settings_toggle', 'registration_default', 'import_review', 'api']);
+const CAPTURE_METHODS = new Set([
+  'settings_toggle',
+  'registration_default',
+  'import_review',
+  'api',
+  'stylist_photo_attach',
+]);
 
 export function currentNoticeVersion(db: Sql): string {
   const row = db.prepare(

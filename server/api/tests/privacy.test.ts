@@ -67,6 +67,18 @@ test('optional consent defaults off and records grant plus withdrawal history', 
     assert.equal(withdrawn.history.some((row) => row.status === 'withdrawn'), true);
     const notice = await fetch(`${api.base}/api/privacy/notice`, { headers: { cookie: created.cookie } });
     assert.equal((await notice.json() as { status: string }).status, 'draft');
+    const photo = await fetch(`${api.base}/api/privacy/consent`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ purpose: 'external_photo_ai', granted: true, captureMethod: 'stylist_photo_attach' }),
+    });
+    assert.equal(photo.status, 200);
+    const rejected = await fetch(`${api.base}/api/privacy/consent`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ purpose: 'external_photo_ai', granted: true, captureMethod: 'not-a-method' }),
+    });
+    assert.equal(rejected.status, 400);
   } finally {
     await api.close();
   }

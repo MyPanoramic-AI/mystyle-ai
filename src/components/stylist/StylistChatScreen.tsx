@@ -366,12 +366,16 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         setServiceNotice(`${stylistName} can see your photo and will style from it.`);
         sendServerText(conversationId, typed, [uploaded.id]);
       } catch (error: unknown) {
+        const detail = error instanceof AccountApiError
+          ? error.message
+          : 'That photograph could not be uploaded to the stylist.';
+        if (typed) {
+          setServiceNotice(`${detail} Your message was still sent without the photo.`);
+          sendServerText(conversationId, typed);
+          return;
+        }
         setIsTyping(false);
-        setServiceNotice(
-          error instanceof AccountApiError
-            ? error.message
-            : 'That photograph could not be uploaded to the stylist.',
-        );
+        setServiceNotice(detail);
       }
     })();
   };
