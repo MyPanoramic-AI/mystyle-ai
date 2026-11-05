@@ -1,0 +1,14 @@
+---
+description: After a requested code change, commit, push master, and let Render auto-deploy mystyle-ai
+alwaysApply: true
+---
+
+# Push and deploy after changes
+
+When a requested change is finished and the working tree has code to ship:
+
+1. Commit only the files for that change. Never commit `.env`, credentials, or other secrets.
+2. Push `master` to `origin`. Render service `mystyle-ai` (`srv-db918bu7bikc73bjuvsg`, https://mystyle-ai.onrender.com) auto-deploys that branch. Do not call `trigger_deploy` after a successful push.
+3. Confirm the new deploy has started. Report the commit and that production is building or live.
+
+On Windows PowerShell, pass the commit message with `git commit -m "title" -m "body"`. Do not force-push. If GitHub auth fails, use `gh auth login` device flow instead of asking for a terminal password.
