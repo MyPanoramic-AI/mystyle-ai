@@ -1599,6 +1599,47 @@ export const SHOP_PRODUCTS: Product[] = [
  * Filter and sort helper function implementing deterministic logic
  * influences recommendations with user style profile if provided.
  */
+const PRODUCT_FABRICS: Record<string, string> = {
+  'prod-cream-sculptural-blazer': 'Wool-blend suiting',
+  'prod-camel-wool-blazer': 'Wool-blend suiting',
+  'prod-heritage-trench-coat': 'Cotton gabardine',
+  'prod-relaxed-linen-blazer': 'Linen blend',
+  'prod-forest-silk-slip-dress': 'Heavy silk blend',
+  'prod-black-midi-cocktail-dress': 'High-density stretch crepe',
+  'prod-floral-brocade-wedding-maxi': 'Floral georgette',
+  'prod-ivory-linen-shirt-dress': 'Pure linen',
+  'prod-terracotta-ribbed-knit-dress': 'Fine-rib knit',
+  'prod-fluid-silk-shell-blouse': 'Silk georgette',
+  'prod-crisp-poplin-shirt': 'Organic cotton poplin',
+  'prod-cashmere-crewneck-knit': 'Cashmere blend',
+  'prod-black-ribbed-square-tank': 'Opaque micro-rib knit',
+  'prod-pleated-crepe-trousers': 'Fluid crepe',
+  'prod-relaxed-straight-denim': 'Rigid organic cotton denim',
+  'prod-black-tailored-cigarette-pants': 'Stretch suiting crepe',
+  'prod-wide-leg-linen-pants': 'Pure linen',
+  'prod-pointed-almond-pumps': 'Nappa leather',
+  'prod-white-calfskin-sneakers': 'Calfskin leather',
+  'prod-cognac-leather-loafers': 'Burnished leather',
+  'prod-strappy-heeled-sandals': 'Metallic leather',
+  'prod-executive-leather-tote': 'Pebble-grain leather',
+  'prod-woven-slouchy-shoulder-bag': 'Woven faux leather',
+  'prod-pleated-metallic-clutch': 'Pleated satin',
+  'prod-minimal-crossbody-bag': 'Box calf leather',
+  'prod-gold-ribbed-dome-earrings': '18k gold-plated brass',
+  'prod-tortoiseshell-sunglasses': 'Cellulose acetate',
+  'prod-hammered-brass-link-necklace': 'Hammered brass',
+  'prod-silk-twill-scarf': 'Mulberry silk twill',
+  'prod-seamless-high-rise-leggings': 'Compressive four-way stretch knit',
+  'prod-studio-crop-bra': 'Breathable stretch jersey',
+  'prod-ultralight-running-windbreaker': 'Windproof ripstop nylon',
+};
+
+export function fabricForProduct(product: Pick<Product, 'id' | 'fabric'>): string {
+  const listed = product.fabric?.trim();
+  if (listed) return listed;
+  return PRODUCT_FABRICS[product.id] ?? 'Material listed on the garment label';
+}
+
 export function filterAndSortProducts(
   products: Product[],
   filters: ShoppingFilters,

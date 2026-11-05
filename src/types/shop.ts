@@ -61,6 +61,8 @@ export interface Product {
   occasionTags: string[];
   shortDescription: string;
   longDescription: string;
+  /** Garment cloth or construction material shown on the product sheet. */
+  fabric?: string;
   stylingSuggestions: string[];
   dataQualityState: RetailerDataQualityState;
   lastChecked: string;

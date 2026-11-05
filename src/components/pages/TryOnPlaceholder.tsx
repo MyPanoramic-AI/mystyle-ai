@@ -64,6 +64,17 @@ type PersonSlot = 'full_body_front' | 'full_body_back' | 'full_body_additional' 
 type GarmentMode = 'existing' | 'shop' | 'upload';
 type Step = 'garment' | 'photo' | 'confirm' | 'progress' | 'result' | 'fittings';
 
+const TRYON_WAIT_LINES = [
+  'Imagining you in this garment…',
+  'Picturing the fabric on your silhouette…',
+  'Seeing how the colour sits on you…',
+  'Draping it so it feels like yours…',
+  'Finding the angle that flatters you most…',
+  'Holding the look up to the light…',
+  'Almost ready to show you in it…',
+  'Sketching you into the outfit…',
+] as const;
+
 const CATEGORIES: { id: TryOnCategory; label: string }[] = [
   { id: 'tops', label: 'Tops' },
   { id: 'bottoms', label: 'Bottoms' },
@@ -390,6 +401,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const [layerProgress, setLayerProgress] = useState<string | null>(null);
   const [availability, setAvailability] = useState<TryOnAvailabilityResponse | null>(null);
   const [step, setStep] = useState<Step>('garment');
+  const [tryOnWaitIndex, setTryOnWaitIndex] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [job, setJob] = useState<TryOnJobRecord | null>(null);
@@ -412,6 +424,17 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const generationMode = availability?.generationMode || 'unavailable';
   const hasFullBody = Boolean(photos?.fullBodyFrontMediaId);
   const hasBackPhoto = Boolean(backPerson?.mediaId);
+
+  useEffect(() => {
+    if (step !== 'progress') {
+      setTryOnWaitIndex(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setTryOnWaitIndex((current) => current + 1);
+    }, 2800);
+    return () => window.clearInterval(timer);
+  }, [step]);
 
   useEffect(() => {
     if (!options.some((item) => item.mediaId === personMediaId)) {
@@ -1749,10 +1772,13 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
             </div>
             <div className="p-6 rounded-2xl border border-[#242326]/10 bg-[#FAF7F2] flex flex-col items-center gap-3 text-center">
               <RefreshCw className="w-8 h-8 text-[#9C6A61] animate-spin" aria-hidden />
-              <p className="text-sm text-[#5C585E]">
-                {orderedLayers.length > 0
-                  ? 'Each jacket, shoe, or accessory is applied onto the previous generated image. Wait for the final layered result.'
-                  : 'Do not treat the garment catalogue image as your result. The finished output will appear on the Result step.'}
+              <p
+                key={tryOnWaitIndex}
+                className="text-sm text-[#242326] font-medium animate-in fade-in duration-300"
+              >
+                {orderedLayers.length > 0 && tryOnWaitIndex % 3 === 1
+                  ? 'Layering the next piece onto you…'
+                  : TRYON_WAIT_LINES[tryOnWaitIndex % TRYON_WAIT_LINES.length]}
               </p>
               {busy && job && (job.status === 'queued' || job.status === 'running') && (
                 <Button type="button" variant="secondary" size="md" onClick={() => void handleCancel()}>Cancel</Button>

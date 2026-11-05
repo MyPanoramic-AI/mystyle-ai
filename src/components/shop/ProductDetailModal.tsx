@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Product, PreloadedGarment } from '../../types/shop';
+import { fabricForProduct } from '../../data/shopData';
 import { savedProductsService } from '../../services/savedProductsService';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 import { Button } from '../common/Button';
@@ -146,6 +147,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-[#242326] leading-tight">
                 {product.name}
               </h2>
+
+              <p className="text-xs sm:text-sm text-[#242326]">
+                <span className="font-bold uppercase tracking-wider text-[10px] text-[#91635a] mr-2">Material</span>
+                {fabricForProduct(product)}
+              </p>
 
               {/* Price Banner */}
               <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#B49361]/25 flex items-baseline justify-between flex-wrap gap-2">
