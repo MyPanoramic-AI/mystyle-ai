@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type NavigationTab = 'home' | 'stylist' | 'try-on' | 'shop' | 'profile';
+export type NavigationTab = 'home' | 'stylist' | 'try-on' | 'shop' | 'wardrobe' | 'profile';
 export * from './stylist';
 export * from './discover';
 export * from './shop';

@@ -51,7 +51,7 @@ function SubpageFallback() {
 
 type AppSubpage = 'discover' | 'family' | 'beauty' | 'wardrobe' | 'membership' | null;
 
-const NAV_TABS: NavigationTab[] = ['home', 'stylist', 'try-on', 'shop', 'profile'];
+const NAV_TABS: NavigationTab[] = ['home', 'stylist', 'try-on', 'shop', 'wardrobe', 'profile'];
 const NAV_SUBPAGES: AppSubpage[] = ['discover', 'family', 'beauty', 'wardrobe', 'membership'];
 
 function navigationStorageKey(account: ReadyAccount): string {
@@ -65,6 +65,7 @@ function readStoredNavigation(account: ReadyAccount): { tab: NavigationTab; subp
     const parsed = JSON.parse(raw) as { tab?: string; subpage?: string | null };
     const tab = NAV_TABS.includes(parsed.tab as NavigationTab) ? (parsed.tab as NavigationTab) : 'home';
     const subpage = NAV_SUBPAGES.includes(parsed.subpage as AppSubpage) ? (parsed.subpage as AppSubpage) : null;
+    if (subpage === 'wardrobe') return { tab: 'wardrobe', subpage: null };
     return { tab, subpage };
   } catch {
     return { tab: 'home', subpage: null };
@@ -336,7 +337,8 @@ export default function App({ account }: { account: ReadyAccount }) {
   // Wardrobe Action: Open Digital Wardrobe Hub
   const handleOpenWardrobe = (tab: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps' | 'capsules' = 'pieces') => {
     setWardrobeInitialTab(tab);
-    setActiveSubpage('wardrobe');
+    setActiveSubpage(null);
+    setCurrentTab('wardrobe');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -555,22 +557,6 @@ export default function App({ account }: { account: ReadyAccount }) {
         />
       )}
 
-      {/* 2.5. Internal Digital Wardrobe & Intelligent Outfit Planning Hub */}
-      {activeSubpage === 'wardrobe' && (
-        <WardrobeScreen
-          accountStore={account.wardrobe}
-          initialTab={wardrobeInitialTab}
-          onBack={() => {
-            setActiveSubpage(null);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onSendToTryOn={handleSendWardrobeToTryOn}
-          onTryWardrobeItem={handleTryWardrobeItem}
-          onSendToShop={handleSendWardrobeToShop}
-          onAskStylist={handleAskStylistWardrobe}
-        />
-      )}
-
       {/* 2.6. Internal AI Beauty Studio */}
       {activeSubpage === 'beauty' && (
         <BeautyStudioScreen
@@ -675,6 +661,19 @@ export default function App({ account }: { account: ReadyAccount }) {
             setCurrentTab('shop');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
+        />
+      )}
+
+      {!activeSubpage && currentTab === 'wardrobe' && (
+        <WardrobeScreen
+          key={wardrobeInitialTab}
+          accountStore={account.wardrobe}
+          initialTab={wardrobeInitialTab}
+          onBack={() => handleNavigate('home')}
+          onSendToTryOn={handleSendWardrobeToTryOn}
+          onTryWardrobeItem={handleTryWardrobeItem}
+          onSendToShop={handleSendWardrobeToShop}
+          onAskStylist={handleAskStylistWardrobe}
         />
       )}
 

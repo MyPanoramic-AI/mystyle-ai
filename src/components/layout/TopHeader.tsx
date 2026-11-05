@@ -66,7 +66,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </button>
 
         {/* Zone 2: Nav Links for Desktop/Tablet (Single-line whitespace-nowrap) */}
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-medium text-[#5C585E]">
+          <nav className="hidden lg:flex items-center gap-5 xl:gap-7 text-sm font-medium text-[#5C585E]">
           <button
             onClick={() => onNavigate('home')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
@@ -106,6 +106,16 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             }`}
           >
             Shop
+          </button>
+          <button
+            onClick={() => onNavigate('wardrobe')}
+            className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
+              currentTab === 'wardrobe'
+                ? 'text-[#242326] font-semibold border-b-2 border-[#9C6A61]'
+                : 'hover:text-[#242326]'
+            }`}
+          >
+            Wardrobe
           </button>
           <button
             onClick={() => onNavigate('profile')}
