@@ -9,8 +9,6 @@ import { ImageWithFallback } from '../common/ImageWithFallback';
 import { accountApi, AccountApiError, type WardrobeCapsulePiece } from '../../services/accountApi';
 import type { NavigationTab } from '../../types';
 
-const CATEGORY_ORDER = ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'bags', 'accessories'] as const;
-
 const CATEGORY_LABEL: Record<string, string> = {
   tops: 'Top',
   bottoms: 'Bottom',
@@ -34,7 +32,6 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
   onNavigate,
   onTryPiece,
 }) => {
-  const [style, setStyle] = useState<string | null>(null);
   const [pieces, setPieces] = useState<WardrobeCapsulePiece[]>([]);
   const [loading, setLoading] = useState(usesAccount);
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +45,7 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
     setLoading(true);
     void accountApi.wardrobeCapsule().then((capsule) => {
       if (cancelled) return;
-      setStyle(capsule.style);
-      setPieces([...capsule.pieces].sort((a, b) => {
-        const left = CATEGORY_ORDER.indexOf(a.category as typeof CATEGORY_ORDER[number]);
-        const right = CATEGORY_ORDER.indexOf(b.category as typeof CATEGORY_ORDER[number]);
-        return (left < 0 ? 99 : left) - (right < 0 ? 99 : right);
-      }));
+      setPieces(capsule.pieces);
       setError(null);
     }).catch((caught: unknown) => {
       if (cancelled) return;
@@ -81,10 +73,10 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
           </button>
           <div>
             <p className="text-[10px] font-mono tracking-widest text-[#B49361] uppercase font-semibold">
-              Style basics
+              Everyone should own
             </p>
             <h1 className="font-serif text-xl sm:text-2xl font-bold text-[#242326]">
-              {style ? `${style} capsule` : 'Capsule'}
+              Everyday staples
             </h1>
           </div>
         </div>
@@ -92,7 +84,7 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         <p className="text-sm text-[#5C585E] max-w-2xl mb-6">
-          These are the 10 basic pieces to own for your style. They are the foundation of a closet that already works together.
+          These 10 staples are the same for everyone: a floral dress, black leggings, a gold necklace, a brown jacket, blue jeans, black boots, a handbag, nude heels, a black dress, and a colourful blouse.
         </p>
 
         {loading && <p className="text-xs text-[#5C585E]">Gathering your 10 basics.</p>}
@@ -100,7 +92,7 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
 
         {!loading && !usesAccount && (
           <div className="rounded-2xl border border-[#242326]/8 bg-white p-6 max-w-lg">
-            <p className="text-sm text-[#242326] mb-4">Sign in to see the 10 basics matched to your saved style.</p>
+            <p className="text-sm text-[#242326] mb-4">Sign in to see which of the 10 everyday staples are already in your wardrobe.</p>
             <button
               type="button"
               onClick={() => onNavigate('profile')}
@@ -113,7 +105,7 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
 
         {!loading && usesAccount && !error && pieces.length === 0 && (
           <div className="rounded-2xl border border-[#242326]/8 bg-white p-6 max-w-lg">
-            <p className="text-sm text-[#242326] mb-4">Choose your styles in My Profile. Your capsule of 10 basics is built from that choice.</p>
+            <p className="text-sm text-[#242326] mb-4">The 10 everyday staples could not be loaded. Open My Profile and try this tab again.</p>
             <button
               type="button"
               onClick={() => onNavigate('profile')}

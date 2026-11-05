@@ -31,7 +31,7 @@ import {
   respondFamilyLinkInvite,
 } from '../domain/familyLinks.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
-import { ensureStarterWardrobeBasics, styleCapsuleForProfile } from '../domain/wardrobeBasics.js';
+import { ensureStarterWardrobeBasics, everydayCapsule } from '../domain/wardrobeBasics.js';
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
@@ -501,27 +501,16 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.get('/api/wardrobe/capsule', route((req, res) => {
     const user = requireUser(req);
-    let profile: Record<string, unknown>;
+    let sizes: { tops?: unknown; bottoms?: unknown; dress?: unknown; shoe?: unknown } = {};
     try {
-      profile = getProfile(deps.db, user.userId);
-    } catch (error) {
-      if (error instanceof ApiError && error.code === 'not_found') {
-        res.json({ style: null, pieces: [] });
-        return;
+      const profile = getProfile(deps.db, user.userId);
+      if (profile.sizes && typeof profile.sizes === 'object') {
+        sizes = profile.sizes as { tops?: unknown; bottoms?: unknown; dress?: unknown; shoe?: unknown };
       }
-      throw error;
+    } catch (error) {
+      if (!(error instanceof ApiError && error.code === 'not_found')) throw error;
     }
-    const styles = Array.isArray(profile.styles)
-      ? profile.styles.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
-      : [];
-    if (!styles.length) {
-      res.json({ style: null, pieces: [] });
-      return;
-    }
-    const sizes = profile.sizes && typeof profile.sizes === 'object'
-      ? profile.sizes as { tops?: unknown; bottoms?: unknown; dress?: unknown; shoe?: unknown }
-      : {};
-    const capsule = styleCapsuleForProfile(styles, {
+    const pieces = everydayCapsule({
       tops: typeof sizes.tops === 'string' ? sizes.tops : null,
       bottoms: typeof sizes.bottoms === 'string' ? sizes.bottoms : null,
       dress: typeof sizes.dress === 'string' ? sizes.dress : null,
@@ -533,8 +522,8 @@ export function createApp(deps: AppDeps): express.Express {
         .map((item) => [item.name as string, item.id as string]),
     );
     res.json({
-      style: capsule.style,
-      pieces: capsule.pieces.map((piece) => ({
+      style: null,
+      pieces: pieces.map((piece) => ({
         ...piece,
         owned: ownedByName.has(piece.name),
         wardrobeItemId: ownedByName.get(piece.name) ?? null,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { authHeaders, register, startApi } from './harness.js';
-import { resolveStarterStyleKey, starterBasicsForStyles } from '../src/domain/wardrobeBasics.js';
+import { everydayCapsule, resolveStarterStyleKey, starterBasicsForStyles } from '../src/domain/wardrobeBasics.js';
 
 test('each known style resolves to exactly 10 starter basics', () => {
   const styles = [
@@ -21,6 +21,21 @@ test('each known style resolves to exactly 10 starter basics', () => {
   }
   assert.equal(resolveStarterStyleKey(['tailored']), 'Smart & Professional');
   assert.equal(resolveStarterStyleKey(['unknown-style']), 'Classic & Elegant');
+  const staples = everydayCapsule({ tops: 'M', bottoms: '32', dress: 'SA 34', shoe: '6' });
+  assert.deepEqual(staples.map((piece) => piece.name), [
+    'Floral Dress',
+    'Black Leggings',
+    'Gold Necklace',
+    'Brown Jacket',
+    'Blue Jeans',
+    'Black Boots',
+    'Handbag',
+    'Nude Heels',
+    'Black Dress',
+    'Colourful Blouse',
+  ]);
+  assert.equal(staples.find((piece) => piece.name === 'Floral Dress')?.sizeLabel, 'SA 34');
+  assert.equal(staples.find((piece) => piece.name === 'Gold Necklace')?.sizeLabel, null);
 });
 
 test('completing a profile seeds 10 style-matched wardrobe basics once', async () => {
@@ -80,10 +95,21 @@ test('completing a profile seeds 10 style-matched wardrobe basics once', async (
       pieces: { name: string; owned: boolean; wardrobeItemId: string | null; sizeLabel: string | null; category: string }[];
     };
     assert.equal(capsule.status, 200);
-    assert.equal(capsuleBody.style, 'Casual & Comfortable');
-    assert.equal(capsuleBody.pieces.length, 10);
-    assert.equal(capsuleBody.pieces.every((piece) => piece.owned && piece.wardrobeItemId), true);
-    assert.ok(capsuleBody.pieces.some((piece) => piece.category === 'tops' && piece.sizeLabel === 'M'));
+    assert.equal(capsuleBody.style, null);
+    assert.deepEqual(capsuleBody.pieces.map((piece) => piece.name), [
+      'Floral Dress',
+      'Black Leggings',
+      'Gold Necklace',
+      'Brown Jacket',
+      'Blue Jeans',
+      'Black Boots',
+      'Handbag',
+      'Nude Heels',
+      'Black Dress',
+      'Colourful Blouse',
+    ]);
+    assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'Black Boots')?.sizeLabel, '6');
+    assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'Colourful Blouse')?.sizeLabel, 'M');
   } finally {
     await api.close();
   }
