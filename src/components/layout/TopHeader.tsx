@@ -54,7 +54,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   }, [usesAccount, currentTab]);
   return (
     <header className="sticky top-0 z-40 bg-[#F6F2EC]/90 backdrop-blur-md border-b border-[#242326]/8 transition-all">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Zone 1: Brand Wordmark (Single text element in editorial display face) */}
         <button
           onClick={() => onNavigate('home')}
@@ -66,7 +66,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </button>
 
         {/* Zone 2: Nav Links for Desktop/Tablet (Single-line whitespace-nowrap) */}
-          <nav className="hidden lg:flex items-center gap-5 xl:gap-7 text-sm font-medium text-[#5C585E]">
+          <nav className="hidden lg:flex items-center gap-3 xl:gap-5 text-sm font-medium text-[#5C585E]">
           <button
             onClick={() => onNavigate('home')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
@@ -118,6 +118,16 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             Wardrobe
           </button>
           <button
+            onClick={() => onNavigate('capsule')}
+            className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
+              currentTab === 'capsule'
+                ? 'text-[#242326] font-semibold border-b-2 border-[#9C6A61]'
+                : 'hover:text-[#242326]'
+            }`}
+          >
+            Capsule
+          </button>
+          <button
             onClick={() => onNavigate('profile')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
               currentTab === 'profile'
@@ -165,7 +175,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 userAvatarName.charAt(0)
               )}
             </div>
-            <span className="hidden lg:inline text-xs font-medium text-[#242326]">
+            <span className="hidden xl:inline text-xs font-medium text-[#242326]">
               {userAvatarName}
             </span>
             <span className="sr-only">Open profile</span>

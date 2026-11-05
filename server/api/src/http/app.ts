@@ -31,7 +31,7 @@ import {
   respondFamilyLinkInvite,
 } from '../domain/familyLinks.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
-import { ensureStarterWardrobeBasics } from '../domain/wardrobeBasics.js';
+import { ensureStarterWardrobeBasics, styleCapsuleForProfile } from '../domain/wardrobeBasics.js';
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
@@ -498,6 +498,48 @@ export function createApp(deps: AppDeps): express.Express {
     const profile = getProfile(deps.db, user.userId);
     ensureStarterWardrobeBasics(deps.db, user.userId, profile, deps.now());
     res.json({ items: listWardrobe(deps.db, user.userId) });
+  }));
+  app.get('/api/wardrobe/capsule', route((req, res) => {
+    const user = requireUser(req);
+    let profile: Record<string, unknown>;
+    try {
+      profile = getProfile(deps.db, user.userId);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'not_found') {
+        res.json({ style: null, pieces: [] });
+        return;
+      }
+      throw error;
+    }
+    const styles = Array.isArray(profile.styles)
+      ? profile.styles.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+      : [];
+    if (!styles.length) {
+      res.json({ style: null, pieces: [] });
+      return;
+    }
+    const sizes = profile.sizes && typeof profile.sizes === 'object'
+      ? profile.sizes as { tops?: unknown; bottoms?: unknown; dress?: unknown; shoe?: unknown }
+      : {};
+    const capsule = styleCapsuleForProfile(styles, {
+      tops: typeof sizes.tops === 'string' ? sizes.tops : null,
+      bottoms: typeof sizes.bottoms === 'string' ? sizes.bottoms : null,
+      dress: typeof sizes.dress === 'string' ? sizes.dress : null,
+      shoe: typeof sizes.shoe === 'string' ? sizes.shoe : null,
+    });
+    const ownedByName = new Map(
+      (listWardrobe(deps.db, user.userId) as { id?: string; name?: string }[])
+        .filter((item) => item.id && item.name)
+        .map((item) => [item.name as string, item.id as string]),
+    );
+    res.json({
+      style: capsule.style,
+      pieces: capsule.pieces.map((piece) => ({
+        ...piece,
+        owned: ownedByName.has(piece.name),
+        wardrobeItemId: ownedByName.get(piece.name) ?? null,
+      })),
+    });
   }));
   app.post('/api/wardrobe', route((req, res) => {
     res.status(201).json(createWardrobeItem(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));

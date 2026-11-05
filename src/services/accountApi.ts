@@ -82,6 +82,7 @@ export interface AccountApi {
     source: 'local' | 'live';
   }>;
   wardrobeItems(): Promise<{ items: WardrobeRecord[] }>;
+  wardrobeCapsule(): Promise<WardrobeCapsuleResponse>;
   createWardrobeItem(body: Record<string, unknown>): Promise<WardrobeRecord>;
   updateWardrobeItem(id: string, body: Record<string, unknown>): Promise<WardrobeRecord>;
   deleteWardrobeItem(id: string): Promise<void>;
@@ -421,6 +422,29 @@ export interface MembershipCreditsResponse {
   entries: MembershipCreditEntry[];
 }
 
+export interface WardrobeCapsulePiece {
+  name: string;
+  category: WardrobeItem['category'];
+  subcategory: string;
+  brand: string;
+  colour: string;
+  colourHex: string;
+  seasons: string[];
+  occasions: string[];
+  fabric: string;
+  careNote: string;
+  pairingNotes: string;
+  imageUrl: string;
+  sizeLabel: string | null;
+  owned: boolean;
+  wardrobeItemId: string | null;
+}
+
+export interface WardrobeCapsuleResponse {
+  style: string | null;
+  pieces: WardrobeCapsulePiece[];
+}
+
 export interface WardrobeRecord {
   id: string;
   name: string;
@@ -600,6 +624,7 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
       csrf: true,
     }),
     wardrobeItems: () => request('/api/wardrobe'),
+    wardrobeCapsule: () => request('/api/wardrobe/capsule'),
     createWardrobeItem: (body) => request('/api/wardrobe', { method: 'POST', body, csrf: true }),
     updateWardrobeItem: (id, body) => request(`/api/wardrobe/${id}`, { method: 'PATCH', body, csrf: true }),
     deleteWardrobeItem: (id) => request(`/api/wardrobe/${id}`, { method: 'DELETE', csrf: true }),

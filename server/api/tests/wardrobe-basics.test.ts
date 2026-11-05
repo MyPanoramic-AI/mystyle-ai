@@ -73,6 +73,17 @@ test('completing a profile seeds 10 style-matched wardrobe basics once', async (
     const still = await fetch(`${api.base}/api/wardrobe`, { headers: { cookie: created.cookie } });
     const stillBody = await still.json() as { items: unknown[] };
     assert.equal(stillBody.items.length, 10);
+
+    const capsule = await fetch(`${api.base}/api/wardrobe/capsule`, { headers: { cookie: created.cookie } });
+    const capsuleBody = await capsule.json() as {
+      style: string;
+      pieces: { name: string; owned: boolean; wardrobeItemId: string | null; sizeLabel: string | null; category: string }[];
+    };
+    assert.equal(capsule.status, 200);
+    assert.equal(capsuleBody.style, 'Casual & Comfortable');
+    assert.equal(capsuleBody.pieces.length, 10);
+    assert.equal(capsuleBody.pieces.every((piece) => piece.owned && piece.wardrobeItemId), true);
+    assert.ok(capsuleBody.pieces.some((piece) => piece.category === 'tops' && piece.sizeLabel === 'M'));
   } finally {
     await api.close();
   }

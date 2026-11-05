@@ -1136,6 +1136,20 @@ export function starterBasicsForStyles(styles: string[]): StarterBasicTemplate[]
   return STYLE_CAPSULES[key] ?? CLASSIC_ELEGANT;
 }
 
+export interface StyleCapsulePiece extends StarterBasicTemplate {
+  sizeLabel: string | null;
+}
+
+/** The 10 basics someone should own for their chosen style. Does not write to the wardrobe. */
+export function styleCapsuleForProfile(styles: string[], sizes: StarterSizeHints): { style: string; pieces: StyleCapsulePiece[] } {
+  const style = resolveStarterStyleKey(styles);
+  const pieces = starterBasicsForStyles(styles).slice(0, 10).map((basic) => ({
+    ...basic,
+    sizeLabel: sizeLabelFor(basic, sizes),
+  }));
+  return { style, pieces };
+}
+
 function sizeLabelFor(template: StarterBasicTemplate, sizes: StarterSizeHints): string | null {
   if (!template.sizeFrom) return null;
   const value = sizes[template.sizeFrom];

@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { NavigationTab } from '../../types';
-import { Home, Sparkles, Camera, ShoppingBag, User, Shirt } from 'lucide-react';
+import { Home, Sparkles, Camera, ShoppingBag, User, Shirt, Layers } from 'lucide-react';
 
 interface BottomNavProps {
   currentTab: NavigationTab;
@@ -19,6 +19,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onNavigate }) 
     { id: 'try-on' as NavigationTab, label: 'Try On', icon: Camera },
     { id: 'shop' as NavigationTab, label: 'Shop', icon: ShoppingBag },
     { id: 'wardrobe' as NavigationTab, label: 'Wardrobe', icon: Shirt },
+    { id: 'capsule' as NavigationTab, label: 'Capsule', icon: Layers },
     { id: 'profile' as NavigationTab, label: 'Profile', icon: User },
   ];
 
@@ -27,7 +28,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onNavigate }) 
       className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFFFFF]/95 backdrop-blur-md border-t border-[#242326]/8 pb-safe shadow-lg"
       aria-label="Mobile Navigation"
     >
-      <div className="grid grid-cols-6 items-center h-16 max-w-lg mx-auto px-1">
+      <div className="grid grid-cols-7 items-center h-16 max-w-lg mx-auto px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;

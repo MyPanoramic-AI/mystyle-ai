@@ -24,6 +24,7 @@ import { TryOnPlaceholder } from './components/pages/TryOnPlaceholder';
 import { ShopPreloadedContext } from './components/pages/ShopPlaceholder';
 import { ShopScreen } from './components/shop/ShopScreen';
 import { ProfileDashboard } from './components/profile/ProfileDashboard';
+import { CapsuleScreen } from './components/wardrobe/CapsuleScreen';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { accountApi } from './services/accountApi';
 import { photosFromSlots } from './services/profilePhotosClient';
@@ -51,7 +52,7 @@ function SubpageFallback() {
 
 type AppSubpage = 'discover' | 'family' | 'beauty' | 'wardrobe' | 'membership' | null;
 
-const NAV_TABS: NavigationTab[] = ['home', 'stylist', 'try-on', 'shop', 'wardrobe', 'profile'];
+const NAV_TABS: NavigationTab[] = ['home', 'stylist', 'try-on', 'shop', 'wardrobe', 'capsule', 'profile'];
 const NAV_SUBPAGES: AppSubpage[] = ['discover', 'family', 'beauty', 'wardrobe', 'membership'];
 
 function navigationStorageKey(account: ReadyAccount): string {
@@ -659,6 +660,29 @@ export default function App({ account }: { account: ReadyAccount }) {
             setShopPreloadedContext(context);
             setActiveSubpage(null);
             setCurrentTab('shop');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+
+      {!activeSubpage && currentTab === 'capsule' && (
+        <CapsuleScreen
+          usesAccount={account.mode === 'account'}
+          onBack={() => handleNavigate('home')}
+          onNavigate={handleNavigate}
+          onTryPiece={(piece) => {
+            setTryOnPreloadedGarment({
+              productId: piece.wardrobeItemId || `capsule-${piece.name}`,
+              productName: piece.name,
+              retailer: piece.brand || 'Style capsule',
+              priceZar: 0,
+              imageUrl: piece.imageUrl,
+              category: piece.category,
+            });
+            setTryOnPreloadedLook(null);
+            setTryOnFamilyMemberName(null);
+            setActiveSubpage(null);
+            setCurrentTab('try-on');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
         />
