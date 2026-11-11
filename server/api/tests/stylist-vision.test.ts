@@ -26,7 +26,7 @@ test('OpenAI stylist request includes vision image parts for attached photos', (
   const parts = input[0]!.content as Record<string, unknown>[];
   assert.equal(parts[0]?.type, 'input_text');
   assert.equal(parts[1]?.type, 'input_image');
-  assert.equal(parts[1]?.detail, 'high');
+  assert.equal(parts[1]?.detail, 'auto');
   assert.match(String(parts[1]?.image_url), /^data:image\/jpeg;base64,/);
 });
 

@@ -167,7 +167,8 @@ async function produce(
     const code = error instanceof Error && 'code' in error ? String((error as { code?: string }).code) : '';
     recordUsage(runtime.db, userId, conversationId, 'stylist_message', { status: 'failed', provider: provider.id, model: runtime.config.model, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: null, costStatus: 'unpriced' }, runtime.now());
     if (code === 'provider_auth') throw new ApiError('ai_provider_auth', 'The stylist provider did not accept the server credential.', 502);
-    if (code === 'provider_rate_limit') throw new ApiError('ai_provider_rate_limited', 'The stylist provider asked us to wait.', 429);
+    if (code === 'provider_quota') throw new ApiError('ai_provider_quota', 'The stylist provider has no remaining quota. Try again later.', 429);
+    if (code === 'provider_rate_limit') throw new ApiError('ai_provider_rate_limited', 'The stylist is busy with your photograph. Send it again in a moment.', 429);
     throw new ApiError(aborted ? 'ai_timeout' : 'ai_provider_error', aborted ? 'The stylist took too long to reply.' : 'The stylist could not complete that reply.', aborted ? 504 : 502);
   }
 }

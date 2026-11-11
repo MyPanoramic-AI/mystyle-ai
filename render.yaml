@@ -62,7 +62,7 @@ services:
       - key: AI_MAX_INPUT_TOKENS
         value: "4000"
       - key: AI_TIMEOUT_MS
-        value: "20000"
+        value: "45000"
       - key: AI_INPUT_USD_PER_MILLION
         value: "0.25"
       - key: AI_CACHED_INPUT_USD_PER_MILLION

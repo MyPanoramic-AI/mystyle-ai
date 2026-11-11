@@ -37,6 +37,12 @@ const SCHEMA = {
   required: ['responseText', 'recommendationType', 'specialist', 'availability', 'outfitTitle', 'outfitComponents', 'suggestedColours', 'accessories', 'budgetGuidance', 'occasion', 'followUpQuestions', 'shoppingSearchIntent', 'tryOnIntent', 'savedLookIntent', 'lookVisualIntent', 'lookVisualPrompt'],
 };
 
+const RATE_LIMIT_ATTEMPTS = 3;
+
+function requestHasImages(request: ProviderRequest): boolean {
+  return request.messages.some((message) => Boolean(message.images?.length));
+}
+
 function openAiMessageContent(message: ProviderRequest['messages'][number]): string | Record<string, unknown>[] {
   const images = message.images?.filter((image) => image.base64 && image.mimeType) ?? [];
   if (message.role !== 'user' || images.length === 0) return message.text;
@@ -46,7 +52,8 @@ function openAiMessageContent(message: ProviderRequest['messages'][number]): str
   for (const image of images.slice(0, 2)) {
     parts.push({
       type: 'input_image',
-      detail: 'high',
+      // Auto keeps photo turns under OpenAI token-per-minute pressure better than high.
+      detail: 'auto',
       image_url: `data:${image.mimeType};base64,${image.base64}`,
     });
   }
@@ -86,6 +93,51 @@ function outputText(payload: { output_text?: string; output?: { content?: { type
   return null;
 }
 
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function retryAfterMs(response: Response, attempt: number): number {
+  const header = response.headers.get('retry-after');
+  if (header) {
+    const seconds = Number(header);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(Math.ceil(seconds * 1000), 8_000);
+  }
+  return Math.min(1_000 * (2 ** (attempt - 1)), 4_000);
+}
+
+async function classifyFailure(response: Response): Promise<Error> {
+  if (response.status === 401 || response.status === 403) {
+    return Object.assign(new Error('provider_auth'), { code: 'provider_auth' });
+  }
+  if (response.status === 429) {
+    let code = 'provider_rate_limit';
+    try {
+      const body = await response.json() as { error?: { type?: string; code?: string } };
+      const kind = `${body.error?.type ?? ''} ${body.error?.code ?? ''}`.toLowerCase();
+      if (kind.includes('insufficient_quota')) code = 'provider_quota';
+    } catch {
+      // Keep the rate-limit code when the body is not JSON.
+    }
+    return Object.assign(new Error(code), { code });
+  }
+  return new Error('provider_status');
+}
+
 export class OpenAiTextProvider implements TextProvider {
   readonly id = 'openai' as const;
 
@@ -99,37 +151,52 @@ export class OpenAiTextProvider implements TextProvider {
 
   async complete(request: ProviderRequest): Promise<ProviderResult> {
     const call = buildOpenAiRequest(this.model, request, this.maxOutputTokens);
-    const controller = new AbortController();
     const started = Date.now();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timeoutMs = requestHasImages(request) ? Math.max(this.timeoutMs, 45_000) : this.timeoutMs;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await this.fetchImpl(call.url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
-        body: JSON.stringify(call.body),
-        signal: controller.signal,
-      });
-      if (response.status === 401 || response.status === 403) throw Object.assign(new Error('provider_auth'), { code: 'provider_auth' });
-      if (response.status === 429) throw Object.assign(new Error('provider_rate_limit'), { code: 'provider_rate_limit' });
-      if (!response.ok) throw new Error('provider_status');
-      const payload = await response.json() as {
-        output_text?: string;
-        output?: { content?: { type?: string; text?: string }[] }[];
-        usage?: { input_tokens?: number; output_tokens?: number; input_tokens_details?: { cached_tokens?: number }; output_tokens_details?: { reasoning_tokens?: number } };
-      };
-      const raw = outputText(payload);
-      if (!raw) throw new Error('provider_empty');
-      return {
-        reply: JSON.parse(raw) as unknown,
-        model: this.model,
-        durationMs: Date.now() - started,
-        usage: {
-          inputTokens: payload.usage?.input_tokens ?? null,
-          outputTokens: payload.usage?.output_tokens ?? null,
-          thoughtTokens: payload.usage?.output_tokens_details?.reasoning_tokens ?? null,
-          cachedTokens: payload.usage?.input_tokens_details?.cached_tokens ?? 0,
-        },
-      };
+      let lastRateLimit: Error | null = null;
+      for (let attempt = 1; attempt <= RATE_LIMIT_ATTEMPTS; attempt += 1) {
+        const response = await this.fetchImpl(call.url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
+          body: JSON.stringify(call.body),
+          signal: controller.signal,
+        });
+        if (response.status === 429) {
+          lastRateLimit = await classifyFailure(response);
+          if ((lastRateLimit as { code?: string }).code === 'provider_quota' || attempt >= RATE_LIMIT_ATTEMPTS) {
+            throw lastRateLimit;
+          }
+          const waitMs = retryAfterMs(response, attempt);
+          const remainingMs = timeoutMs - (Date.now() - started);
+          // No point retrying when the overall request budget is already gone.
+          if (remainingMs < waitMs + 250) throw lastRateLimit;
+          await sleep(waitMs, controller.signal);
+          continue;
+        }
+        if (!response.ok) throw await classifyFailure(response);
+        const payload = await response.json() as {
+          output_text?: string;
+          output?: { content?: { type?: string; text?: string }[] }[];
+          usage?: { input_tokens?: number; output_tokens?: number; input_tokens_details?: { cached_tokens?: number }; output_tokens_details?: { reasoning_tokens?: number } };
+        };
+        const raw = outputText(payload);
+        if (!raw) throw new Error('provider_empty');
+        return {
+          reply: JSON.parse(raw) as unknown,
+          model: this.model,
+          durationMs: Date.now() - started,
+          usage: {
+            inputTokens: payload.usage?.input_tokens ?? null,
+            outputTokens: payload.usage?.output_tokens ?? null,
+            thoughtTokens: payload.usage?.output_tokens_details?.reasoning_tokens ?? null,
+            cachedTokens: payload.usage?.input_tokens_details?.cached_tokens ?? 0,
+          },
+        };
+      }
+      throw lastRateLimit ?? Object.assign(new Error('provider_rate_limit'), { code: 'provider_rate_limit' });
     } finally {
       clearTimeout(timer);
     }
