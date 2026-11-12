@@ -148,7 +148,7 @@ function categoryFromText(raw?: string | null): TryOnCategory {
   if (value.includes('bag') || value.includes('tote') || value.includes('clutch') || value.includes('crossbody')) return 'bags';
   if (value.includes('jewel') || value.includes('earring') || value.includes('necklace') || value.includes('scarf') || value.includes('sunglass') || value.includes('accessor')) return 'accessories';
   if (value.includes('bottom') || value.includes('pant') || value.includes('skirt') || value.includes('jean')) return 'bottoms';
-  if (value.includes('dress') || value.includes('jumpsuit') || value.includes('one')) return 'one-pieces';
+  if (value.includes('dress') || value.includes('jumpsuit') || value.includes('one-piece') || value.includes('one piece') || value === 'one-pieces') return 'one-pieces';
   if (value.includes('outer') || value.includes('coat') || value.includes('jacket') || value.includes('blazer')) return 'outerwear';
   return 'tops';
 }
@@ -461,28 +461,29 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         priceZar: preloadedGarment.priceZar,
       });
       const companions = preloadedGarment.companionLayers ?? [];
-      if (companions.length) {
-        const nextLayers: Partial<Record<LayerKind, LayerPick>> = {};
-        for (const layer of companions) {
-          const layerCategory = categoryFromText(layer.category);
-          const kind: LayerKind =
-            layerCategory === 'outerwear'
-              ? 'outerwear'
-              : layerCategory === 'shoes'
-                ? 'shoes'
-                : 'accessory';
-          nextLayers[kind] = {
-            name: layer.productName,
-            category: layerCategory,
-            imageUrl: layer.imageUrl,
-            productId: layer.productId,
-            retailer: layer.retailer,
-            priceZar: layer.priceZar,
-            source: 'shop',
-          };
+      const nextLayers: Partial<Record<LayerKind, LayerPick>> = {};
+      for (const layer of companions) {
+        const layerCategory = categoryFromText(layer.category);
+        if (layerCategory !== 'outerwear' && layerCategory !== 'shoes' && layerCategory !== 'bags' && layerCategory !== 'accessories') {
+          continue;
         }
-        setLayers(nextLayers);
+        const kind: LayerKind =
+          layerCategory === 'outerwear'
+            ? 'outerwear'
+            : layerCategory === 'shoes'
+              ? 'shoes'
+              : 'accessory';
+        nextLayers[kind] = {
+          name: layer.productName,
+          category: layerCategory,
+          imageUrl: layer.imageUrl,
+          productId: layer.productId,
+          retailer: layer.retailer,
+          priceZar: layer.priceZar,
+          source: 'shop',
+        };
       }
+      setLayers(nextLayers);
       // Skip ahead: photo ready → confirm; otherwise land on photograph step.
       setStep(hasFullBody || preferredPerson?.mediaId ? 'confirm' : 'photo');
     }
@@ -631,8 +632,12 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
 
   const refreshFittings = async () => {
     if (!usesAccount) return;
-    const listed = await accountApi.listTryOnFittings();
-    setFittings(listed.fittings);
+    try {
+      const listed = await accountApi.listTryOnFittings();
+      setFittings(listed.fittings);
+    } catch {
+      // Keep the last successful fittings list if refresh fails.
+    }
   };
 
   useEffect(() => {

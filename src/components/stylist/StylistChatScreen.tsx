@@ -395,11 +395,24 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           granted: true,
           captureMethod: 'stylist_photo_attach',
         });
-        await accountApi.setPrivacyConsent({
-          purpose: 'external_photo_ai',
-          granted: true,
-          captureMethod: 'stylist_photo_attach',
-        });
+        const consentState = await accountApi.privacyConsent();
+        const externalGranted = Array.isArray(consentState.current)
+          && consentState.current.some((item) => item.purpose === 'external_photo_ai' && item.granted);
+        if (!externalGranted) {
+          const allowed = window.confirm(
+            'This photograph will be sent to an external AI provider for styling analysis. Continue only if you agree.',
+          );
+          if (!allowed) {
+            setIsTyping(false);
+            setServiceNotice('Photo not sent. External AI photograph consent is required before the stylist can see images.');
+            return;
+          }
+          await accountApi.setPrivacyConsent({
+            purpose: 'external_photo_ai',
+            granted: true,
+            captureMethod: 'stylist_photo_attach_confirmed',
+          });
+        }
         const uploaded = await accountApi.uploadStylistAttachment(await fileToBase64(file));
         setGarmentContext({
           name: attachment.name,

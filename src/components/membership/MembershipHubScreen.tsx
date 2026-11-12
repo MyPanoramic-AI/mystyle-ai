@@ -146,14 +146,16 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
     if (usesAccount) {
       const planCode = cataloguePlanToServerCode(planId);
       setPreviewPlanCode(planId);
-      setPreviewNotice(`Activating ${planCode}…`);
+      if (planCode !== 'FREE') {
+        setPreviewNotice(
+          `${planCode === 'PERSONAL' ? 'Personal' : 'Family'} is a preview label only. No payment was taken and your Free entitlement is unchanged.`,
+        );
+        return;
+      }
+      setPreviewNotice('Activating FREE…');
       void accountApi.setMembershipEntitlement(planCode).then(async () => {
         await reloadAccountMembership();
-        setPreviewNotice(
-          planCode === 'FREE'
-            ? 'Your account is on the Free entitlement. No payment was taken.'
-            : `Your account is now on the ${planCode === 'PERSONAL' ? 'Personal' : 'Family'} entitlement. Provisional only — no card was charged.`,
-        );
+        setPreviewNotice('Your account is on the Free entitlement. No payment was taken.');
       }).catch((error: unknown) => {
         setPreviewNotice(
           error instanceof AccountApiError

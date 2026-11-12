@@ -104,7 +104,19 @@ function securityHeaders(res: Response, page: boolean): void {
   res.setHeader(
     'Content-Security-Policy',
     page
-      ? "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+      // Profile photo cutouts use @imgly/background-removal (WASM + workers + CDN model files).
+      ? [
+        "default-src 'self'",
+        "script-src 'self' 'wasm-unsafe-eval'",
+        "worker-src 'self' blob:",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: blob: https://images.unsplash.com",
+        "connect-src 'self' blob: data: https://staticimgly.com",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "object-src 'none'",
+      ].join('; ')
       : "default-src 'none'; frame-ancestors 'none'",
   );
   if (!page) res.setHeader('Cache-Control', 'no-store');
@@ -624,17 +636,19 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.post('/api/entitlements', route((req, res) => {
     const session = requireUser(req);
-    // Live card billing is not connected. While payments stay off, customers may activate a
-    // provisional Free / Personal / Family entitlement so the Account Hub matches the selected tier.
-    // When payments go live this route must refuse customer assignment again.
-    const paymentsEnabled = false;
-    if (paymentsEnabled) {
-      res.status(403).json({ code: 'paid_plan_forbidden', message: 'A customer cannot assign a plan.' });
+    // Live card billing is not connected. Customers may only keep or return to Free.
+    // Personal / Family must not be self-assigned until a payment provider grants them.
+    const planCode = text(req.body?.planCode);
+    if (planCode !== 'FREE') {
+      res.status(403).json({
+        code: 'paid_plan_forbidden',
+        message: 'Paid plans cannot be activated until live payments are connected. Your Free entitlement is unchanged.',
+      });
       return;
     }
     const assigned = assignEntitlement(deps.db, {
       userId: session.userId,
-      planCode: text(req.body?.planCode),
+      planCode: 'FREE',
       status: typeof req.body?.status === 'string' ? req.body.status : 'active',
       effectiveTo: typeof req.body?.effectiveTo === 'string' ? req.body.effectiveTo : null,
       actor: 'customer_provisional',
@@ -1123,6 +1137,10 @@ export function createApp(deps: AppDeps): express.Express {
 
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const body = publicError(error);
+    if (body.status >= 500) {
+      const detail = error instanceof Error ? error.stack || error.message : String(error);
+      console.error(`[api] ${body.code}: ${detail}`);
+    }
     res.status(body.status).json({ code: body.code, message: body.message });
   });
 

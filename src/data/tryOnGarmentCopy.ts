@@ -149,7 +149,7 @@ function categoryOverview(name: string, category?: string | null): string {
   if (cat.includes('bag') || /tote|clutch|crossbody/.test(name.toLowerCase())) {
     return `${name} is a finishing accessory — scale and texture should support the outfit, not fight it.`;
   }
-  if (cat.includes('dress') || cat.includes('one')) {
+  if (cat.includes('dress') || cat.includes('one-piece') || cat.includes('one piece') || cat === 'one-pieces') {
     return `${name} is a one-piece hero — fabric drape and waist placement matter most before you generate a try-on.`;
   }
   if (cat.includes('outer') || /jacket|blazer|coat/.test(name.toLowerCase())) {

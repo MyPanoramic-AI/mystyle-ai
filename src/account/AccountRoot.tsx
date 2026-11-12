@@ -64,7 +64,9 @@ function clearSecurityParams(): void {
 
 function messageFrom(error: unknown): string {
   if (error instanceof AccountApiError) {
-    if (error.code === 'forbidden_origin') return 'Open this app at http://127.0.0.1:3000 so the local account service can accept the browser.';
+    if (error.code === 'forbidden_origin') {
+      return 'This browser origin is not allowed for the account service. Open the official IStyleU site, or set API_ALLOWED_ORIGINS for your domain.';
+    }
     if (error.status === 0) return 'The account service could not be reached.';
     return error.message;
   }
@@ -475,7 +477,7 @@ export function AccountRoot() {
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-sm text-amber-950">
           <div className="max-w-5xl mx-auto">
             <p>
-              This host has no persistent disk. Account logins, profile changes, and private photographs are wiped when the service restarts or spins down. Use a paid Render plan with a disk at <span className="font-medium">/var/data</span> (see <span className="font-medium">render.yaml</span>) for durable storage.
+              This host has no persistent disk. Account logins, profile changes, and private photographs are wiped when the service restarts or spins down. Contact support if you see this on the live site.
             </p>
           </div>
         </div>

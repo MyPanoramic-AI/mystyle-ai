@@ -496,7 +496,7 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
               <span>South African Demonstration Retail Notice</span>
             </div>
             <p className="leading-relaxed">
-              All store names (Woolworths, Superbalist, Zara, Bash, H&M, Cotton On, Mr Price, Takealot), product listings, and prices shown are illustrative demonstration mockups for testing the IStyleU user interface. Authentic retailer APIs, automated price scrapers, and verified stock updates will be activated in Phase 2 in Cursor.
+              All store names (Woolworths, Superbalist, Zara, Bash, H&M, Cotton On, Mr Price, Takealot), product listings, and prices shown are illustrative demonstration mockups. They are not live stock or verified retailer offers.
             </p>
           </div>
         </div>

@@ -267,7 +267,22 @@ test('existing accounts stay unverified after migration 010 and mailbox hides to
        VALUES (?, ?, ?, 'active', ?, ?)`,
     ).run('legacy-user', 'legacy@example.com', 'scrypt$not$real', new Date().toISOString(), new Date().toISOString());
     const applied = migrate(db, migrationsDir);
-    assert.deepEqual(applied, ['010_email_account_security.sql', '011_profile_photo_slots.sql', '012_tryon_jobs.sql', '013_tryon_free_ai_image.sql', '014_body_silhouette.sql', '015_family_link_invites.sql']);
+    assert.deepEqual(applied, [
+      '010_email_account_security.sql',
+      '011_profile_photo_slots.sql',
+      '012_tryon_jobs.sql',
+      '013_tryon_free_ai_image.sql',
+      '014_body_silhouette.sql',
+      '015_family_link_invites.sql',
+      '016_shoe_preferences.sql',
+      '017_full_body_back_photo.sql',
+      '018_stylist_persona.sql',
+      '019_whatsapp_channel.sql',
+      '020_stylist_answer_length.sql',
+      '020_whatsapp_outbound.sql',
+      '021_ai_message_attachments.sql',
+      '022_profile_weight.sql',
+    ]);
     const row = db.prepare(`SELECT email_verified_at AS verifiedAt FROM users WHERE id = ?`).get('legacy-user') as { verifiedAt: string | null };
     assert.equal(row.verifiedAt, null);
     db.close();

@@ -35,8 +35,8 @@ export const ShopTheLookBanner: React.FC<ShopTheLookBannerProps> = ({ context, o
             </h3>
             <p className="text-xs text-[#5C585E] mt-0.5">
               {context.completeWith?.imageUrl
-                ? 'Pick a piece below, then try it on with your uploaded garment photo.'
-                : "Let's find pieces inspired by this look across trusted South African retailers."}
+                ? 'Pick a demonstration catalogue piece below, then try it on with your uploaded garment photo.'
+                : 'Browse demonstration catalogue pieces inspired by this look. Prices and stock are not live retailer data.'}
             </p>
           </div>
         </div>
