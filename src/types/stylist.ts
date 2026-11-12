@@ -45,12 +45,16 @@ export interface StylistBeautyTip {
   };
 }
 
+export type GarmentFollowUpActionId = 'shoes' | 'hair-makeup' | 'accessories' | 'bag';
+
 export interface StylistQuickAction {
   id: string;
   label: string;
   icon?: string;
   prompt: string;
   variant?: 'primary' | 'secondary' | 'neutral';
+  /** When set, the chip opens Shop / Beauty for completing an uploaded garment. */
+  followUpId?: GarmentFollowUpActionId;
 }
 
 export interface ChatMessage {

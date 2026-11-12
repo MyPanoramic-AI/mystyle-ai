@@ -34,7 +34,9 @@ export const ShopTheLookBanner: React.FC<ShopTheLookBannerProps> = ({ context, o
               Shopping for: {context.outfitTitle}
             </h3>
             <p className="text-xs text-[#5C585E] mt-0.5">
-              Let's find pieces inspired by this look across trusted South African retailers.
+              {context.completeWith?.imageUrl
+                ? 'Pick a piece below, then try it on with your uploaded garment photo.'
+                : "Let's find pieces inspired by this look across trusted South African retailers."}
             </p>
           </div>
         </div>
@@ -47,6 +49,26 @@ export const ShopTheLookBanner: React.FC<ShopTheLookBannerProps> = ({ context, o
           <X className="w-4 h-4" />
         </button>
       </div>
+
+      {context.completeWith?.imageUrl && (
+        <div className="mt-3 flex items-center gap-3 rounded-xl bg-white/80 border border-[#242326]/8 p-2.5">
+          <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#242326]/10 shrink-0 bg-white">
+            <img
+              src={context.completeWith.imageUrl}
+              alt={context.completeWith.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#9C6A61]">
+              Try on with
+            </span>
+            <p className="text-xs font-medium text-[#242326] truncate">
+              {context.completeWith.name}
+            </p>
+          </div>
+        </div>
+      )}
 
       {context.pieces && context.pieces.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-[#242326]/8">

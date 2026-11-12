@@ -12,11 +12,19 @@ import {
   StylistLookConsultation,
   ChatMessage,
   StylistFilterLens,
+  StylistQuickAction,
 } from '../../types';
 import {
   getInitialConversation,
   generateStylistResponse,
 } from '../../data/stylistKnowledge';
+import {
+  GARMENT_FOLLOW_UPS,
+  garmentFollowUpActions,
+  inferGarmentLabel,
+  shopSearchForFollowUp,
+  type GarmentFollowUpId,
+} from '../../data/garmentFollowUps';
 import { StylistHeader } from './StylistHeader';
 import { ChatMessageItem } from './ChatMessageItem';
 import { StylistInputBar } from './StylistInputBar';
@@ -30,6 +38,7 @@ import { toChatMessage } from '../../services/stylistView';
 import { fileToBase64 } from '../../services/profilePhotosClient';
 import type { PreloadedGarment } from '../../types/shop';
 import { resolveStylistPersona } from '../../data/stylistPersona';
+import type { ShopPreloadedContext } from '../pages/ShopPlaceholder';
 
 const STYLING_WAIT_LINES = [
   'Still thinking how this would look…',
@@ -77,6 +86,8 @@ interface StylistChatScreenProps {
   onClearState: () => void;
   onOpenDiscover?: () => void;
   onSendToTryOn?: (garment: PreloadedGarment) => void;
+  onShopForGarment?: (context: ShopPreloadedContext) => void;
+  onOpenBeautyStudio?: () => void;
   connection?: StylistConnection;
 }
 
@@ -88,6 +99,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   onClearState,
   onOpenDiscover,
   onSendToTryOn,
+  onShopForGarment,
+  onOpenBeautyStudio,
   connection,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
@@ -108,6 +121,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [libraryItems, setLibraryItems] = useState<StylistLibraryItem[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [garmentContext, setGarmentContext] = useState<{ name: string; url: string } | null>(null);
 
   const stylistName = resolveStylistPersona(profile).name;
   const [lens, setLens] = useState<StylistFilterLens>({
@@ -118,6 +132,18 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const lastStateTimestampRef = useRef<number | undefined>(state.timestamp);
+
+  const rememberGarmentFromMessages = (mapped: ChatMessage[]) => {
+    const lastUpload = [...mapped].reverse().find((message) => message.userAttachmentUrl);
+    if (lastUpload?.userAttachmentUrl) {
+      setGarmentContext({
+        name: lastUpload.userAttachmentName || 'Uploaded garment',
+        url: lastUpload.userAttachmentUrl,
+      });
+      return;
+    }
+    setGarmentContext(null);
+  };
 
   // Auto-scroll when messages update
   const scrollToBottom = () => {
@@ -161,7 +187,11 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       const restored = await connection.restore();
       if (cancelled) return;
       setConversationId(restored.id);
-      if (restored.messages.length) setMessages(restored.messages.map(toChatMessage));
+      if (restored.messages.length) {
+        const mapped = restored.messages.map((message) => toChatMessage(message));
+        setMessages(mapped);
+        rememberGarmentFromMessages(mapped);
+      }
       setServiceNotice(availability.liveEnabled ? null : 'These replies come from the demonstration stylist, not a live model.');
       setServerReady(true);
     }).catch((error: unknown) => {
@@ -209,8 +239,9 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
 
   const sendServerText = (id: string, typed: string, mediaIds: string[] = []) => {
     const idempotencyKey = `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const withGarmentFollowUps = mediaIds.length > 0 || Boolean(garmentContext);
     void connection!.send(id, typed, idempotencyKey, mediaIds).then((message) => {
-      setMessages((prev) => [...prev, toChatMessage(message)]);
+      setMessages((prev) => [...prev, toChatMessage(message, { includeGarmentFollowUps: withGarmentFollowUps })]);
       setIsTyping(false);
       if (mediaIds.length) {
         setServiceNotice(null);
@@ -310,6 +341,9 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
 
     setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
+    if (attachment) {
+      setGarmentContext({ name: attachment.name, url: attachment.url });
+    }
 
     if (!connection || localDemo) {
       setTimeout(() => {
@@ -321,7 +355,11 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           text: response.text,
           outfitCard: response.outfitCard,
           beautyTip: response.beautyTip,
-          quickActions: response.quickActions,
+          quickActions: attachment
+            ? (response.quickActions?.length
+              ? response.quickActions
+              : garmentFollowUpActions(`stylist-${Date.now()}`))
+            : response.quickActions,
         };
         setMessages((prev) => [...prev, stylistMsg]);
         setIsTyping(false);
@@ -363,6 +401,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           captureMethod: 'stylist_photo_attach',
         });
         const uploaded = await accountApi.uploadStylistAttachment(await fileToBase64(file));
+        setGarmentContext({
+          name: attachment.name,
+          url: `/api/media/${uploaded.id}`,
+        });
         setServiceNotice(`${stylistName} can see your photo and will style from it.`);
         sendServerText(conversationId, typed, [uploaded.id]);
       } catch (error: unknown) {
@@ -382,6 +424,42 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
 
   const handleSelectPrompt = (prompt: string) => {
     handleUserSend(prompt);
+  };
+
+  const openGarmentFollowUp = (followUpId: GarmentFollowUpId) => {
+    const definition = GARMENT_FOLLOW_UPS.find((item) => item.id === followUpId);
+    if (!definition) return;
+    const label = inferGarmentLabel(garmentContext?.name);
+    if (definition.openBeauty) {
+      handleUserSend(definition.prompt);
+      onOpenBeautyStudio?.();
+      return;
+    }
+    if (definition.shop && onShopForGarment) {
+      onShopForGarment({
+        outfitTitle: definition.shop.title.replace('your garment', label),
+        category: definition.shop.category,
+        pieces: [shopSearchForFollowUp(followUpId, label)],
+        completeWith: garmentContext?.url
+          ? {
+              name: garmentContext.name || label,
+              imageUrl: garmentContext.url,
+              category: 'dresses',
+            }
+          : undefined,
+      });
+      handleUserSend(definition.prompt);
+      return;
+    }
+    handleUserSend(definition.prompt);
+  };
+
+  const handleSelectAction = (action: StylistQuickAction) => {
+    if (action.followUpId) {
+      openGarmentFollowUp(action.followUpId);
+      return;
+    }
+    handleUserSend(action.prompt);
   };
 
   const refreshLibrary = async () => {
@@ -413,11 +491,11 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     setLibraryError(null);
     void connection.open(id).then((opened) => {
       setConversationId(opened.id);
-      setMessages(
-        opened.messages.length
-          ? opened.messages.map(toChatMessage)
-          : getInitialConversation(profile, undefined),
-      );
+      const mapped = opened.messages.length
+        ? opened.messages.map((message) => toChatMessage(message))
+        : getInitialConversation(profile, undefined);
+      setMessages(mapped);
+      rememberGarmentFromMessages(mapped);
       setLibraryOpen(false);
       setServiceNotice(null);
       onClearState();
@@ -435,11 +513,11 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       if (conversationId === id) {
         const next = await connection.restore();
         setConversationId(next.id);
-        setMessages(
-          next.messages.length
-            ? next.messages.map(toChatMessage)
-            : getInitialConversation(profile, undefined),
-        );
+        const mapped = next.messages.length
+          ? next.messages.map((message) => toChatMessage(message))
+          : getInitialConversation(profile, undefined);
+        setMessages(mapped);
+        rememberGarmentFromMessages(mapped);
       }
       await refreshLibrary();
     }).catch((error: unknown) => {
@@ -451,6 +529,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     const resetLocal = () => {
       setMessages(getInitialConversation(profile, undefined));
       setConversationId(null);
+      setGarmentContext(null);
       onClearState();
       setIsResetConfirmOpen(false);
       setLibraryOpen(false);
@@ -549,6 +628,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
             onNavigateToShop={() => onNavigate('shop')}
             onSendToTryOn={onSendToTryOn}
             onSelectPrompt={handleSelectPrompt}
+            onSelectAction={handleSelectAction}
           />
         ))}
 
@@ -586,8 +666,11 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         onSendMessage={handleUserSend}
         isGenerating={isTyping}
         onSelectPrompt={handleSelectPrompt}
+        onSelectAction={handleSelectAction}
         inputPrefill={inputPrefill}
         stylistName={stylistName}
+        contextualActions={garmentContext ? garmentFollowUpActions('composer') : undefined}
+        contextualLabel={garmentContext ? `Complete ${inferGarmentLabel(garmentContext.name)}:` : undefined}
       />
       </div>
 

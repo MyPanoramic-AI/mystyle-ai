@@ -277,7 +277,29 @@ export default function App({ account }: { account: ReadyAccount }) {
 
   // Shop Action: Try This Item -> Navigates to Try On with preloaded garment
   const handleSendToTryOnFromShop = (garment: PreloadedGarment) => {
-    setTryOnPreloadedGarment(garment);
+    const completeWith = shopPreloadedContext?.completeWith;
+    if (completeWith?.imageUrl) {
+      setTryOnPreloadedGarment({
+        productId: `upload-complete-${Date.now()}`,
+        productName: completeWith.name || 'Your garment',
+        imageUrl: completeWith.imageUrl,
+        category: completeWith.category || 'dresses',
+        retailer: 'Your upload',
+        priceZar: 0,
+        companionLayers: [
+          {
+            productId: garment.productId,
+            productName: garment.productName,
+            imageUrl: garment.imageUrl,
+            category: garment.category,
+            retailer: garment.retailer,
+            priceZar: garment.priceZar,
+          },
+        ],
+      });
+    } else {
+      setTryOnPreloadedGarment(garment);
+    }
     setTryOnPreloadedLook(null);
     setTryOnFamilyMemberName(null);
     setActiveSubpage(null);
@@ -627,6 +649,13 @@ export default function App({ account }: { account: ReadyAccount }) {
           onClearState={handleClearStylistState}
           onOpenDiscover={() => handleOpenDiscover()}
           onSendToTryOn={handleSendToTryOnFromShop}
+          onShopForGarment={(context) => {
+            setShopPreloadedContext(context);
+            setActiveSubpage(null);
+            setCurrentTab('shop');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenBeautyStudio={() => handleOpenBeauty('complete-looks')}
           connection={account.stylist ? {
             aiConsent: account.aiConsent,
             onEnableConsent: () => account.setAiConsent(true),

@@ -460,6 +460,29 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
         retailer: preloadedGarment.retailer,
         priceZar: preloadedGarment.priceZar,
       });
+      const companions = preloadedGarment.companionLayers ?? [];
+      if (companions.length) {
+        const nextLayers: Partial<Record<LayerKind, LayerPick>> = {};
+        for (const layer of companions) {
+          const layerCategory = categoryFromText(layer.category);
+          const kind: LayerKind =
+            layerCategory === 'outerwear'
+              ? 'outerwear'
+              : layerCategory === 'shoes'
+                ? 'shoes'
+                : 'accessory';
+          nextLayers[kind] = {
+            name: layer.productName,
+            category: layerCategory,
+            imageUrl: layer.imageUrl,
+            productId: layer.productId,
+            retailer: layer.retailer,
+            priceZar: layer.priceZar,
+            source: 'shop',
+          };
+        }
+        setLayers(nextLayers);
+      }
       // Skip ahead: photo ready → confirm; otherwise land on photograph step.
       setStep(hasFullBody || preferredPerson?.mediaId ? 'confirm' : 'photo');
     }

@@ -1,5 +1,6 @@
 import type { ChatMessage, StylistOutfitRecommendation, StylistQuickAction } from '../types';
 import type { StylistServerMessage } from './accountApi';
+import { garmentFollowUpActions } from '../data/garmentFollowUps';
 import workOfficeImg from '../assets/images/fashion_work_office_1791978399975.jpg';
 import weddingGuestImg from '../assets/images/fashion_wedding_guest_1791978399342.jpg';
 import weekendCasualImg from '../assets/images/fashion_weekend_casual_1791978401075.jpg';
@@ -87,18 +88,24 @@ export function conceptCard(message: StylistServerMessage): StylistOutfitRecomme
   };
 }
 
-export function followUps(message: StylistServerMessage): StylistQuickAction[] {
+export function followUps(message: StylistServerMessage, options?: { includeGarmentFollowUps?: boolean }): StylistQuickAction[] {
   const questions = message.recommendation?.followUpQuestions;
-  if (!Array.isArray(questions)) return [];
-  return questions.filter((item): item is string => typeof item === 'string').slice(0, 2).map((prompt, index) => ({
-    id: `${message.id}-follow-${index}`,
-    label: prompt,
-    prompt,
-    variant: 'secondary' as const,
-  }));
+  const fromModel = Array.isArray(questions)
+    ? questions.filter((item): item is string => typeof item === 'string').slice(0, 2).map((prompt, index) => ({
+      id: `${message.id}-follow-${index}`,
+      label: prompt,
+      prompt,
+      variant: 'secondary' as const,
+    }))
+    : [];
+  if (!options?.includeGarmentFollowUps) return fromModel;
+  return [...garmentFollowUpActions(message.id), ...fromModel].slice(0, 6);
 }
 
-export function toChatMessage(message: StylistServerMessage): ChatMessage {
+export function toChatMessage(
+  message: StylistServerMessage,
+  options?: { includeGarmentFollowUps?: boolean },
+): ChatMessage {
   const attachmentIds = Array.isArray(message.attachmentMediaIds) ? message.attachmentMediaIds : [];
   const userAttachments = message.role === 'user'
     ? attachmentIds.map((id, index) => ({
@@ -120,6 +127,8 @@ export function toChatMessage(message: StylistServerMessage): ChatMessage {
       ? `/api/media/${message.recommendation.generatedMediaId.trim()}`
       : undefined,
     outfitCard: message.role === 'assistant' ? conceptCard(message) : undefined,
-    quickActions: message.role === 'assistant' ? followUps(message) : undefined,
+    quickActions: message.role === 'assistant'
+      ? followUps(message, { includeGarmentFollowUps: options?.includeGarmentFollowUps })
+      : undefined,
   };
 }

@@ -15,6 +15,7 @@ import {
   StylistQuickAction,
 } from '../types';
 import { resolveStylistPersona } from './stylistPersona';
+import { garmentFollowUpActions } from './garmentFollowUps';
 
 import heroEditorialImg from '../assets/images/hero_editorial_fashion_1791978397716.jpg';
 import dateNightImg from '../assets/images/fashion_date_night_1791978397788.jpg';
@@ -501,20 +502,9 @@ export function generateStylistResponse(
   // 1. Photo attachment analysis
   if (attachment) {
     return {
-      text: `Looking at your photo of **${attachment.name}**: the silhouette reads clean and intentional — soft structure, balanced proportion through the frame, and a polished-casual formality that works for day into early evening.\n\nHow you look in it: the piece sits as a clear hero; keep that focus and refine the rest of the outfit around it.\n\n1. **High-Contrast Proportion**: Pair with sleek, tailored fluid trousers in cream or deep charcoal to balance volume.\n2. **Textural Interest**: Introduce smooth silk or soft knitwear for luxury contrast against this fabric.\n3. **Footwear & Polish**: Anchor with pointed square-toe mules and delicate brushed gold jewelry.\n\nHere is a complete curated ensemble that works with your aesthetic:`,
+      text: `Looking at your photo of **${attachment.name}**: the silhouette reads clean and intentional — soft structure, balanced proportion through the frame, and a polished-casual formality that works for day into early evening.\n\nHow you look in it: the piece sits as a clear hero; keep that focus and refine the rest of the outfit around it.\n\n1. **High-Contrast Proportion**: Pair with sleek, tailored fluid trousers in cream or deep charcoal to balance volume.\n2. **Textural Interest**: Introduce smooth silk or soft knitwear for luxury contrast against this fabric.\n3. **Footwear & Polish**: Anchor with pointed square-toe mules and delicate brushed gold jewelry.\n\nUse the buttons below to find shoes, hair and makeup, accessories, or a bag — then try pieces on with this photograph.`,
       outfitCard: OUTFIT_CATALOG.workOffice,
-      quickActions: [
-        {
-          id: 'qa-att-1',
-          label: '👠 What shoes match best?',
-          prompt: 'What shoes and handbag would best complete this look?',
-        },
-        {
-          id: 'qa-att-2',
-          label: '🛍️ Find pieces on Superbalist',
-          prompt: 'Show me matching pieces currently in stock at Superbalist or Woolworths.',
-        },
-      ],
+      quickActions: garmentFollowUpActions('qa-att'),
     };
   }
 

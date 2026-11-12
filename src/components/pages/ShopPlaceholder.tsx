@@ -14,6 +14,15 @@ export interface ShopPreloadedContext {
   pieces: string[];
   /** When set, Shop opens this catalogue product for purchase. */
   focusProductId?: string;
+  /**
+   * Uploaded garment from the stylist chat to complete.
+   * Trying on a shop item layers that item onto this photograph.
+   */
+  completeWith?: {
+    name: string;
+    imageUrl: string;
+    category?: string;
+  };
 }
 
 interface ShopPlaceholderProps {

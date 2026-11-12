@@ -91,6 +91,15 @@ export type ShoppingSortOption =
   | 'biggest-saving'
   | 'newest';
 
+export interface PreloadedGarmentLayer {
+  productId: string;
+  productName: string;
+  imageUrl: string;
+  category: string;
+  retailer?: string;
+  priceZar?: number;
+}
+
 export interface PreloadedGarment {
   productId: string;
   productName: string;
@@ -98,4 +107,6 @@ export interface PreloadedGarment {
   category: string;
   retailer: string;
   priceZar: number;
+  /** Extra pieces layered onto this base (e.g. shoes with an uploaded dress). */
+  companionLayers?: PreloadedGarmentLayer[];
 }

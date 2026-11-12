@@ -7,6 +7,7 @@ import React, { useState, useRef } from 'react';
 import { Send, Image, Mic, MicOff, X, Sparkles, Paperclip } from 'lucide-react';
 import { STARTER_SUGGESTIONS } from '../../data/stylistKnowledge';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
+import type { StylistQuickAction } from '../../types';
 
 // Sample wardrobe garment presets for quick test-drive
 const SAMPLE_GARMENTS = [
@@ -28,16 +29,22 @@ interface StylistInputBarProps {
   onSendMessage: (text: string, attachment?: { name: string; url: string; file?: File }) => void;
   isGenerating: boolean;
   onSelectPrompt: (prompt: string) => void;
+  onSelectAction?: (action: StylistQuickAction) => void;
   inputPrefill?: string;
   stylistName?: string;
+  contextualActions?: StylistQuickAction[];
+  contextualLabel?: string;
 }
 
 export const StylistInputBar: React.FC<StylistInputBarProps> = ({
   onSendMessage,
   isGenerating,
   onSelectPrompt,
+  onSelectAction,
   inputPrefill = '',
   stylistName = 'Aria',
+  contextualActions,
+  contextualLabel,
 }) => {
   const [inputText, setInputText] = useState(inputPrefill);
   const [attachment, setAttachment] = useState<{ name: string; url: string; file?: File } | null>(null);
@@ -115,12 +122,19 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
         {/* Quick Suggestion Chips Carousel */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9C6A61] shrink-0 pl-1">
-            Quick Inquiries:
+            {contextualActions?.length ? (contextualLabel || 'Complete look:') : 'Quick Inquiries:'}
           </span>
-          {STARTER_SUGGESTIONS.map((sug) => (
+          {(contextualActions?.length ? contextualActions : STARTER_SUGGESTIONS).map((sug) => (
             <button
               key={sug.id}
-              onClick={() => onSelectPrompt(sug.prompt)}
+              type="button"
+              onClick={() => {
+                if ('followUpId' in sug && sug.followUpId && onSelectAction) {
+                  onSelectAction(sug as StylistQuickAction);
+                  return;
+                }
+                onSelectPrompt(sug.prompt);
+              }}
               disabled={isGenerating}
               className="shrink-0 px-3 py-1.5 rounded-full bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 text-[#242326] text-xs font-medium border border-[#242326]/5 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
             >

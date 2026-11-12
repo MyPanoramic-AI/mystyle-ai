@@ -4,11 +4,11 @@
  */
 
 import React from 'react';
-import { ChatMessage, TemporaryPhotos, UserProfile } from '../../types';
+import { ChatMessage, StylistQuickAction, TemporaryPhotos, UserProfile } from '../../types';
 import { PreloadedGarment } from '../../types/shop';
 import { OutfitRecommendationCard } from './OutfitRecommendationCard';
 import { BeautyTipCard } from './BeautyTipCard';
-import { Sparkles, User, Paperclip } from 'lucide-react';
+import { Sparkles, Paperclip } from 'lucide-react';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 
 interface ChatMessageItemProps {
@@ -18,6 +18,7 @@ interface ChatMessageItemProps {
   onNavigateToShop: () => void;
   onSendToTryOn?: (garment: PreloadedGarment) => void;
   onSelectPrompt: (prompt: string) => void;
+  onSelectAction?: (action: StylistQuickAction) => void;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -27,6 +28,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   onNavigateToShop,
   onSendToTryOn,
   onSelectPrompt,
+  onSelectAction,
 }) => {
   const isStylist = message.sender === 'stylist';
 
@@ -197,7 +199,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             {message.quickActions.map((action) => (
               <button
                 key={action.id}
-                onClick={() => onSelectPrompt(action.prompt)}
+                type="button"
+                onClick={() => (onSelectAction ? onSelectAction(action) : onSelectPrompt(action.prompt))}
                 className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-medium px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF7F2] text-[#242326] border border-[#242326]/15 hover:border-[#9C6A61] transition-all cursor-pointer shadow-2xs"
               >
                 <span>{action.label}</span>
