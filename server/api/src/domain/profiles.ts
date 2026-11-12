@@ -15,7 +15,14 @@ const SHOE_STYLES = new Set(['sneakers', 'flats', 'loafers', 'boots', 'sandals',
 const STYLIST_GENDERS = new Set(['woman', 'man', 'non-binary', 'neutral']);
 const STYLIST_AGE_VIBES = new Set(['mid-twenties', 'thirties', 'forties', 'fifties-plus', 'ageless']);
 const STYLIST_VOICES = new Set(['warm-encouraging', 'direct-practical', 'witty-playful', 'polished-editorial', 'calm-minimal']);
-const DEFAULT_STYLIST = { name: 'Aria', gender: 'woman', ageVibe: 'thirties', voice: 'warm-encouraging' };
+const STYLIST_ANSWER_LENGTHS = new Set(['short', 'balanced', 'detailed']);
+const DEFAULT_STYLIST = {
+  name: 'Aria',
+  gender: 'woman',
+  ageVibe: 'thirties',
+  voice: 'warm-encouraging',
+  answerLength: 'balanced',
+};
 
 function text(value: unknown, max: number, field: string): string | null {
   if (value === undefined || value === null || value === '') return null;
@@ -103,11 +110,13 @@ export function getProfile(db: Sql, userId: string): Record<string, unknown> {
     stylistGender: profile.stylist_gender ?? DEFAULT_STYLIST.gender,
     stylistAgeVibe: profile.stylist_age_vibe ?? DEFAULT_STYLIST.ageVibe,
     stylistVoice: profile.stylist_voice ?? DEFAULT_STYLIST.voice,
+    stylistAnswerLength: profile.stylist_answer_length ?? DEFAULT_STYLIST.answerLength,
     stylistPersona: {
       name: profile.stylist_name ?? DEFAULT_STYLIST.name,
       gender: profile.stylist_gender ?? DEFAULT_STYLIST.gender,
       ageVibe: profile.stylist_age_vibe ?? DEFAULT_STYLIST.ageVibe,
       voice: profile.stylist_voice ?? DEFAULT_STYLIST.voice,
+      answerLength: profile.stylist_answer_length ?? DEFAULT_STYLIST.answerLength,
     },
     onboardingStatus: profile.onboarding_status ?? 'pending',
     completionStatus: profile.completion_status,
@@ -166,6 +175,9 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
   const stylistVoice = body.stylistVoice === undefined && nestedStylist?.voice === undefined
     ? current.stylist_voice
     : enumValue(body.stylistVoice ?? nestedStylist?.voice, STYLIST_VOICES, 'stylistVoice');
+  const stylistAnswerLength = body.stylistAnswerLength === undefined && nestedStylist?.answerLength === undefined
+    ? current.stylist_answer_length
+    : enumValue(body.stylistAnswerLength ?? nestedStylist?.answerLength, STYLIST_ANSWER_LENGTHS, 'stylistAnswerLength');
   const country = body.country === undefined ? current.country : text(body.country, 80, 'country');
   const currency = body.currency === undefined ? current.currency : text(body.currency, 16, 'currency');
   const complete = Boolean(displayName) && styles.length > 0 && Boolean(tops) && Boolean(budget);
@@ -175,7 +187,7 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
       budget_tier=?, favourite_colours_json=?, avoid_colours_json=?, fashion_interests_json=?, fit_preference=?, experimentation=?,
       country=?, currency=?, age_range=?, shopping_priorities_json=?, favourite_retailers_json=?,
       shoe_heel_comfort=?, shoe_heel_occasion=?, preferred_shoe_styles_json=?,
-      stylist_name=?, stylist_gender=?, stylist_age_vibe=?, stylist_voice=?,
+      stylist_name=?, stylist_gender=?, stylist_age_vibe=?, stylist_voice=?, stylist_answer_length=?,
       onboarding_status=?, completion_status=?, updated_at=? WHERE user_id=?`,
   ).run(
     displayName,
@@ -202,6 +214,7 @@ export function updateProfile(db: Sql, userId: string, body: Record<string, unkn
     stylistGender ?? DEFAULT_STYLIST.gender,
     stylistAgeVibe ?? DEFAULT_STYLIST.ageVibe,
     stylistVoice ?? DEFAULT_STYLIST.voice,
+    stylistAnswerLength ?? DEFAULT_STYLIST.answerLength,
     onboarding ?? 'pending',
     complete ? 'complete' : 'incomplete',
     stamp,

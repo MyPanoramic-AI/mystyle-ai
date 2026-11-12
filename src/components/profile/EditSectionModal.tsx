@@ -380,7 +380,7 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
         {section === 'stylist' && (
           <div className="space-y-3">
             <p className="text-xs text-[#5C585E] leading-relaxed">
-              Customise who styles you — name, presentation, age vibe, and conversational tone.
+              Customise who styles you — name, presentation, age vibe, conversational tone, and how long their answers are.
             </p>
             <StylistPersonaFields value={stylistPersona} onChange={setStylistPersona} compact />
           </div>

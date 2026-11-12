@@ -41,6 +41,7 @@ test('a customer can save profile, measurements, and preferences', async () => {
         stylistGender: 'non-binary',
         stylistAgeVibe: 'forties',
         stylistVoice: 'direct-practical',
+        stylistAnswerLength: 'short',
       }),
     });
     const detailedBody = await detailed.json() as {
@@ -57,7 +58,8 @@ test('a customer can save profile, measurements, and preferences', async () => {
       stylistGender: string;
       stylistAgeVibe: string;
       stylistVoice: string;
-      stylistPersona: { name: string; gender: string; ageVibe: string; voice: string };
+      stylistAnswerLength: string;
+      stylistPersona: { name: string; gender: string; ageVibe: string; voice: string; answerLength: string };
     };
     assert.equal(detailed.status, 200);
     assert.equal(detailedBody.ageRange, '25–34');
@@ -75,11 +77,13 @@ test('a customer can save profile, measurements, and preferences', async () => {
     assert.equal(detailedBody.stylistGender, 'non-binary');
     assert.equal(detailedBody.stylistAgeVibe, 'forties');
     assert.equal(detailedBody.stylistVoice, 'direct-practical');
+    assert.equal(detailedBody.stylistAnswerLength, 'short');
     assert.deepEqual(detailedBody.stylistPersona, {
       name: 'Nova',
       gender: 'non-binary',
       ageVibe: 'forties',
       voice: 'direct-practical',
+      answerLength: 'short',
     });
     const preferences = await fetch(`${api.base}/api/preferences`, {
       method: 'PUT',

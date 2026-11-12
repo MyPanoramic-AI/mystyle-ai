@@ -1,10 +1,11 @@
-export const STYLE_PROMPT_VERSION = '2026-11-03.1';
+export const STYLE_PROMPT_VERSION = '2026-11-12.1';
 
 export interface StylistPersonaContext {
   name: string;
   gender: string;
   ageVibe: string;
   voice: string;
+  answerLength: string;
 }
 
 const DEFAULT_PERSONA: StylistPersonaContext = {
@@ -12,6 +13,7 @@ const DEFAULT_PERSONA: StylistPersonaContext = {
   gender: 'woman',
   ageVibe: 'thirties',
   voice: 'warm-encouraging',
+  answerLength: 'balanced',
 };
 
 const GENDER_LINES: Record<string, string> = {
@@ -37,6 +39,12 @@ const VOICE_LINES: Record<string, string> = {
   'calm-minimal': 'Speak calmly and minimally — precise, unhurried, and spare.',
 };
 
+const ANSWER_LENGTH_LINES: Record<string, string> = {
+  short: 'Keep responseText short: about 2–4 sentences, one clear recommendation, and stop. Do not pad with extras.',
+  balanced: 'Keep responseText balanced: enough detail to act on, usually one short paragraph plus a concrete next step.',
+  detailed: 'Make responseText detailed: explain why options work, give alternatives when useful, and include clear next steps — without becoming repetitive.',
+};
+
 function personaFromUnknown(value: unknown): StylistPersonaContext {
   if (!value || typeof value !== 'object') return { ...DEFAULT_PERSONA };
   const row = value as Record<string, unknown>;
@@ -44,19 +52,27 @@ function personaFromUnknown(value: unknown): StylistPersonaContext {
   const gender = typeof row.gender === 'string' && GENDER_LINES[row.gender] ? row.gender : DEFAULT_PERSONA.gender;
   const ageVibe = typeof row.ageVibe === 'string' && AGE_LINES[row.ageVibe] ? row.ageVibe : DEFAULT_PERSONA.ageVibe;
   const voice = typeof row.voice === 'string' && VOICE_LINES[row.voice] ? row.voice : DEFAULT_PERSONA.voice;
-  return { name, gender, ageVibe, voice };
+  const answerLength = typeof row.answerLength === 'string' && ANSWER_LENGTH_LINES[row.answerLength]
+    ? row.answerLength
+    : DEFAULT_PERSONA.answerLength;
+  return { name, gender, ageVibe, voice, answerLength };
 }
 
 export function resolvePersonaFromProfile(profile: Record<string, unknown> | null | undefined): StylistPersonaContext {
   if (!profile) return { ...DEFAULT_PERSONA };
   if (profile.stylistPersona && typeof profile.stylistPersona === 'object') {
-    return personaFromUnknown(profile.stylistPersona);
+    const nested = profile.stylistPersona as Record<string, unknown>;
+    return personaFromUnknown({
+      ...nested,
+      answerLength: nested.answerLength ?? profile.stylistAnswerLength,
+    });
   }
   return personaFromUnknown({
     name: profile.stylistName,
     gender: profile.stylistGender,
     ageVibe: profile.stylistAgeVibe,
     voice: profile.stylistVoice,
+    answerLength: profile.stylistAnswerLength,
   });
 }
 
@@ -65,10 +81,12 @@ export function buildStyleSystemPrompt(personaInput?: StylistPersonaContext | nu
   const genderLine = GENDER_LINES[persona.gender] ?? GENDER_LINES.woman;
   const ageLine = AGE_LINES[persona.ageVibe] ?? AGE_LINES.thirties;
   const voiceLine = VOICE_LINES[persona.voice] ?? VOICE_LINES['warm-encouraging'];
+  const lengthLine = ANSWER_LENGTH_LINES[persona.answerLength] ?? ANSWER_LENGTH_LINES.balanced;
   return `You are ${persona.name}, the personal stylist for MyStyle AI, speaking with an adult customer in South Africa.
 ${genderLine}
 ${ageLine}
 ${voiceLine}
+${lengthLine}
 Be specific and useful. Use South African rand when a budget is discussed.
 Recommend outfit concepts: garment types, colours, and why they work together.
 You must not invent retailer names as current stock, prices, promotions, product pages, or availability.

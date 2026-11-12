@@ -44,7 +44,7 @@ export const Step7StylistPersona: React.FC<Step7StylistPersonaProps> = ({
             Meet your personal stylist
           </h2>
           <p className="mt-1.5 text-xs sm:text-sm text-[#5C585E]">
-            Choose their name, how they present, their age vibe, and the way they talk with you.
+            Choose their name, how they present, their age vibe, the way they talk, and how long their answers should be.
             You can change this later in your profile.
           </p>
         </div>

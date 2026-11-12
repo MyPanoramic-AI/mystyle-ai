@@ -12,6 +12,7 @@ import {
 import { DEFAULT_SHOE_PREFERENCES } from '../data/shoePreferences';
 import {
   asStylistAgeVibe,
+  asStylistAnswerLength,
   asStylistGender,
   asStylistName,
   asStylistPersona,
@@ -147,12 +148,18 @@ function asShoePreferences(body: Record<string, unknown>): ShoePreferences {
 
 function asStylistPersonaFromApi(body: Record<string, unknown>): StylistPersona {
   const nested = (body.stylistPersona ?? null) as Record<string, unknown> | null;
-  if (nested && typeof nested === 'object') return asStylistPersona(nested);
+  if (nested && typeof nested === 'object') {
+    return asStylistPersona({
+      ...nested,
+      answerLength: nested.answerLength ?? body.stylistAnswerLength,
+    });
+  }
   return {
     name: asStylistName(body.stylistName),
     gender: asStylistGender(body.stylistGender),
     ageVibe: asStylistAgeVibe(body.stylistAgeVibe),
     voice: asStylistVoice(body.stylistVoice),
+    answerLength: asStylistAnswerLength(body.stylistAnswerLength),
   };
 }
 
@@ -248,6 +255,7 @@ export function toApiProfile(profile: UserProfile): Record<string, unknown> {
     stylistGender: profile.stylistPersona?.gender ?? DEFAULT_STYLIST_PERSONA.gender,
     stylistAgeVibe: profile.stylistPersona?.ageVibe ?? DEFAULT_STYLIST_PERSONA.ageVibe,
     stylistVoice: profile.stylistPersona?.voice ?? DEFAULT_STYLIST_PERSONA.voice,
+    stylistAnswerLength: profile.stylistPersona?.answerLength ?? DEFAULT_STYLIST_PERSONA.answerLength,
     stylistPersona: profile.stylistPersona ?? { ...DEFAULT_STYLIST_PERSONA },
     onboardingStatus: profile.onboardingStatus ?? (profile.isOnboardingCompleted ? 'completed' : 'pending'),
     measurements: {

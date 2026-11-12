@@ -7,6 +7,7 @@ import React from 'react';
 import type { StylistPersona } from '../../types';
 import {
   STYLIST_AGE_VIBE_OPTIONS,
+  STYLIST_ANSWER_LENGTH_OPTIONS,
   STYLIST_GENDER_OPTIONS,
   STYLIST_NAME_PRESETS,
   STYLIST_VOICE_OPTIONS,
@@ -129,6 +130,35 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
                 type="button"
                 onClick={() => onChange({ ...value, voice: option.id })}
                 className={`w-full text-left rounded-xl border px-3 py-2.5 transition-all cursor-pointer ${
+                  selected
+                    ? 'border-[#9C6A61] bg-[#9C6A61]/8 ring-1 ring-[#9C6A61]/20'
+                    : 'border-[#242326]/10 bg-[#F6F2EC]/40 hover:border-[#242326]/25'
+                }`}
+              >
+                <span className="block text-xs font-semibold text-[#242326]">{option.label}</span>
+                <span className="block text-[11px] text-[#5C585E] mt-0.5 leading-snug">{option.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-[#242326] uppercase tracking-wider mb-1.5">
+          Answer length
+        </label>
+        <p className="text-[11px] text-[#5C585E] mb-2 leading-relaxed">
+          Choose how long your stylist’s replies should be in chat.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {STYLIST_ANSWER_LENGTH_OPTIONS.map((option) => {
+            const selected = value.answerLength === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onChange({ ...value, answerLength: option.id })}
+                className={`text-left rounded-xl border px-3 py-2.5 transition-all cursor-pointer ${
                   selected
                     ? 'border-[#9C6A61] bg-[#9C6A61]/8 ring-1 ring-[#9C6A61]/20'
                     : 'border-[#242326]/10 bg-[#F6F2EC]/40 hover:border-[#242326]/25'

@@ -51,6 +51,7 @@ import {
   stylistAgeVibeLabel,
   stylistGenderLabel,
   stylistVoiceLabel,
+  stylistAnswerLengthLabel,
 } from '../../data/stylistPersona';
 import { FamilyLinkInvitePanel } from '../family/FamilyLinkInvitePanel';
 import { WhatsAppConnectPanel } from './WhatsAppConnectPanel';
@@ -454,7 +455,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                     Personal Stylist
                   </h3>
                   <p className="text-[11px] text-[#5C585E] mt-0.5">
-                    Change their name, presentation, age vibe, and how they talk with you.
+                    Change their name, presentation, age vibe, tone, and answer length.
                   </p>
                 </div>
               </div>
@@ -468,7 +469,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
               <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
                 <span className="text-[10px] text-[#5C585E] block">Name</span>
                 <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistPersona.name}</span>
@@ -484,6 +485,10 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
               <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
                 <span className="text-[10px] text-[#5C585E] block">How they talk</span>
                 <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistVoiceLabel(stylistPersona.voice)}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
+                <span className="text-[10px] text-[#5C585E] block">Answer length</span>
+                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistAnswerLengthLabel(stylistPersona.answerLength)}</span>
               </div>
             </div>
 

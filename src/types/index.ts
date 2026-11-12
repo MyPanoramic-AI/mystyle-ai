@@ -150,11 +150,15 @@ export type StylistVoiceId =
   | 'polished-editorial'
   | 'calm-minimal';
 
+/** How long stylist chat replies should run. */
+export type StylistAnswerLengthId = 'short' | 'balanced' | 'detailed';
+
 export interface StylistPersona {
   name: string;
   gender: StylistGenderId;
   ageVibe: StylistAgeVibeId;
   voice: StylistVoiceId;
+  answerLength: StylistAnswerLengthId;
 }
 
 export type FitPreference = 'relaxed' | 'regular' | 'fitted' | 'no-preference';

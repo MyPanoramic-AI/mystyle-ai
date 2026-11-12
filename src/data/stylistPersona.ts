@@ -5,6 +5,7 @@
 
 import type {
   StylistAgeVibeId,
+  StylistAnswerLengthId,
   StylistGenderId,
   StylistPersona,
   StylistVoiceId,
@@ -16,6 +17,7 @@ export const DEFAULT_STYLIST_PERSONA: StylistPersona = {
   gender: 'woman',
   ageVibe: 'thirties',
   voice: 'warm-encouraging',
+  answerLength: 'balanced',
 };
 
 export const STYLIST_NAME_PRESETS = [
@@ -72,9 +74,28 @@ export const STYLIST_VOICE_OPTIONS: Array<{ id: StylistVoiceId; label: string; h
   },
 ];
 
+export const STYLIST_ANSWER_LENGTH_OPTIONS: Array<{ id: StylistAnswerLengthId; label: string; hint: string }> = [
+  {
+    id: 'short',
+    label: 'Short',
+    hint: 'A few tight sentences — quick answer, then stop',
+  },
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    hint: 'A clear reply with enough detail to act on',
+  },
+  {
+    id: 'detailed',
+    label: 'Detailed',
+    hint: 'Fuller guidance with options, reasons, and next steps',
+  },
+];
+
 const GENDERS = new Set<StylistGenderId>(STYLIST_GENDER_OPTIONS.map((o) => o.id));
 const AGES = new Set<StylistAgeVibeId>(STYLIST_AGE_VIBE_OPTIONS.map((o) => o.id));
 const VOICES = new Set<StylistVoiceId>(STYLIST_VOICE_OPTIONS.map((o) => o.id));
+const LENGTHS = new Set<StylistAnswerLengthId>(STYLIST_ANSWER_LENGTH_OPTIONS.map((o) => o.id));
 
 export function asStylistGender(value: unknown): StylistGenderId {
   return typeof value === 'string' && GENDERS.has(value as StylistGenderId)
@@ -94,6 +115,12 @@ export function asStylistVoice(value: unknown): StylistVoiceId {
     : DEFAULT_STYLIST_PERSONA.voice;
 }
 
+export function asStylistAnswerLength(value: unknown): StylistAnswerLengthId {
+  return typeof value === 'string' && LENGTHS.has(value as StylistAnswerLengthId)
+    ? (value as StylistAnswerLengthId)
+    : DEFAULT_STYLIST_PERSONA.answerLength;
+}
+
 export function asStylistName(value: unknown): string {
   if (typeof value !== 'string') return DEFAULT_STYLIST_PERSONA.name;
   const trimmed = value.trim().replace(/\s+/g, ' ');
@@ -109,6 +136,7 @@ export function asStylistPersona(value: unknown): StylistPersona {
     gender: asStylistGender(nested.gender),
     ageVibe: asStylistAgeVibe(nested.ageVibe),
     voice: asStylistVoice(nested.voice),
+    answerLength: asStylistAnswerLength(nested.answerLength),
   };
 }
 
@@ -129,6 +157,10 @@ export function stylistVoiceLabel(id: StylistVoiceId): string {
   return STYLIST_VOICE_OPTIONS.find((o) => o.id === id)?.label ?? id;
 }
 
+export function stylistAnswerLengthLabel(id: StylistAnswerLengthId): string {
+  return STYLIST_ANSWER_LENGTH_OPTIONS.find((o) => o.id === id)?.label ?? id;
+}
+
 export function stylistPersonaSummary(persona: StylistPersona): string {
-  return `${persona.name} · ${stylistGenderLabel(persona.gender)} · ${stylistAgeVibeLabel(persona.ageVibe)} · ${stylistVoiceLabel(persona.voice)}`;
+  return `${persona.name} · ${stylistGenderLabel(persona.gender)} · ${stylistAgeVibeLabel(persona.ageVibe)} · ${stylistVoiceLabel(persona.voice)} · ${stylistAnswerLengthLabel(persona.answerLength)}`;
 }
