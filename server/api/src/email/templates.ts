@@ -2,7 +2,7 @@ import type { OutboundEmail, TransactionalEmailKind } from './types.js';
 
 function shell(title: string, intro: string, buttonLabel: string | null, actionUrl: string | null, note: string): { text: string; html: string } {
   const textLines = [
-    'MyStyle AI',
+    'IStyleU',
     '',
     title,
     '',
@@ -24,7 +24,7 @@ function shell(title: string, intro: string, buttonLabel: string | null, actionU
     <tr><td align="center">
       <table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border:1px solid rgba(36,35,38,0.1);border-radius:24px;padding:32px">
         <tr><td>
-          <p style="margin:0;font-size:24px">MyStyle <span style="font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#866a40;font-family:system-ui,sans-serif">AI</span></p>
+          <p style="margin:0;font-size:24px">IStyleU</p>
           <h1 style="margin:24px 0 12px;font-size:28px;font-weight:normal">${title}</h1>
           <p style="margin:0;font-size:15px;line-height:1.6;color:#5C585E;font-family:system-ui,sans-serif">${intro}</p>
           ${button}
@@ -51,21 +51,21 @@ export function buildTransactionalEmail(input: {
   const expiry = input.expiresMinutes ? `This link expires in about ${input.expiresMinutes} minutes.` : 'If you did not expect this message, you can ignore it.';
 
   if (input.kind === 'family_link_invite') {
-    const who = input.fromDisplayName?.trim() || 'A MyStyle AI member';
+    const who = input.fromDisplayName?.trim() || 'An IStyleU member';
     const relation = input.relationshipLabel?.trim()
       ? ` They suggested the relationship “${input.relationshipLabel.trim()}”.`
       : '';
     const built = shell(
       'Family link request',
-      `${who} invited you to link family style profiles on MyStyle AI.${relation} Sign in with this email (or create an account) to accept or decline the request.`,
-      'Open MyStyle AI',
+      `${who} invited you to link family style profiles on IStyleU.${relation} Sign in with this email (or create an account) to accept or decline the request.`,
+      'Open IStyleU',
       actionUrl,
       'This message does not confirm whether you already have an account. If you did not expect a family link request, you can ignore it.',
     );
     return {
       kind: input.kind,
       to: input.to,
-      subject: 'Family link request on MyStyle AI',
+      subject: 'Family link request on IStyleU',
       text: built.text,
       html: built.html,
       actionPath: input.actionPath,
@@ -75,42 +75,42 @@ export function buildTransactionalEmail(input: {
   if (input.kind === 'email_verification') {
     const built = shell(
       'Verify your email',
-      'Confirm this email address belongs to your MyStyle AI account so we can protect your wardrobe and private photographs.',
+      'Confirm this email address belongs to your IStyleU account so we can protect your wardrobe and private photographs.',
       'Verify email',
       actionUrl,
-      `${expiry} MyStyle AI will never ask for your password by email.`,
+      `${expiry} IStyleU will never ask for your password by email.`,
     );
-    return { kind: input.kind, to: input.to, subject: 'Verify your MyStyle AI email', text: built.text, html: built.html, actionPath: input.actionPath };
+    return { kind: input.kind, to: input.to, subject: 'Verify your IStyleU email', text: built.text, html: built.html, actionPath: input.actionPath };
   }
 
   if (input.kind === 'password_reset') {
     const built = shell(
       'Reset your password',
-      'We received a request to reset the password for this MyStyle AI account. Choose a new password of at least 12 characters.',
+      'We received a request to reset the password for this IStyleU account. Choose a new password of at least 12 characters.',
       'Reset password',
       actionUrl,
       `${expiry} If you did not request a reset, you can ignore this message. Your current password stays unchanged.`,
     );
-    return { kind: input.kind, to: input.to, subject: 'Reset your MyStyle AI password', text: built.text, html: built.html, actionPath: input.actionPath };
+    return { kind: input.kind, to: input.to, subject: 'Reset your IStyleU password', text: built.text, html: built.html, actionPath: input.actionPath };
   }
 
   if (input.kind === 'password_changed') {
     const built = shell(
       'Password changed',
-      'Your MyStyle AI password was changed successfully. All previous sign-in sessions were signed out.',
+      'Your IStyleU password was changed successfully. All previous sign-in sessions were signed out.',
       null,
       null,
-      'If you did not make this change, contact support through the official MyStyle AI channel after reviewing your account activity.',
+      'If you did not make this change, contact support through the official IStyleU channel after reviewing your account activity.',
     );
-    return { kind: input.kind, to: input.to, subject: 'Your MyStyle AI password was changed', text: built.text, html: built.html };
+    return { kind: input.kind, to: input.to, subject: 'Your IStyleU password was changed', text: built.text, html: built.html };
   }
 
   const built = shell(
     'Account security notice',
-    'A security-related change was recorded on your MyStyle AI account.',
+    'A security-related change was recorded on your IStyleU account.',
     null,
     null,
     'This message is transactional. It is not a marketing newsletter.',
   );
-  return { kind: input.kind, to: input.to, subject: 'MyStyle AI account security notice', text: built.text, html: built.html };
+  return { kind: input.kind, to: input.to, subject: 'IStyleU account security notice', text: built.text, html: built.html };
 }

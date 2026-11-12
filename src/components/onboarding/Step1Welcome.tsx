@@ -24,7 +24,7 @@ export const Step1Welcome: React.FC<Step1WelcomeProps> = ({ onNext, onSkip }) =>
           <ImageWithFallback
             src={heroEditorialImg || '/images/hero.jpg'}
             alt="Editorial personal stylist consultation"
-            fallbackTitle="MyStyle Personal Stylist"
+            fallbackTitle="IStyleU personal Stylist"
             className="w-full h-full"
             imageClassName="object-cover object-[center_15%]"
           />

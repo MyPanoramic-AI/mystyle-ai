@@ -80,7 +80,7 @@ export function createWhatsAppLinkCode(db: Sql, userId: string, now: number): Re
     fromNumber: config.fromNumber,
     messageHint: config.fromNumber
       ? `Send this exact message to ${config.fromNumber} on WhatsApp: LINK ${code}`
-      : `Send this exact message to your MyStyle WhatsApp number: LINK ${code}`,
+      : `Send this exact message to your IStyleU WhatsApp number: LINK ${code}`,
   };
 }
 
@@ -99,7 +99,7 @@ function tryConsumeLinkCode(db: Sql, phoneE164: string, code: string, now: numbe
 
   const existingPhone = db.prepare('SELECT user_id AS userId FROM whatsapp_links WHERE phone_e164 = ?').get(phoneE164) as { userId: string } | undefined;
   if (existingPhone && existingPhone.userId !== row.userId) {
-    return { ok: false, reason: 'This WhatsApp number is already linked to another MyStyle account.' };
+    return { ok: false, reason: 'This WhatsApp number is already linked to another IStyleU account.' };
   }
 
   const created = stamp(now);
@@ -140,9 +140,9 @@ function stylistGreeting(db: Sql, userId: string): string {
     const firstName = typeof profile.displayName === 'string' && profile.displayName.trim()
       ? profile.displayName.trim()
       : 'there';
-    return `Hi ${firstName} — I'm ${persona.name}, your MyStyle personal stylist on WhatsApp.\n\nAsk me about an occasion, a colour, or a look. I can also message you first when I spot a piece you'll love.\n\nReply STOP anytime to pause those tips.`;
+    return `Hi ${firstName} — I'm ${persona.name}, your IStyleU personal stylist on WhatsApp.\n\nAsk me about an occasion, a colour, or a look. I can also message you first when I spot a piece you'll love.\n\nReply STOP anytime to pause those tips.`;
   } catch {
-    return 'Your WhatsApp is linked to MyStyle. Ask me anything about an outfit or occasion. Reply STOP to pause proactive tips.';
+    return 'Your WhatsApp is linked to IStyleU. Ask me anything about an outfit or occasion. Reply STOP to pause proactive tips.';
   }
 }
 
@@ -312,7 +312,7 @@ export async function notifyNewPieceYoullLike(input: {
   } else if (config.styleAlertContentSid) {
     delivery = 'template';
     // Template placeholders (create in Twilio Content Template Builder), e.g.:
-    // "Hi! It's {{1}}, your MyStyle stylist. I found something you'll love: {{2}}. {{3}} Reply to chat."
+    // "Hi! It's {{1}}, your IStyleU stylist. I found something you'll love: {{2}}. {{3}} Reply to chat."
     sent = await sendWhatsAppTemplate(
       config,
       link.phoneE164,
@@ -409,7 +409,7 @@ export async function handleTwilioWhatsAppWebhook(input: {
     await sendWhatsAppText(
       config,
       from,
-      `Welcome to MyStyle AI WhatsApp.\n\nEach customer gets *their own* personal stylist (name, voice, and taste).\n\n1. Sign in on the MyStyle app\n2. Open Profile → Connect WhatsApp\n3. Send: LINK ######\n\nThis line: ${config.fromNumber ?? ''}`.trim(),
+      `Welcome to IStyleU WhatsApp.\n\nEach customer gets *their own* personal stylist (name, voice, and taste).\n\n1. Sign in on the IStyleU app\n2. Open Profile → Connect WhatsApp\n3. Send: LINK ######\n\nThis line: ${config.fromNumber ?? ''}`.trim(),
       fetchImpl,
     );
     return empty;

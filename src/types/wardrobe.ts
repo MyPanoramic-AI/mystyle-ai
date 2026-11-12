@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Types for MyStyle AI - Digital Wardrobe & Intelligent Outfit Planning.
+ * Types for IStyleU - Digital Wardrobe & Intelligent Outfit Planning.
  */
 
 export type WardrobeCategory =

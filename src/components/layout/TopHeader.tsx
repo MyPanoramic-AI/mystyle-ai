@@ -61,7 +61,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           className="flex items-center gap-2 text-left group focus-visible:outline-none shrink-0"
         >
           <span className="font-serif text-2xl font-bold tracking-tight text-[#242326] group-hover:text-[#91635a] transition-colors whitespace-nowrap">
-            MyStyle <span className="font-sans text-xs uppercase tracking-widest text-[#866a40] font-semibold ml-0.5">AI</span>
+            IStyleU
           </span>
         </button>
 

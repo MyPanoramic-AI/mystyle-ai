@@ -61,8 +61,8 @@ export const OutfitDetailView: React.FC<OutfitDetailViewProps> = ({
 
   const handleShare = () => {
     const payload = {
-      title: `${look.title} · MyStyle AI`,
-      text: `Check out this ${look.category} outfit inspiration on MyStyle AI.`,
+      title: `${look.title} · IStyleU`,
+      text: `Check out this ${look.category} outfit inspiration on IStyleU.`,
       url: window.location.href,
     };
     if (navigator.share) {

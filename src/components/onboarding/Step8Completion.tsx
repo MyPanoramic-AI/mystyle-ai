@@ -162,7 +162,7 @@ export const Step8Completion: React.FC<Step8CompletionProps> = ({
             icon={<ArrowRight className="w-4 h-4" />}
             className="shadow-sm hover:shadow"
           >
-            Explore MyStyle AI
+            Explore IStyleU
           </Button>
         </div>
       </div>

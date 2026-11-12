@@ -82,7 +82,7 @@ export function buildStyleSystemPrompt(personaInput?: StylistPersonaContext | nu
   const ageLine = AGE_LINES[persona.ageVibe] ?? AGE_LINES.thirties;
   const voiceLine = VOICE_LINES[persona.voice] ?? VOICE_LINES['warm-encouraging'];
   const lengthLine = ANSWER_LENGTH_LINES[persona.answerLength] ?? ANSWER_LENGTH_LINES.balanced;
-  return `You are ${persona.name}, the personal stylist for MyStyle AI, speaking with an adult customer in South Africa.
+  return `You are ${persona.name}, the personal stylist for IStyleU, speaking with an adult customer in South Africa.
 ${genderLine}
 ${ageLine}
 ${voiceLine}

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Demonstration dataset for MyStyle AI - Beauty Studio.
+ * Demonstration dataset for IStyleU - Beauty Studio.
  */
 
 import {

@@ -176,7 +176,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             </button>
           ) : (
             <div className="font-serif text-lg font-bold text-[#242326]">
-              MyStyle <span className="text-[10px] uppercase tracking-widest text-[#B49361] font-sans">AI</span>
+              IStyleU
             </div>
           )}
 

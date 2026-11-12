@@ -23,7 +23,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({ onAskStylist }) => {
             <ImageWithFallback
               src={HERO_DATA.imageUrl}
               alt="Stylish woman in elegant tailored cream blazer and pleated trousers"
-              fallbackTitle="MyStyle Editorial"
+              fallbackTitle="IStyleU Editorial"
               className="w-full h-full object-cover object-[center_20%]"
             />
             {/* Subtle editorial badge */}

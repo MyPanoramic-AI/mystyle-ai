@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Demonstration dataset for MyStyle AI - Digital Wardrobe & Intelligent Outfit Planning.
+ * Demonstration dataset for IStyleU - Digital Wardrobe & Intelligent Outfit Planning.
  * Grounded in authentic South African fashion retail staples (Woolworths Studio W, Country Road,
  * Poetry, Trenery, Witchery, Zara SA).
  */

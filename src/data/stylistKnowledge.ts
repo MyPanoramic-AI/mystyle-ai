@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Curated knowledge base and deterministic conversational engine for MyStyle AI Stylist.
+ * Curated knowledge base and deterministic conversational engine for IStyleU Stylist.
  * High-fashion personal stylist persona crafted for South African fashion retail ecosystem.
  */
 
@@ -442,7 +442,7 @@ export function getInitialConversation(
       id: 'msg-welcome-standard',
       sender: 'stylist',
       timestamp: 'Just now',
-      text: `Good day, ${firstName}! I'm ${stylistName}, your MyStyle personal fashion stylist.\n\nI'm calibrated to your style DNA: **${profile.styles.slice(0, 2).join(' & ') || 'Classic Elegance'}**, your preferred palette of **${profile.colours.favoriteColors.slice(0, 3).join(', ') || 'Warm neutrals'}**, and top SA retailers like Woolworths and Superbalist.\n\nWhat occasion or outfit challenge can we create together today?`,
+      text: `Good day, ${firstName}! I'm ${stylistName}, your IStyleU personal fashion stylist.\n\nI'm calibrated to your style DNA: **${profile.styles.slice(0, 2).join(' & ') || 'Classic Elegance'}**, your preferred palette of **${profile.colours.favoriteColors.slice(0, 3).join(', ') || 'Warm neutrals'}**, and top SA retailers like Woolworths and Superbalist.\n\nWhat occasion or outfit challenge can we create together today?`,
       outfitCard: OUTFIT_CATALOG.workOffice,
       quickActions: STARTER_SUGGESTIONS.slice(0, 4),
     },

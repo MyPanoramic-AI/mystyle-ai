@@ -509,7 +509,7 @@ function Status({ title, body, children }: { title: string; body: string; childr
   return (
     <main className="min-h-screen bg-[#F6F2EC] text-[#242326] flex items-center justify-center px-4">
       <section className="max-w-md w-full rounded-3xl bg-white border border-[#242326]/10 shadow-sm p-8">
-        <p className="font-serif text-2xl">MyStyle <span className="text-[10px] uppercase tracking-widest text-[#866a40] font-sans">AI</span></p>
+        <p className="font-serif text-2xl">IStyleU</p>
         <h1 className="mt-6 font-serif text-3xl">{title}</h1>
         <p className="mt-3 text-sm text-[#5C585E] leading-relaxed">{body}</p>
         {children ? <div className="mt-6 flex flex-col gap-3">{children}</div> : null}
@@ -571,7 +571,7 @@ function AuthScreen({
       <section className="max-w-md mx-auto rounded-3xl bg-white border border-[#242326]/10 shadow-sm p-8">
         <div className="flex items-start justify-between gap-3">
           <button type="button" onClick={onBackHome} className="font-serif text-2xl text-left cursor-pointer">
-            MyStyle <span className="text-[10px] uppercase tracking-widest text-[#866a40] font-sans">AI</span>
+            IStyleU
           </button>
           <button type="button" onClick={onBackHome} className="text-xs font-medium text-[#5C585E] hover:text-[#242326] underline cursor-pointer">
             Home

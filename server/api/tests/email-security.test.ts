@@ -340,7 +340,7 @@ test('production config accepts Office 365 SMTP settings used by My Panoramic ap
     SMTP_SECURE: 'false',
     SMTP_USER: 'No-Reply@mypanoramic.com',
     SMTP_PASS: 'test-smtp-password',
-    SMTP_FROM: 'MyStyle AI <No-Reply@mypanoramic.com>',
+    SMTP_FROM: 'IStyleU <No-Reply@mypanoramic.com>',
   });
   assert.ok(config.smtp);
   assert.equal(config.smtp?.host, 'smtp.office365.com');

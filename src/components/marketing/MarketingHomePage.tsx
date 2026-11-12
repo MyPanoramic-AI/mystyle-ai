@@ -108,7 +108,7 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
       <header className="sticky top-0 z-40 bg-[#F6F2EC]/90 backdrop-blur-md border-b border-[#242326]/8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
           <p className="font-serif text-xl sm:text-2xl tracking-tight">
-            MyStyle <span className="text-[10px] uppercase tracking-widest text-[#B49361] font-sans align-super">AI</span>
+            IStyleU
           </p>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={onSignIn} className="hidden sm:inline-flex">
@@ -124,8 +124,8 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
       <section className="relative min-h-[78vh] sm:min-h-[86vh] overflow-hidden bg-[#E5CDBE]/35">
         <ImageWithFallback
           src={heroEditorialImg}
-          alt="MyStyle AI fashion editorial"
-          fallbackTitle="MyStyle AI"
+          alt="IStyleU fashion editorial"
+          fallbackTitle="IStyleU"
           className="absolute inset-0 w-full h-full"
           imageClassName="object-cover object-[70%_center] sm:object-[center_20%] motion-safe:animate-[marketing-pan_32s_ease-in-out_infinite_alternate]"
           loading="eager"
@@ -138,7 +138,7 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[78vh] sm:min-h-[86vh] flex flex-col justify-end sm:justify-center pb-14 sm:pb-20 pt-24">
           <div className="max-w-xl motion-safe:animate-[marketing-rise_0.9s_ease-out]">
             <p className="font-serif text-4xl sm:text-5xl lg:text-6xl text-[#242326] tracking-tight">
-              MyStyle <span className="text-sm sm:text-base uppercase tracking-[0.28em] text-[#B49361] font-sans align-super">AI</span>
+              IStyleU
             </p>
             <h1 className="mt-4 font-serif text-3xl sm:text-4xl lg:text-5xl text-[#242326] leading-tight">
               Your private fashion, beauty, and shopping companion.
@@ -161,12 +161,12 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
       <section className="border-y border-[#242326]/8 bg-white/40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
           <div className="max-w-2xl mb-8">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#866a40]">What MyStyle AI is</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#866a40]">What IStyleU is</span>
             <h2 className="mt-2 font-serif text-3xl sm:text-4xl tracking-tight">
               A complete style operating system for real life.
             </h2>
             <p className="mt-3 text-sm sm:text-base text-[#5C585E] leading-relaxed">
-              MyStyle AI is not a single filter or feed. It is a signed-in workspace that remembers your tastes, sizes, photographs, wardrobe pieces, family members, and shopping preferences — then uses that profile to recommend outfits, beauty finishes, and products you can actually wear.
+              IStyleU is not a single filter or feed. It is a signed-in workspace that remembers your tastes, sizes, photographs, wardrobe pieces, family members, and shopping preferences — then uses that profile to recommend outfits, beauty finishes, and products you can actually wear.
             </p>
           </div>
 
@@ -256,7 +256,7 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
               <div key={index} className={`relative overflow-hidden rounded-2xl ${index % 2 === 1 ? 'mt-6' : ''}`}>
                 <ImageWithFallback
                   src={src}
-                  alt="MyStyle lifestyle look"
+                  alt="IStyleU lifestyle look"
                   fallbackTitle="Look"
                   className="aspect-[3/4] w-full"
                   imageClassName="object-cover"
@@ -290,7 +290,7 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
       <footer className="border-t border-[#242326]/8 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#5C585E]">
           <p className="font-serif text-base text-[#242326]">
-            MyStyle <span className="text-[9px] uppercase tracking-widest text-[#B49361] font-sans">AI</span>
+            IStyleU
           </p>
           <p>Personal fashion, beauty, wardrobe, family styling, and SA shopping.</p>
         </div>

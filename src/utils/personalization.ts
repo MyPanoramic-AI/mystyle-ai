@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Personalization Engine for MyStyle AI
+ * Personalization Engine for IStyleU
  * Maps saved user style profile preferences to deterministic, curated editorial content.
  */
 

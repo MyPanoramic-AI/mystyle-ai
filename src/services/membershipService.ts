@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Local persistence and business logic for MyStyle AI:
+ * Local persistence and business logic for IStyleU:
  * - Memberships & Subscriptions
  * - AI Image Credits & Top-ups
  * - Credit Usage Ledger

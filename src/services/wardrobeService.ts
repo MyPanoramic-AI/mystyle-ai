@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Local persistence service for MyStyle AI - Digital Wardrobe & Outfit Planning.
+ * Local persistence service for IStyleU - Digital Wardrobe & Outfit Planning.
  * Handles storage of custom items, custom outfits, calendar events, and gap analysis.
  */
 

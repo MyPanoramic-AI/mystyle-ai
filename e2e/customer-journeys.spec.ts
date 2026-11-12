@@ -61,7 +61,7 @@ test('onboarding can be walked and then skipped without importing demonstration 
     await page.getByRole('button', { name: 'Skip', exact: true }).click();
   }
   await expect(page.getByText('8 of 8')).toBeVisible();
-  await page.getByRole('button', { name: 'Explore MyStyle AI' }).click();
+  await page.getByRole('button', { name: 'Explore IStyleU' }).click();
   await expect(page.getByRole('button', { name: 'Home' }).first()).toBeVisible();
   await expect(page.getByText('David')).toHaveCount(0);
 });

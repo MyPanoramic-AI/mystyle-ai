@@ -6,7 +6,7 @@ import type { Sql } from '../db.js';
 import { assertRecentPassword } from './export.js';
 
 export const DELETION_EXPLANATION = {
-  title: 'Delete your MyStyle AI account',
+  title: 'Delete your IStyleU account',
   consequences: [
     'You will be signed out on this device and other sessions for this account will end.',
     'Your style profile, wardrobe, family plans, beauty looks, and AI conversations will be removed.',

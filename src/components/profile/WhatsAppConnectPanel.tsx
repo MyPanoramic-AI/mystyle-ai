@@ -77,7 +77,7 @@ export const WhatsAppConnectPanel: React.FC<WhatsAppConnectPanelProps> = ({
     try {
       await accountApi.unlinkWhatsApp();
       setCode(null);
-      setMessage('WhatsApp unlinked from this MyStyle account.');
+      setMessage('WhatsApp unlinked from this IStyleU account.');
       await reload();
     } catch (error) {
       setMessage(explainError(error, 'WhatsApp could not be unlinked.'));
@@ -190,7 +190,7 @@ export const WhatsAppConnectPanel: React.FC<WhatsAppConnectPanelProps> = ({
         <div className="space-y-2">
           {fromDisplay ? (
             <p className="text-[11px] text-[#5C585E]">
-              MyStyle WhatsApp line:{' '}
+              IStyleU WhatsApp line:{' '}
               <span className="font-mono text-[#242326]">{fromDisplay}</span>
             </p>
           ) : null}
@@ -217,7 +217,7 @@ export const WhatsAppConnectPanel: React.FC<WhatsAppConnectPanelProps> = ({
           </div>
           {code ? (
             <p className="text-[11px] text-[#5C585E] leading-relaxed">
-              Open WhatsApp, message the MyStyle number, and send{' '}
+              Open WhatsApp, message the IStyleU number, and send{' '}
               <span className="font-mono font-semibold text-[#242326]">LINK {code.code}</span>
               {' '}within 15 minutes. After that, {stylistName} can reply — and start tips when they find a piece for you.
             </p>

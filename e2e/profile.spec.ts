@@ -15,7 +15,7 @@ test('profile size, colour, and budget survive refresh and stay on that account'
   await page.getByRole('button', { name: 'Under R300' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByRole('button', { name: 'Explore MyStyle AI' }).click();
+  await page.getByRole('button', { name: 'Explore IStyleU' }).click();
   await expect(page.getByRole('button', { name: 'Home' }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'My Profile' }).first().click();

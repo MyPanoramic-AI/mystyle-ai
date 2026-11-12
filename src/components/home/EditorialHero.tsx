@@ -31,7 +31,7 @@ export const EditorialHero: React.FC<EditorialHeroProps> = ({
             <ImageWithFallback
               src={heroContent.imageUrl}
               alt={heroContent.altText}
-              fallbackTitle="MyStyle Editorial"
+              fallbackTitle="IStyleU Editorial"
               className="w-full h-full"
               imageClassName="object-cover object-[center_18%]"
             />

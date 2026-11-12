@@ -488,7 +488,7 @@ export function listTryOnGarments(db: Sql, userId: string): {
     preferredSource,
     shop: {
       selection: 'client_preload',
-      note: 'MyStyle AI Shop demonstration listings are chosen in Shop and arrive here as a preloaded garment image. They are demonstration catalogue references, not verified retailer products.',
+      note: 'IStyleU Shop demonstration listings are chosen in Shop and arrive here as a preloaded garment image. They are demonstration catalogue references, not verified retailer products.',
     },
   };
 }

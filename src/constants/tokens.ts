@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Design Tokens for MyStyle AI
+ * Design Tokens for IStyleU
  * Editorial Luxury + Modern Mobile Aesthetic
  */
 

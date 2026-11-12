@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Demonstration dataset for MyStyle AI - Memberships, Subscriptions, AI Credits & Settings.
+ * Demonstration dataset for IStyleU - Memberships, Subscriptions, AI Credits & Settings.
  * Grounded in South African Rand (ZAR) pricing, honest prototype data, and transparent cost rules.
  */
 

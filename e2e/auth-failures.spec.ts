@@ -59,7 +59,7 @@ test('onboarding save failure does not enter the app', async ({ page }) => {
   }
   await expect(page.getByText('8 of 8', { exact: true })).toBeVisible();
   await page.route('**/api/profile', (route) => route.request().method() === 'PUT' ? route.abort() : route.continue());
-  await page.getByRole('button', { name: 'Explore MyStyle AI' }).click();
+  await page.getByRole('button', { name: 'Explore IStyleU' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Home' })).toHaveCount(0);
 });

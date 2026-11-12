@@ -81,7 +81,7 @@ export function listConsentState(db: Sql, userId: string) {
       createdAt: row.createdAt,
     })),
     notes: {
-      privatePhotoStorage: 'Private photograph storage keeps adult images inside MyStyle AI only. It never authorises FASHN, OpenAI, Gemini, or other external image processors.',
+      privatePhotoStorage: 'Private photograph storage keeps adult images inside IStyleU only. It never authorises FASHN, OpenAI, Gemini, or other external image processors.',
       externalPhotoAi: 'External AI photograph processing is not active. Granting this consent does not start a provider call and is separate from private storage.',
       bundling: 'Each purpose is recorded separately. Private storage consent does not grant external photo AI. Saving a style profile does not grant photograph processing.',
       family: 'Account-holder consent does not imply consent for a dependent profile. Child photographs are refused.',

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Central demonstration mock data for MyStyle AI.
+ * Central demonstration mock data for IStyleU.
  * Note: Decoupled from production services to allow smooth replacement
  * with live APIs in Phase 2.
  */

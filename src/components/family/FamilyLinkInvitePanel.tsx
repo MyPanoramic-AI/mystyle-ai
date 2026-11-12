@@ -123,7 +123,7 @@ export const FamilyLinkInvitePanel: React.FC<FamilyLinkInvitePanelProps> = ({
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-[#B49361]">Link by email</p>
           <p className="text-xs text-[#5C585E] leading-relaxed">
-            Invite another adult MyStyle account. They can accept or decline the request when signed in.
+            Invite another adult IStyleU account. They can accept or decline the request when signed in.
           </p>
         </div>
       </div>

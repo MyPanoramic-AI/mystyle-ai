@@ -180,7 +180,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
         secure: smtpSecure,
         user: smtpUser,
         pass: smtpPass,
-        from: smtpFrom.includes('<') ? smtpFrom : `MyStyle AI <${smtpFrom}>`,
+        from: smtpFrom.includes('<') ? smtpFrom : `IStyleU <${smtpFrom}>`,
       }
       : null,
   };

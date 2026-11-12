@@ -163,10 +163,10 @@ export async function createFamilyLinkInvite(
     createdAt: stamp,
     emailed,
     note: emailed
-      ? 'Request sent by email. They can also accept or decline when signed in to MyStyle AI.'
+      ? 'Request sent by email. They can also accept or decline when signed in to IStyleU.'
       : toUserId
-        ? 'Request sent. They will see it when signed in to MyStyle AI.'
-        : 'If that email has a MyStyle AI account, they will see the request when signed in. We do not confirm whether the address is registered.',
+        ? 'Request sent. They will see it when signed in to IStyleU.'
+        : 'If that email has a IStyleU account, they will see the request when signed in. We do not confirm whether the address is registered.',
   };
 }
 

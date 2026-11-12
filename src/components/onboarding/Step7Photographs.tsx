@@ -182,7 +182,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
               aria-label="Consent to private photograph storage"
             />
             <span className="text-[11px] text-[#242326] leading-relaxed">
-              <strong>Private photograph storage consent.</strong> I am an adult and allow MyStyle AI to store these
+              <strong>Private photograph storage consent.</strong> I am an adult and allow IStyleU to store these
               photographs privately for my account. This does <strong>not</strong> authorise sending photographs to
               FASHN, OpenAI, Gemini, or any external image AI. External photo AI is a separate optional consent.
             </span>

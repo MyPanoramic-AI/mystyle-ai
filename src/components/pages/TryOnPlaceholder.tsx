@@ -393,7 +393,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   const [browseCategory, setBrowseCategory] = useState<BrowseCategory>(
     categoryFromText(preloadedGarment?.category) || 'tops',
   );
-  const [shopNote, setShopNote] = useState('MyStyle AI Shop demonstration listings are not verified retailer products.');
+  const [shopNote, setShopNote] = useState('IStyleU Shop demonstration listings are not verified retailer products.');
   const [garmentFile, setGarmentFile] = useState<File | null>(null);
   const [garmentPreview, setGarmentPreview] = useState<string | undefined>(preloadedGarment?.imageUrl);
   const [layers, setLayers] = useState<Partial<Record<LayerKind, LayerPick>>>({});

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Profile Data Service for MyStyle AI
+ * Profile Data Service for IStyleU
  * Manages non-sensitive style preferences in local browser storage.
  * Decoupled behind a clean service layer ready for backend API migration in Cursor.
  * 

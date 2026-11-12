@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Types for MyStyle AI - Memberships, AI Credits & Account Settings.
+ * Types for IStyleU - Memberships, AI Credits & Account Settings.
  */
 
 export type SubscriptionPlanId = 'free' | 'signature' | 'atelier';

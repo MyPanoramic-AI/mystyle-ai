@@ -23,7 +23,7 @@ test('onboarding photographs, wishlist, and membership stay account-scoped', asy
   await page.locator('input[type="file"]').nth(2).setInputFiles(fixtureJpeg);
   await expect(page.getByText('Saved privately to your account')).toHaveCount(3, { timeout: 20_000 });
   await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByRole('button', { name: 'Explore MyStyle AI' }).click();
+  await page.getByRole('button', { name: 'Explore IStyleU' }).click();
   await expect(page.getByRole('button', { name: 'Home' }).first()).toBeVisible();
 
   await page.reload();
