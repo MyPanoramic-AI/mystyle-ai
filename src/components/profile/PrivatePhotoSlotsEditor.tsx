@@ -16,6 +16,7 @@ import {
   slotForUrlKey,
   urlKeyForSlot,
 } from '../../services/profilePhotosClient';
+import { prepareProfilePhoto } from '../../utils/prepareProfilePhoto';
 
 export interface PrivatePhotoSlotsEditorProps {
   photos: TemporaryPhotos;
@@ -74,6 +75,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
   };
   const [consentChecked, setConsentChecked] = useState(storageConsentGranted);
   const [busySlot, setBusySlot] = useState<ProfilePhotoSlot | null>(null);
+  const [busyLabel, setBusyLabel] = useState('Saving…');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,30 +84,34 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
 
   const canUpload = !usesAccount || consentChecked;
 
-  const handleLocalFile = (key: PhotoUrlKey, file: File) => {
-    const objectUrl = URL.createObjectURL(file);
-    onUpdatePhotos({ ...photos, [key]: objectUrl });
-  };
-
-  const handleAccountFile = async (key: PhotoUrlKey, file: File) => {
-    if (!onUploadSlot || !onGrantStorageConsent) return;
+  const handlePreparedFile = async (key: PhotoUrlKey, file: File) => {
     const slot = slotForUrlKey(key);
     setBusySlot(slot);
+    setBusyLabel('Removing background…');
     setError(null);
     try {
-      if (!storageConsentGranted) {
-        await onGrantStorageConsent();
+      const prepared = await prepareProfilePhoto(file);
+      if (usesAccount) {
+        if (!onUploadSlot || !onGrantStorageConsent) return;
+        if (!storageConsentGranted) {
+          await onGrantStorageConsent();
+        }
+        setBusyLabel('Saving…');
+        const uploaded = await onUploadSlot(slot, await fileToBase64(prepared));
+        onUpdatePhotos({
+          ...photos,
+          [urlKeyForSlot(slot)]: mediaDisplayUrl(uploaded.mediaId),
+          [mediaKeyForSlot(slot)]: uploaded.mediaId,
+        });
+        return;
       }
-      const uploaded = await onUploadSlot(slot, await fileToBase64(file));
-      onUpdatePhotos({
-        ...photos,
-        [urlKeyForSlot(slot)]: mediaDisplayUrl(uploaded.mediaId),
-        [mediaKeyForSlot(slot)]: uploaded.mediaId,
-      });
+      if (photos[key]?.startsWith('blob:')) URL.revokeObjectURL(photos[key]!);
+      onUpdatePhotos({ ...photos, [key]: URL.createObjectURL(prepared) });
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'That photograph could not be saved privately.');
+      setError(uploadError instanceof Error ? uploadError.message : 'That photograph could not be prepared.');
     } finally {
       setBusySlot(null);
+      setBusyLabel('Saving…');
     }
   };
 
@@ -113,15 +119,11 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (usesAccount) {
-      if (!canUpload) {
-        setError('Confirm private photograph storage consent before uploading.');
-        return;
-      }
-      void handleAccountFile(key, file);
+    if (usesAccount && !canUpload) {
+      setError('Confirm private photograph storage consent before uploading.');
       return;
     }
-    handleLocalFile(key, file);
+    void handlePreparedFile(key, file);
   };
 
   const handleRemovePhoto = (key: PhotoUrlKey) => {
@@ -178,7 +180,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
         <p className="text-[11px] font-semibold text-[#242326]">Four private photo slots</p>
         <p className="text-[11px] text-[#5C585E] mt-0.5 leading-relaxed">
           Portrait · Full-body <strong className="text-[#242326]">front</strong> · Full-body <strong className="text-[#242326]">back</strong> · optional <strong className="text-[#242326]">45° / side</strong>.
-          The back photo unlocks Back view in Virtual Try-On.
+          The back photo unlocks Back view in Virtual Try-On. Each upload has its background removed and replaced with a plain light-grey studio backdrop.
         </p>
       </div>
 
@@ -226,7 +228,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
                   </span>
                 ) : null}
                 <span className="text-[11px] text-[#5C585E]">
-                  {busySlot === entry.slot ? 'Saving…' : statusLabel(entry.key, entry.emptyHint)}
+                  {busySlot === entry.slot ? busyLabel : statusLabel(entry.key, entry.emptyHint)}
                 </span>
               </div>
             </div>

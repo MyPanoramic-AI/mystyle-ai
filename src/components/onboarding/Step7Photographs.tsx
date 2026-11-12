@@ -25,6 +25,7 @@ import {
   slotForUrlKey,
   urlKeyForSlot,
 } from '../../services/profilePhotosClient';
+import { prepareProfilePhoto } from '../../utils/prepareProfilePhoto';
 
 interface Step7PhotographsProps {
   photos: TemporaryPhotos;
@@ -57,6 +58,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
   const additionalInputRef = useRef<HTMLInputElement>(null);
   const [consentChecked, setConsentChecked] = useState(storageConsentGranted);
   const [busySlot, setBusySlot] = useState<ProfilePhotoSlot | null>(null);
+  const [busyLabel, setBusyLabel] = useState('Saving…');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,30 +67,34 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
 
   const canUpload = !usesAccount || consentChecked;
 
-  const handleLocalFile = (key: PhotoUrlKey, file: File) => {
-    const objectUrl = URL.createObjectURL(file);
-    onUpdatePhotos({ ...photos, [key]: objectUrl });
-  };
-
-  const handleAccountFile = async (key: PhotoUrlKey, file: File) => {
-    if (!onUploadSlot || !onGrantStorageConsent) return;
+  const handlePreparedFile = async (key: PhotoUrlKey, file: File) => {
     const slot = slotForUrlKey(key);
     setBusySlot(slot);
+    setBusyLabel('Removing background…');
     setError(null);
     try {
-      if (!storageConsentGranted) {
-        await onGrantStorageConsent();
+      const prepared = await prepareProfilePhoto(file);
+      if (usesAccount) {
+        if (!onUploadSlot || !onGrantStorageConsent) return;
+        if (!storageConsentGranted) {
+          await onGrantStorageConsent();
+        }
+        setBusyLabel('Saving…');
+        const uploaded = await onUploadSlot(slot, await fileToBase64(prepared));
+        onUpdatePhotos({
+          ...photos,
+          [urlKeyForSlot(slot)]: mediaDisplayUrl(uploaded.mediaId),
+          [mediaKeyForSlot(slot)]: uploaded.mediaId,
+        });
+        return;
       }
-      const uploaded = await onUploadSlot(slot, await fileToBase64(file));
-      onUpdatePhotos({
-        ...photos,
-        [urlKeyForSlot(slot)]: mediaDisplayUrl(uploaded.mediaId),
-        [mediaKeyForSlot(slot)]: uploaded.mediaId,
-      });
+      if (photos[key]?.startsWith('blob:')) URL.revokeObjectURL(photos[key]!);
+      onUpdatePhotos({ ...photos, [key]: URL.createObjectURL(prepared) });
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'That photograph could not be saved privately.');
+      setError(uploadError instanceof Error ? uploadError.message : 'That photograph could not be prepared.');
     } finally {
       setBusySlot(null);
+      setBusyLabel('Saving…');
     }
   };
 
@@ -96,15 +102,11 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (usesAccount) {
-      if (!canUpload) {
-        setError('Confirm private photograph storage consent before uploading.');
-        return;
-      }
-      void handleAccountFile(key, file);
+    if (usesAccount && !canUpload) {
+      setError('Confirm private photograph storage consent before uploading.');
       return;
     }
-    handleLocalFile(key, file);
+    void handlePreparedFile(key, file);
   };
 
   const handleRemovePhoto = (key: PhotoUrlKey) => {
@@ -163,7 +165,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
             <li>• Ensure head-to-toe visibility</li>
             <li>• Avoid heavy beauty filters</li>
             <li>• Wear fitted base clothing</li>
-            <li>• Plain uncluttered background</li>
+            <li>• Background is replaced with plain light grey</li>
           </ul>
         </div>
 
@@ -200,6 +202,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
             alt="Profile preview"
             inputRef={profileInputRef}
             busy={busySlot === 'portrait'}
+            busyLabel={busyLabel}
             disabled={usesAccount && !canUpload}
             onChoose={() => profileInputRef.current?.click()}
             onFile={(event) => handleFileChange('profilePhotoUrl', event)}
@@ -213,6 +216,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
             alt="Full-body front preview"
             inputRef={frontInputRef}
             busy={busySlot === 'full_body_front'}
+            busyLabel={busyLabel}
             disabled={usesAccount && !canUpload}
             onChoose={() => frontInputRef.current?.click()}
             onFile={(event) => handleFileChange('fullBodyFrontUrl', event)}
@@ -226,6 +230,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
             alt="Full-body back preview"
             inputRef={backInputRef}
             busy={busySlot === 'full_body_back'}
+            busyLabel={busyLabel}
             disabled={usesAccount && !canUpload}
             onChoose={() => backInputRef.current?.click()}
             onFile={(event) => handleFileChange('fullBodyBackUrl', event)}
@@ -239,6 +244,7 @@ export const Step7Photographs: React.FC<Step7PhotographsProps> = ({
             alt="45 degree angle preview"
             inputRef={additionalInputRef}
             busy={busySlot === 'full_body_additional'}
+            busyLabel={busyLabel}
             disabled={usesAccount && !canUpload}
             onChoose={() => additionalInputRef.current?.click()}
             onFile={(event) => handleFileChange('fullBodyAdditionalUrl', event)}
@@ -304,6 +310,7 @@ function PhotoRow(props: {
   alt: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
   busy: boolean;
+  busyLabel?: string;
   disabled: boolean;
   onChoose: () => void;
   onFile: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -321,7 +328,7 @@ function PhotoRow(props: {
         </div>
         <div>
           <span className="text-xs font-semibold text-[#242326] block">{props.title}</span>
-          <span className="text-[11px] text-[#5C585E]">{props.busy ? 'Saving…' : props.status}</span>
+          <span className="text-[11px] text-[#5C585E]">{props.busy ? (props.busyLabel || 'Saving…') : props.status}</span>
         </div>
       </div>
       <div>
