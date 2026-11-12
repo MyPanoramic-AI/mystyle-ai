@@ -73,10 +73,10 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
           </button>
           <div>
             <p className="text-[10px] font-mono tracking-widest text-[#B49361] uppercase font-semibold">
-              Everyone should own
+              Foundation wardrobe
             </p>
             <h1 className="font-serif text-xl sm:text-2xl font-bold text-[#242326]">
-              Everyday staples
+              10 neutral basics
             </h1>
           </div>
         </div>
@@ -84,7 +84,7 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         <p className="text-sm text-[#5C585E] max-w-2xl mb-6">
-          These 10 staples are the same for everyone: a floral dress, black leggings, a gold necklace, a brown jacket, blue jeans, black boots, a handbag, nude heels, a black dress, and a colourful blouse.
+          These are the same for everyone — not personal style picks. Start with neutrals you can upstyle or downstyle: a white shirt, white tee, blue jeans, black trousers, black dress, navy blazer, nude heels, black boots, a neutral handbag, and a gold necklace.
         </p>
 
         {loading && <p className="text-xs text-[#5C585E]">Gathering your 10 basics.</p>}
@@ -92,7 +92,7 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
 
         {!loading && !usesAccount && (
           <div className="rounded-2xl border border-[#242326]/8 bg-white p-6 max-w-lg">
-            <p className="text-sm text-[#242326] mb-4">Sign in to see which of the 10 everyday staples are already in your wardrobe.</p>
+            <p className="text-sm text-[#242326] mb-4">Sign in to see which of the 10 foundation basics are already in your wardrobe.</p>
             <button
               type="button"
               onClick={() => onNavigate('profile')}
@@ -105,7 +105,7 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
 
         {!loading && usesAccount && !error && pieces.length === 0 && (
           <div className="rounded-2xl border border-[#242326]/8 bg-white p-6 max-w-lg">
-            <p className="text-sm text-[#242326] mb-4">The 10 everyday staples could not be loaded. Open My Profile and try this tab again.</p>
+            <p className="text-sm text-[#242326] mb-4">The 10 foundation basics could not be loaded. Open My Profile and try this tab again.</p>
             <button
               type="button"
               onClick={() => onNavigate('profile')}

@@ -23,18 +23,19 @@ test('each known style resolves to exactly 10 starter basics', () => {
   assert.equal(resolveStarterStyleKey(['unknown-style']), 'Classic & Elegant');
   const staples = everydayCapsule({ tops: 'M', bottoms: '32', dress: 'SA 34', shoe: '6' });
   assert.deepEqual(staples.map((piece) => piece.name), [
-    'Floral Dress',
-    'Black Leggings',
-    'Gold Necklace',
-    'Brown Jacket',
+    'White Shirt',
+    'White T-Shirt',
     'Blue Jeans',
-    'Black Boots',
-    'Handbag',
-    'Nude Heels',
+    'Black Trousers',
     'Black Dress',
-    'Colourful Blouse',
+    'Navy Blazer',
+    'Nude Heels',
+    'Black Boots',
+    'Neutral Handbag',
+    'Gold Necklace',
   ]);
-  assert.equal(staples.find((piece) => piece.name === 'Floral Dress')?.sizeLabel, 'SA 34');
+  assert.equal(staples.find((piece) => piece.name === 'Black Dress')?.sizeLabel, 'SA 34');
+  assert.equal(staples.find((piece) => piece.name === 'White Shirt')?.sizeLabel, 'M');
   assert.equal(staples.find((piece) => piece.name === 'Gold Necklace')?.sizeLabel, null);
 });
 
@@ -97,19 +98,19 @@ test('completing a profile seeds 10 style-matched wardrobe basics once', async (
     assert.equal(capsule.status, 200);
     assert.equal(capsuleBody.style, null);
     assert.deepEqual(capsuleBody.pieces.map((piece) => piece.name), [
-      'Floral Dress',
-      'Black Leggings',
-      'Gold Necklace',
-      'Brown Jacket',
+      'White Shirt',
+      'White T-Shirt',
       'Blue Jeans',
-      'Black Boots',
-      'Handbag',
-      'Nude Heels',
+      'Black Trousers',
       'Black Dress',
-      'Colourful Blouse',
+      'Navy Blazer',
+      'Nude Heels',
+      'Black Boots',
+      'Neutral Handbag',
+      'Gold Necklace',
     ]);
     assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'Black Boots')?.sizeLabel, '6');
-    assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'Colourful Blouse')?.sizeLabel, 'M');
+    assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'White Shirt')?.sizeLabel, 'M');
   } finally {
     await api.close();
   }
