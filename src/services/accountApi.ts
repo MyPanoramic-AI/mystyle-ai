@@ -442,6 +442,9 @@ export interface WardrobeCapsulePiece {
 
 export interface WardrobeCapsuleResponse {
   style: string | null;
+  title?: string;
+  rules?: string[];
+  palette?: { name: string; hex: string }[];
   pieces: WardrobeCapsulePiece[];
 }
 

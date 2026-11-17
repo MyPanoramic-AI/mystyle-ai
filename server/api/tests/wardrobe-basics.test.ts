@@ -22,21 +22,15 @@ test('each known style resolves to exactly 10 starter basics', () => {
   assert.equal(resolveStarterStyleKey(['tailored']), 'Smart & Professional');
   assert.equal(resolveStarterStyleKey(['unknown-style']), 'Classic & Elegant');
   const staples = everydayCapsule({ tops: 'M', bottoms: '32', dress: 'SA 34', shoe: '6' });
-  assert.deepEqual(staples.map((piece) => piece.name), [
-    'White Shirt',
-    'White T-Shirt',
-    'Blue Jeans',
-    'Black Trousers',
-    'Black Dress',
-    'Navy Blazer',
-    'Nude Heels',
-    'Black Boots',
-    'Neutral Handbag',
-    'Gold Necklace',
-  ]);
-  assert.equal(staples.find((piece) => piece.name === 'Black Dress')?.sizeLabel, 'SA 34');
-  assert.equal(staples.find((piece) => piece.name === 'White Shirt')?.sizeLabel, 'M');
-  assert.equal(staples.find((piece) => piece.name === 'Gold Necklace')?.sizeLabel, null);
+  assert.ok(staples.length >= 24, 'capsule should be a full mix-and-match checklist');
+  assert.equal(new Set(staples.map((piece) => piece.name)).size, staples.length);
+  assert.ok(staples.some((piece) => piece.name === 'White Button-Down Shirt'));
+  assert.ok(staples.some((piece) => piece.name === 'Beige Trench Coat'));
+  assert.ok(staples.some((piece) => piece.name === 'Black Ankle Boots'));
+  assert.ok(staples.some((piece) => piece.name === 'Gold Pendant Necklace'));
+  assert.equal(staples.find((piece) => piece.name === 'Black Midi Dress')?.sizeLabel, 'SA 34');
+  assert.equal(staples.find((piece) => piece.name === 'White Button-Down Shirt')?.sizeLabel, 'M');
+  assert.equal(staples.find((piece) => piece.name === 'Gold Pendant Necklace')?.sizeLabel, null);
 });
 
 test('completing a profile seeds 10 style-matched wardrobe basics once', async () => {
@@ -97,20 +91,12 @@ test('completing a profile seeds 10 style-matched wardrobe basics once', async (
     };
     assert.equal(capsule.status, 200);
     assert.equal(capsuleBody.style, null);
-    assert.deepEqual(capsuleBody.pieces.map((piece) => piece.name), [
-      'White Shirt',
-      'White T-Shirt',
-      'Blue Jeans',
-      'Black Trousers',
-      'Black Dress',
-      'Navy Blazer',
-      'Nude Heels',
-      'Black Boots',
-      'Neutral Handbag',
-      'Gold Necklace',
-    ]);
-    assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'Black Boots')?.sizeLabel, '6');
-    assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'White Shirt')?.sizeLabel, 'M');
+    assert.ok(capsuleBody.pieces.length >= 24);
+    assert.ok(capsuleBody.pieces.some((piece) => piece.name === 'White Button-Down Shirt'));
+    assert.ok(capsuleBody.pieces.some((piece) => piece.name === 'Beige Trench Coat'));
+    assert.ok(capsuleBody.pieces.some((piece) => piece.name === 'Black Ankle Boots'));
+    assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'Black Ankle Boots')?.sizeLabel, '6');
+    assert.equal(capsuleBody.pieces.find((piece) => piece.name === 'White Button-Down Shirt')?.sizeLabel, 'M');
   } finally {
     await api.close();
   }

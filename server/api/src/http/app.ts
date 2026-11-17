@@ -31,7 +31,7 @@ import {
   respondFamilyLinkInvite,
 } from '../domain/familyLinks.js';
 import { createLook, createPlan, createWardrobeItem, deleteLook, deletePlan, deleteSavedProduct, deleteWardrobeItem, getLook, getPlan, getWardrobeItem, listLooks, listPlans, listSavedProducts, listWardrobe, saveProduct, updateLook, updatePlan, updateWardrobeItem } from '../domain/collections.js';
-import { ensureStarterWardrobeBasics, everydayCapsule } from '../domain/wardrobeBasics.js';
+import { CAPSULE_PALETTE, CAPSULE_RULES, ensureStarterWardrobeBasics, everydayCapsule } from '../domain/wardrobeBasics.js';
 import { createBeautyLook, deleteBeautyLook, getBeautyLook, getBeautyPreferences, linkBeautyOutfit, listBeautyLooks, saveBeautyPreferences, unlinkBeautyOutfit, updateBeautyLook } from '../domain/beauty.js';
 import { assertPurpose, cleanupExpiredMedia, deleteOwnedMedia, readOwnedMedia, saveMedia } from '../media/store.js';
 import { integrationBoundaries } from '../integrations.js';
@@ -535,6 +535,9 @@ export function createApp(deps: AppDeps): express.Express {
     );
     res.json({
       style: null,
+      title: 'Neutral Capsule Wardrobe',
+      rules: CAPSULE_RULES,
+      palette: CAPSULE_PALETTE,
       pieces: pieces.map((piece) => ({
         ...piece,
         owned: ownedByName.has(piece.name),
