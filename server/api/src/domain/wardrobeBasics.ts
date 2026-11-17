@@ -1159,7 +1159,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Ribbed cotton',
     careNote: 'Machine wash cold',
     pairingNotes: 'Layer under cardigans, blazers, or wear alone with jeans.',
-    imageUrl: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/white-ribbed-tank.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1174,7 +1174,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Ribbed cotton',
     careNote: 'Machine wash cold',
     pairingNotes: 'Pairs with beige trousers, blue jeans, or under a trench.',
-    imageUrl: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/black-ribbed-tank.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1189,7 +1189,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Cotton jersey',
     careNote: 'Machine wash cold',
     pairingNotes: 'The quiet layer under a blazer, jacket, or on its own with denim.',
-    imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/white-tshirt.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1204,7 +1204,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Cotton jersey',
     careNote: 'Machine wash cold',
     pairingNotes: 'Balances ecru jeans, beige trousers, and gold jewellery.',
-    imageUrl: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/black-tshirt.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1219,7 +1219,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Cotton poplin',
     careNote: 'Warm iron, hang dry',
     pairingNotes: 'Tuck into trousers for work or leave loose over jeans for weekend.',
-    imageUrl: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/white-button-down.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1234,7 +1234,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Cotton knit',
     careNote: 'Machine wash cold',
     pairingNotes: 'A graphic neutral that still mixes with every bottom in the capsule.',
-    imageUrl: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/striped-long-sleeve.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1249,7 +1249,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Fine knit wool blend',
     careNote: 'Hand wash or gentle cycle',
     pairingNotes: 'Layer over tanks or under a trench and blazer.',
-    imageUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/cream-crewneck-sweater.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1264,7 +1264,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Merino blend',
     careNote: 'Hand wash or dry clean',
     pairingNotes: 'Sharp under the beige blazer or with wide-leg jeans.',
-    imageUrl: 'https://images.unsplash.com/photo-1609505848914-0f2f2b2c5e5a?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/black-turtleneck.jpg',
     sizeFrom: 'tops',
   },
   // Bottoms
@@ -1280,7 +1280,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Stretch denim',
     careNote: 'Wash inside out, hang dry',
     pairingNotes: 'Dress up with heels and a blazer, or down with sneakers.',
-    imageUrl: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/medium-blue-jeans.jpg',
     sizeFrom: 'bottoms',
   },
   {
@@ -1295,7 +1295,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Rigid denim',
     careNote: 'Wash inside out, hang dry',
     pairingNotes: 'Fresh with a black tee, striped top, or cream sweater.',
-    imageUrl: 'https://images.unsplash.com/photo-1582418702059-67a5fc7c2c4c?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/ecru-wide-leg-jeans.jpg',
     sizeFrom: 'bottoms',
   },
   {
@@ -1310,7 +1310,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Crepe with stretch',
     careNote: 'Steam, hang dry',
     pairingNotes: 'Swap for jeans when the day needs more polish.',
-    imageUrl: 'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/black-trousers.jpg',
     sizeFrom: 'bottoms',
   },
   {
@@ -1325,7 +1325,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Tailored twill',
     careNote: 'Steam, hang dry',
     pairingNotes: 'Works with black or white tops and nude shoes.',
-    imageUrl: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/beige-trousers.jpg',
     sizeFrom: 'bottoms',
   },
   {
@@ -1340,7 +1340,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'A-line woven',
     careNote: 'Steam, hang dry',
     pairingNotes: 'Balance with a tucked white shirt or cream sweater.',
-    imageUrl: 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/black-midi-skirt.jpg',
     sizeFrom: 'bottoms',
   },
   // Dresses
@@ -1356,7 +1356,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Stretch crepe',
     careNote: 'Steam, hang dry',
     pairingNotes: 'Finish with nude heels, black boots, or a trench for day.',
-    imageUrl: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/black-midi-dress.jpg',
     sizeFrom: 'dress',
   },
   {
@@ -1371,7 +1371,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Soft knit',
     careNote: 'Hand wash or gentle cycle',
     pairingNotes: 'Belt it, add knee-high boots or sneakers for day.',
-    imageUrl: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/taupe-sweater-dress.jpg',
     sizeFrom: 'dress',
   },
   // Outerwear
@@ -1387,7 +1387,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Tailored wool blend',
     careNote: 'Dry clean or steam',
     pairingNotes: 'Instant polish over a tee, turtleneck, or black dress.',
-    imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/beige-blazer.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1402,7 +1402,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Cotton gabardine',
     careNote: 'Spot clean or dry clean',
     pairingNotes: 'The all-weather layer over any capsule outfit.',
-    imageUrl: 'https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/beige-trench-coat.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1417,7 +1417,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Soft knit',
     careNote: 'Hand wash or gentle cycle',
     pairingNotes: 'Soft layer over tanks, tees, and midi dresses.',
-    imageUrl: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/cream-long-cardigan.jpg',
     sizeFrom: 'tops',
   },
   {
@@ -1432,7 +1432,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Cotton canvas',
     careNote: 'Machine wash cold',
     pairingNotes: 'Utility polish with denim, ecru jeans, and white sneakers.',
-    imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/olive-chore-jacket.jpg',
     sizeFrom: 'tops',
   },
   // Shoes
@@ -1448,7 +1448,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Leather',
     careNote: 'Wipe clean',
     pairingNotes: 'Grounds jeans, trousers, and sweater dresses for day.',
-    imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/white-sneakers.jpg',
     sizeFrom: 'shoe',
   },
   {
@@ -1463,7 +1463,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Leather',
     careNote: 'Store with shoe trees',
     pairingNotes: 'Easy polish with trousers, skirts, and midi dresses.',
-    imageUrl: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/nude-ballet-flats.jpg',
     sizeFrom: 'shoe',
   },
   {
@@ -1478,7 +1478,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Leather',
     careNote: 'Store with shoe trees',
     pairingNotes: 'Lengthens the line with black trousers or a midi dress.',
-    imageUrl: 'https://images.unsplash.com/photo-1515347619252-60a4bf4fff4f?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/nude-pumps.jpg',
     sizeFrom: 'shoe',
   },
   {
@@ -1493,7 +1493,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Leather',
     careNote: 'Condition leather, keep shoe trees in',
     pairingNotes: 'Everyday shoe for jeans, trousers, and dresses.',
-    imageUrl: 'https://images.unsplash.com/photo-1520639888713-7851133b1ed0?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/black-ankle-boots.jpg',
     sizeFrom: 'shoe',
   },
   {
@@ -1508,7 +1508,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Suede or leather',
     careNote: 'Protect from rain, store upright',
     pairingNotes: 'Finish the taupe sweater dress or black midi skirt.',
-    imageUrl: 'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/beige-knee-high-boots.jpg',
     sizeFrom: 'shoe',
   },
   // Bags
@@ -1524,7 +1524,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Leather',
     careNote: 'Wipe clean',
     pairingNotes: 'Hands-free finish for jeans days and travel.',
-    imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/tan-crossbody-bag.jpg',
   },
   {
     name: 'Black Tote Bag',
@@ -1538,7 +1538,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Leather',
     careNote: 'Wipe clean',
     pairingNotes: 'Carries work days with trousers, blazer, and flats.',
-    imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a67437a?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/black-tote-bag.jpg',
   },
   // Accessories
   {
@@ -1553,7 +1553,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Leather',
     careNote: 'Wipe clean',
     pairingNotes: 'Defines trousers, jeans, and sweater dresses.',
-    imageUrl: 'https://images.unsplash.com/photo-1624222247344-550fb60583fd?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/brown-leather-belt.jpg',
   },
   {
     name: 'Gold Hoop Earrings',
@@ -1567,7 +1567,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Gold-plated metal',
     careNote: 'Keep dry and away from perfume',
     pairingNotes: 'One jewellery finish that lifts every neutral outfit.',
-    imageUrl: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/gold-hoop-earrings.jpg',
   },
   {
     name: 'Gold Pendant Necklace',
@@ -1581,7 +1581,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Gold-plated metal',
     careNote: 'Keep dry and away from perfume',
     pairingNotes: 'Soft finish for tanks, turtlenecks, and black dresses.',
-    imageUrl: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/gold-pendant-necklace.jpg',
   },
   {
     name: 'Neutral Sunglasses',
@@ -1595,7 +1595,7 @@ const EVERYDAY_STAPLES: StarterBasicTemplate[] = [
     fabric: 'Acetate',
     careNote: 'Store in a hard case',
     pairingNotes: 'Completes day looks with denim, trench, and sneakers.',
-    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=700&q=80',
+    imageUrl: '/capsule/neutral-sunglasses.jpg',
   },
 ];
 
