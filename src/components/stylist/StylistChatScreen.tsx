@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import {
   UserProfile,
   TemporaryPhotos,
@@ -28,17 +28,19 @@ import {
 import { StylistHeader } from './StylistHeader';
 import { ChatMessageItem } from './ChatMessageItem';
 import { StylistInputBar } from './StylistInputBar';
+import { StylistLiveVoicePanel } from './StylistLiveVoicePanel';
 import { ProfileLensModal } from './ProfileLensModal';
 import { StylistChatLibrary, type StylistLibraryItem } from './StylistChatLibrary';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
-import { Sparkles } from 'lucide-react';
+import { Phone, Sparkles } from 'lucide-react';
 import { AccountApiError, accountApi, type StylistServerMessage } from '../../services/accountApi';
 import { toChatMessage } from '../../services/stylistView';
 import { fileToBase64 } from '../../services/profilePhotosClient';
 import type { PreloadedGarment } from '../../types/shop';
 import { resolveStylistPersona } from '../../data/stylistPersona';
 import type { ShopPreloadedContext } from '../pages/ShopPlaceholder';
+import { useGptLiveVoice, type GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
 
 const STYLING_WAIT_LINES = [
   'Still thinking how this would look…',
@@ -68,7 +70,12 @@ function waitLineFor(stylistName: string, index: number, demo: boolean): string 
 export interface StylistConnection {
   aiConsent: boolean;
   onEnableConsent: () => Promise<void>;
-  availability: () => Promise<{ acceptingMessages: boolean; liveEnabled: boolean; label: string }>;
+  availability: () => Promise<{
+    acceptingMessages: boolean;
+    liveEnabled: boolean;
+    label: string;
+    voice?: { voiceEnabled: boolean; label: string };
+  }>;
   list: () => Promise<{ conversations: StylistLibraryItem[] }>;
   open: (id: string) => Promise<{ id: string; title?: string; messages: StylistServerMessage[] }>;
   restore: () => Promise<{ id: string; messages: StylistServerMessage[] }>;
@@ -122,8 +129,77 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [garmentContext, setGarmentContext] = useState<{ name: string; url: string } | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const pendingVoiceTranscripts = useRef<GptLiveTranscriptTurn[]>([]);
 
   const stylistName = resolveStylistPersona(profile).name;
+
+  const persistVoiceTurn = useCallback((turn: GptLiveTranscriptTurn) => {
+    if (!turn.final || !turn.text.trim()) return;
+    pendingVoiceTranscripts.current.push(turn);
+    const conversation = conversationId;
+    if (!conversation || !connection) return;
+    const batch = pendingVoiceTranscripts.current.splice(0, pendingVoiceTranscripts.current.length);
+    void accountApi.appendStylistVoiceTranscripts(
+      conversation,
+      batch.map((item) => ({
+        role: item.role,
+        content: item.text,
+        idempotencyKey: item.id,
+      })),
+    ).catch(() => {
+      pendingVoiceTranscripts.current.unshift(...batch);
+    });
+  }, [connection, conversationId]);
+
+  const voice = useGptLiveVoice({
+    createSession: async (sdp) => {
+      let id = conversationId;
+      if (!id && connection) {
+        const fresh = await connection.startFresh();
+        id = fresh.id;
+        setConversationId(id);
+        setMessages([]);
+      }
+      return accountApi.createStylistVoiceSession({
+        sdp,
+        conversationId: id,
+      });
+    },
+    closeSession: async (sessionId, body) => {
+      await accountApi.closeStylistVoiceSession(sessionId, body);
+      const leftover = pendingVoiceTranscripts.current.splice(0, pendingVoiceTranscripts.current.length);
+      if (leftover.length && conversationId) {
+        await accountApi.appendStylistVoiceTranscripts(
+          conversationId,
+          leftover.map((item) => ({
+            role: item.role,
+            content: item.text,
+            idempotencyKey: item.id,
+          })),
+        ).catch(() => undefined);
+      }
+    },
+    onFinalTranscript: (turn) => {
+      persistVoiceTurn(turn);
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        const sender = turn.role === 'user' ? 'user' : 'stylist';
+        if (last && last.sender === sender && last.text === turn.text) return prev;
+        return [
+          ...prev,
+          {
+            id: turn.id,
+            sender,
+            text: turn.text,
+            timestamp: new Date().toISOString(),
+          },
+        ];
+      });
+    },
+    onError: (message) => setServiceNotice(message),
+  });
   const [lens, setLens] = useState<StylistFilterLens>({
     occasion: state.occasionTitle || 'Everyday Versatile',
     formality: 'Smart-Casual',
@@ -172,6 +248,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     void connection.availability().then(async (availability) => {
       if (cancelled) return;
       setServiceLabel(availability.label);
+      setVoiceEnabled(Boolean(availability.voice?.voiceEnabled));
       if (!availability.acceptingMessages) {
         setServiceNotice('Live AI is switched off. You can continue with the labelled demonstration on this device.');
         setOfferLocalDemo(true);
@@ -674,17 +751,64 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         <div ref={chatBottomRef} />
       </div>
 
-      {/* Stylist Input Bar */}
-      <StylistInputBar
-        onSendMessage={handleUserSend}
-        isGenerating={isTyping}
-        onSelectPrompt={handleSelectPrompt}
-        onSelectAction={handleSelectAction}
-        inputPrefill={inputPrefill}
-        stylistName={stylistName}
-        contextualActions={garmentContext ? garmentFollowUpActions('composer') : undefined}
-        contextualLabel={garmentContext ? `Complete ${inferGarmentLabel(garmentContext.name)}:` : undefined}
-      />
+      {voiceMode ? (
+        <StylistLiveVoicePanel
+          stylistName={stylistName}
+          status={voice.status}
+          muted={voice.muted}
+          error={voice.error}
+          elapsedSeconds={voice.elapsedSeconds}
+          maxSessionSeconds={voice.limits?.maxSessionSeconds ?? null}
+          transcripts={voice.transcripts}
+          onMuteToggle={voice.toggleMute}
+          onEnd={() => {
+            void voice.endConversation().then(() => setVoiceMode(false));
+          }}
+          onBackToText={() => {
+            void voice.endConversation().then(() => setVoiceMode(false));
+          }}
+        />
+      ) : (
+        <>
+          {connection && !localDemo && (
+            <div className="px-4 sm:px-6 pt-2 max-w-4xl w-full mx-auto">
+              <button
+                type="button"
+                disabled={!serverReady || isTyping}
+                onClick={() => {
+                  if (!voiceEnabled) {
+                    setServiceNotice(voice.support.ok
+                      ? 'Live voice is switched off on the server. Text chat still works.'
+                      : (voice.support.reason ?? 'Live voice is not available in this browser.'));
+                    return;
+                  }
+                  if (!voice.support.ok) {
+                    setServiceNotice(voice.support.reason ?? 'Live voice is not available in this browser.');
+                    return;
+                  }
+                  setVoiceMode(true);
+                  setServiceNotice(null);
+                  void voice.startConversation();
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#242326]/10 bg-white hover:bg-[#FAF7F2] text-xs font-medium text-[#242326] transition-colors disabled:opacity-40"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#9C6A61]" />
+                Talk to {stylistName}
+              </button>
+            </div>
+          )}
+          <StylistInputBar
+            onSendMessage={handleUserSend}
+            isGenerating={isTyping}
+            onSelectPrompt={handleSelectPrompt}
+            onSelectAction={handleSelectAction}
+            inputPrefill={inputPrefill}
+            stylistName={stylistName}
+            contextualActions={garmentContext ? garmentFollowUpActions('composer') : undefined}
+            contextualLabel={garmentContext ? `Complete ${inferGarmentLabel(garmentContext.name)}:` : undefined}
+          />
+        </>
+      )}
       </div>
 
       {/* Profile Lens Modal */}

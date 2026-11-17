@@ -41,7 +41,12 @@ export interface ReadyAccount {
   aiConsent: boolean;
   setAiConsent: (value: boolean) => Promise<void>;
   stylist: {
-    availability: () => Promise<{ acceptingMessages: boolean; liveEnabled: boolean; label: string }>;
+    availability: () => Promise<{
+      acceptingMessages: boolean;
+      liveEnabled: boolean;
+      label: string;
+      voice?: { voiceEnabled: boolean; label: string };
+    }>;
     list: () => Promise<{ conversations: { id: string; title: string; lastActivityAt: string; createdAt?: string }[] }>;
     open: (id: string) => Promise<{ id: string; title?: string; messages: import('../services/accountApi').StylistServerMessage[] }>;
     restore: () => Promise<{ id: string; messages: import('../services/accountApi').StylistServerMessage[] }>;

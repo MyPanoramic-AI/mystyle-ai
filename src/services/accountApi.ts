@@ -57,6 +57,21 @@ export interface AccountApi {
   getPreferences(): Promise<Record<string, unknown>>;
   savePreferences(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   stylistAvailability(): Promise<StylistAvailability>;
+  stylistVoiceAvailability(): Promise<StylistVoiceAvailability>;
+  createStylistVoiceSession(body: {
+    sdp: string;
+    conversationId?: string | null;
+    audioVoice?: string | null;
+  }): Promise<StylistVoiceSessionCreateResult>;
+  closeStylistVoiceSession(sessionId: string, body?: {
+    durationSeconds?: number;
+    providerUsageSeconds?: number | null;
+  }): Promise<{ closed: boolean; durationSeconds: number; costUsd: number | null; costStatus: string }>;
+  appendStylistVoiceTranscripts(conversationId: string, turns: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    idempotencyKey?: string | null;
+  }>): Promise<{ inserted: number }>;
   stylistConversations(): Promise<{ conversations: { id: string; title: string; lastActivityAt: string; createdAt?: string }[] }>;
   createStylistConversation(): Promise<{ id: string; title?: string; createdAt?: string; lastActivityAt?: string }>;
   stylistConversation(id: string): Promise<{ id: string; title?: string; createdAt?: string; lastActivityAt?: string; messages: StylistServerMessage[] }>;
@@ -506,11 +521,38 @@ export interface PlanRecord {
   completed: boolean;
 }
 
+export interface StylistVoiceAvailability {
+  voiceEnabled: boolean;
+  model: string;
+  audioVoice: string;
+  supportedAudioVoices: string[];
+  maxSessionSeconds: number;
+  dailySecondsLimit: number;
+  inactivitySeconds: number;
+  label: string;
+  shopping?: string;
+  tryOn?: string;
+  beauty?: string;
+  wardrobe?: string;
+}
+
 export interface StylistAvailability {
   provider: string;
   liveEnabled: boolean;
   acceptingMessages: boolean;
   label: string;
+  voice?: StylistVoiceAvailability;
+}
+
+export interface StylistVoiceSessionCreateResult {
+  session: { id: string };
+  transport: { type: 'webrtc'; sdp: string };
+  limits: {
+    maxSessionSeconds: number;
+    inactivitySeconds: number;
+    estimatedReserveUsd: number;
+  };
+  persona: { name: string; voice: string; audioVoice: string };
 }
 
 export interface StylistServerMessage {
@@ -610,6 +652,22 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     getPreferences: () => request('/api/preferences'),
     savePreferences: (body) => request('/api/preferences', { method: 'PUT', body, csrf: true }),
     stylistAvailability: () => request('/api/stylist/availability'),
+    stylistVoiceAvailability: () => request('/api/stylist/voice/availability'),
+    createStylistVoiceSession: (body) => request('/api/stylist/voice/sessions', {
+      method: 'POST',
+      body,
+      csrf: true,
+    }),
+    closeStylistVoiceSession: (sessionId, body) => request(`/api/stylist/voice/sessions/${encodeURIComponent(sessionId)}/close`, {
+      method: 'POST',
+      body: body ?? {},
+      csrf: true,
+    }),
+    appendStylistVoiceTranscripts: (conversationId, turns) => request(`/api/stylist/conversations/${encodeURIComponent(conversationId)}/voice-transcripts`, {
+      method: 'POST',
+      body: { turns },
+      csrf: true,
+    }),
     stylistConversations: () => request('/api/stylist/conversations'),
     createStylistConversation: () => request('/api/stylist/conversations', { method: 'POST', csrf: true }),
     stylistConversation: (id) => request(`/api/stylist/conversations/${id}`),

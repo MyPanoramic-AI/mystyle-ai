@@ -62,6 +62,13 @@ import { cleanupExpiredExports, createDataExport, downloadExport, readExportJob 
 import { listRetentionPolicies, retentionDryRun, runRetentionCleanup } from '../privacy/retention.js';
 import { loadAiConfig, type AiConfig } from '../ai/aiConfig.js';
 import { createConversation, deleteConversation, listConversations, readConversation, recommendationsFor, sendMessage, stylistAvailability, usageFor } from '../ai/service.js';
+import { loadVoiceConfig, type VoiceConfig } from '../ai/voiceConfig.js';
+import {
+  appendVoiceTranscripts,
+  closeVoiceSession,
+  createVoiceSession,
+  voiceAvailability,
+} from '../ai/voiceSessions.js';
 import { tryOnOpinionForUser } from '../ai/tryOnOpinion.js';
 import { loadWhatsAppConfig } from '../whatsapp/whatsappConfig.js';
 import {
@@ -92,6 +99,7 @@ export interface AppDeps {
   rateLimiter: RateLimiter;
   aiConfig?: AiConfig;
   aiFetch?: typeof fetch;
+  voiceConfig?: VoiceConfig;
   tryOnConfig?: TryOnConfig;
   tryOnFetch?: typeof fetch;
   mailer?: Mailer;
@@ -858,6 +866,7 @@ export function createApp(deps: AppDeps): express.Express {
   }));
 
   const aiConfig = deps.aiConfig ?? loadAiConfig();
+  const voiceConfig = deps.voiceConfig ?? loadVoiceConfig();
   const aiLimiter = new RateLimiter(aiConfig.messageRateLimit, aiConfig.messageRateWindowMs, deps.now);
   const stylist = {
     db: deps.db,
@@ -872,7 +881,68 @@ export function createApp(deps: AppDeps): express.Express {
 
   app.get('/api/stylist/availability', route((req, res) => {
     requireUser(req);
-    res.json(stylistAvailability(aiConfig));
+    res.json({
+      ...stylistAvailability(aiConfig),
+      voice: voiceAvailability(voiceConfig),
+    });
+  }));
+  app.get('/api/stylist/voice/availability', route((req, res) => {
+    requireUser(req);
+    res.json(voiceAvailability(voiceConfig));
+  }));
+  app.post('/api/stylist/voice/sessions', route(async (req, res) => {
+    const userId = requireUser(req).userId;
+    const sdp = typeof req.body?.sdp === 'string' ? req.body.sdp : '';
+    if (!sdp.trim() || sdp.length > 64 * 1024) {
+      throw new ApiError('bad_request', 'An SDP offer is required.', 400);
+    }
+    const conversationId = typeof req.body?.conversationId === 'string' ? req.body.conversationId : null;
+    const audioVoice = typeof req.body?.audioVoice === 'string' ? req.body.audioVoice : null;
+    const result = await createVoiceSession({
+      db: deps.db,
+      userId,
+      sdp,
+      conversationId,
+      audioVoice,
+      config: voiceConfig,
+      fetchImpl: deps.aiFetch,
+      now: deps.now,
+    });
+    res.status(201).json(result);
+  }));
+  app.post('/api/stylist/voice/sessions/:id/close', route((req, res) => {
+    const userId = requireUser(req).userId;
+    const durationSeconds = typeof req.body?.durationSeconds === 'number' ? req.body.durationSeconds : null;
+    const providerUsageSeconds = typeof req.body?.providerUsageSeconds === 'number' ? req.body.providerUsageSeconds : null;
+    const result = closeVoiceSession({
+      db: deps.db,
+      userId,
+      sessionId: String(req.params.id),
+      durationSeconds,
+      providerUsageSeconds,
+      config: voiceConfig,
+      now: deps.now,
+    });
+    res.json(result);
+  }));
+  app.post('/api/stylist/conversations/:id/voice-transcripts', route((req, res) => {
+    const userId = requireUser(req).userId;
+    const turnsRaw = Array.isArray(req.body?.turns) ? req.body.turns as unknown[] : [];
+    const turns = turnsRaw.map((item) => {
+      const row = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+      return {
+        role: row.role === 'assistant' ? 'assistant' as const : 'user' as const,
+        content: typeof row.content === 'string' ? row.content : '',
+        idempotencyKey: typeof row.idempotencyKey === 'string' ? row.idempotencyKey : null,
+      };
+    });
+    res.status(201).json(appendVoiceTranscripts({
+      db: deps.db,
+      userId,
+      conversationId: String(req.params.id),
+      turns,
+      now: deps.now,
+    }));
   }));
   app.get('/api/stylist/usage', route((req, res) => {
     res.json(usageFor(deps.db, requireUser(req).userId));

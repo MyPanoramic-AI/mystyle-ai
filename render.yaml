@@ -82,6 +82,28 @@ services:
         value: "90000"
       - key: AI_LOOK_IMAGE_USD
         value: "0.04"
+      # GPT-Live voice (WebRTC). Keep off until duration price + budgets are set in the Dashboard.
+      # OPENAI_API_KEY is shared with the text stylist. Do not expose it to the browser.
+      - key: AI_VOICE_ALLOW_LIVE
+        value: "false"
+      - key: AI_VOICE_MODEL
+        value: gpt-live-1
+      - key: AI_VOICE_AUDIO_VOICE
+        value: marin
+      - key: AI_VOICE_MAX_SESSION_SECONDS
+        value: "300"
+      - key: AI_VOICE_MAX_ACTIVE_SESSIONS
+        value: "1"
+      - key: AI_VOICE_DAILY_SECONDS
+        value: "900"
+      - key: AI_VOICE_INACTIVITY_SECONDS
+        value: "120"
+      - key: AI_VOICE_USD_PER_MINUTE
+        sync: false
+      - key: AI_VOICE_MAX_BUDGET_USD
+        value: "0"
+      - key: AI_VOICE_MAX_USER_BUDGET_USD
+        value: "0"
       # Own SA WhatsApp Business number via Twilio BYON (not a Twilio-rented line).
       # Register 0799927273 / +27799927273 in Twilio WhatsApp Self Sign-up, fill SID/token, then enable.
       - key: WHATSAPP_ENABLED

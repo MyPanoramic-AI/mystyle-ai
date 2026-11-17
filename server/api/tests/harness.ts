@@ -20,6 +20,7 @@ export async function startApi(
   extras: {
     aiConfig?: import('../src/ai/aiConfig.js').AiConfig;
     aiFetch?: typeof fetch;
+    voiceConfig?: import('../src/ai/voiceConfig.js').VoiceConfig;
     tryOnConfig?: import('../src/tryon/tryonConfig.js').TryOnConfig;
     tryOnFetch?: typeof fetch;
   } = {},
@@ -43,6 +44,7 @@ export async function startApi(
     rateLimiter: new RateLimiter(config.authRateLimit, config.authRateWindowMs, () => clock.value),
     aiConfig: extras.aiConfig,
     aiFetch: extras.aiFetch,
+    voiceConfig: extras.voiceConfig,
     tryOnConfig: extras.tryOnConfig,
     tryOnFetch: extras.tryOnFetch,
   });
