@@ -635,8 +635,8 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
 
   return {
     health: () => request('/api/health'),
-    ready: () => request('/api/ready', { timeoutMs: 12_000 }),
-    session: async () => remember(await request<SessionResponse>('/api/auth/session', { timeoutMs: 12_000 })),
+    ready: () => request('/api/ready', { timeoutMs: 8_000 }),
+    session: async () => remember(await request<SessionResponse>('/api/auth/session', { timeoutMs: 8_000 })),
     register: async (email, password) => remember(await request<AuthResult>('/api/auth/register', { method: 'POST', body: { email, password } })),
     login: async (email, password) => remember(await request<AuthResult>('/api/auth/login', { method: 'POST', body: { email, password } })),
     logout: async () => {
@@ -654,7 +654,7 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     },
     devMailbox: () => request('/api/dev/mailbox'),
     devMailboxAction: (id) => request(`/api/dev/mailbox/${id}/action`),
-    getProfile: () => request('/api/profile'),
+    getProfile: () => request('/api/profile', { timeoutMs: 8_000 }),
     saveProfile: (body) => request('/api/profile', { method: 'PUT', body, csrf: true }),
     estimateSilhouette: (save = true, photoScan) => request('/api/profile/silhouette/estimate', {
       method: 'POST',
@@ -662,7 +662,7 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
       csrf: true,
     }),
     silhouetteOptions: () => request('/api/profile/silhouette/options'),
-    getPreferences: () => request('/api/preferences'),
+    getPreferences: () => request('/api/preferences', { timeoutMs: 8_000 }),
     savePreferences: (body) => request('/api/preferences', { method: 'PUT', body, csrf: true }),
     stylistAvailability: () => request('/api/stylist/availability'),
     stylistVoiceAvailability: () => request('/api/stylist/voice/availability'),

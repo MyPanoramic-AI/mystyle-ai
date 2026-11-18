@@ -11,11 +11,129 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Non-blocking font CSS: a hung fonts.googleapis.com request must not freeze first paint. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    </noscript>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #F6F2EC; color: #242326; }
+      #istyleu-boot-rescue {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483646;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: #F6F2EC;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      #istyleu-boot-rescue[data-open="1"] { display: flex; }
+      #istyleu-boot-rescue .card {
+        max-width: 28rem;
+        width: 100%;
+        background: #fff;
+        border: 1px solid rgba(36,35,38,0.1);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        box-shadow: 0 1px 2px rgba(36,35,38,0.06);
+      }
+      #istyleu-boot-rescue h1 { margin: 1.5rem 0 0; font-size: 1.75rem; }
+      #istyleu-boot-rescue p { margin: 0.75rem 0 0; font-family: system-ui, sans-serif; font-size: 0.875rem; color: #5C585E; line-height: 1.5; }
+      #istyleu-boot-rescue .actions { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+      #istyleu-boot-rescue button {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        padding: 0.7rem 1.1rem;
+        font: 600 0.875rem system-ui, sans-serif;
+        cursor: pointer;
+      }
+      #istyleu-boot-rescue .primary { background: #9C6A61; color: #fff; }
+      #istyleu-boot-rescue .secondary { background: #F6F2EC; color: #242326; border: 1px solid rgba(36,35,38,0.12); }
+    </style>
   </head>
   <body class="bg-[#F6F2EC] text-[#242326] antialiased selection:bg-[#E5CDBE] selection:text-[#242326]">
     <div id="root"></div>
+    <div id="istyleu-boot-rescue" role="alertdialog" aria-live="assertive" aria-label="Sign-in is taking too long">
+      <div class="card">
+        <div style="font-size:1.5rem">IStyleU</div>
+        <h1>Still checking your account</h1>
+        <p>The app has not finished signing you in. Reload the page, or clear the stuck session and continue.</p>
+        <div class="actions">
+          <button type="button" class="primary" id="istyleu-boot-reload">Reload</button>
+          <button type="button" class="secondary" id="istyleu-boot-clear">Clear session and continue</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var RESCUE_MS = 6000;
+        var opened = false;
+        function markReady() {
+          document.documentElement.setAttribute('data-istyleu-boot', 'ready');
+          var el = document.getElementById('istyleu-boot-rescue');
+          if (el) el.setAttribute('data-open', '0');
+        }
+        window.__istyleuMarkBootReady = markReady;
+        function openRescue() {
+          if (opened) return;
+          if (document.documentElement.getAttribute('data-istyleu-boot') === 'ready') return;
+          opened = true;
+          var el = document.getElementById('istyleu-boot-rescue');
+          if (el) el.setAttribute('data-open', '1');
+        }
+        function clearSiteDataAndReload() {
+          var tasks = [];
+          try {
+            if (window.localStorage) window.localStorage.clear();
+          } catch (e) {}
+          try {
+            if (window.sessionStorage) window.sessionStorage.clear();
+          } catch (e) {}
+          try {
+            if (window.caches && caches.keys) {
+              tasks.push(caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+              }));
+            }
+          } catch (e) {}
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+              tasks.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+              }));
+            }
+          } catch (e) {}
+          Promise.all(tasks).catch(function () {}).then(function () {
+            var url = new URL(window.location.href);
+            url.searchParams.set('boot', String(Date.now()));
+            window.location.replace(url.toString());
+          });
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+          var reloadBtn = document.getElementById('istyleu-boot-reload');
+          var clearBtn = document.getElementById('istyleu-boot-clear');
+          if (reloadBtn) reloadBtn.addEventListener('click', function () { window.location.reload(); });
+          if (clearBtn) clearBtn.addEventListener('click', clearSiteDataAndReload);
+        });
+        // Clear any stale service worker that could pin an old hung client.
+        try {
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              regs.forEach(function (reg) { reg.unregister(); });
+            });
+          }
+        } catch (e) {}
+        setTimeout(openRescue, RESCUE_MS);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

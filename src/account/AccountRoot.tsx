@@ -82,6 +82,16 @@ function dismissKey(userId: string): string {
   return `mystyle_import_reviewed_${userId}`;
 }
 
+function markBootReady(): void {
+  try {
+    const marker = (window as Window & { __istyleuMarkBootReady?: () => void }).__istyleuMarkBootReady;
+    if (typeof marker === 'function') marker();
+    else document.documentElement.setAttribute('data-istyleu-boot', 'ready');
+  } catch {
+    // Boot rescue is best-effort.
+  }
+}
+
 export function AccountRoot() {
   const [phase, setPhase] = useState<Phase>('loading');
   const [mode, setMode] = useState<'account' | 'demo'>('account');
@@ -123,6 +133,7 @@ export function AccountRoot() {
           email: sessionHint.email,
           emailVerified: sessionHint.emailVerified === true,
           csrfToken: '',
+          expiresAt: '',
         })
         : accountApi.session(),
       accountApi.getProfile(),
@@ -145,6 +156,7 @@ export function AccountRoot() {
       setPreview(null);
       setPhase('ready');
     }
+    markBootReady();
     // Library sync must not block leaving the boot screen.
     void attachSavedLibraries().catch(() => {
       void savedLooksService.useAccount(null);
@@ -160,12 +172,13 @@ export function AccountRoot() {
     const bootTimeout = window.setTimeout(() => {
       if (generation.current !== gen) return;
       setLoadingSlow(true);
-    }, 4000);
+    }, 2000);
     const hardTimeout = window.setTimeout(() => {
       if (generation.current !== gen) return;
+      markBootReady();
       setPhase('unavailable');
       setFormError('Signing in is taking too long. Check your connection and try again.');
-    }, 20000);
+    }, 8000);
     try {
       const ready = await accountApi.ready();
       if (!ready.ok || ready.database !== 'up') throw new AccountApiError('unavailable', 'The account service is unavailable.', 503);
@@ -187,6 +200,7 @@ export function AccountRoot() {
           setAuthBoot({ panel: 'verify', message: messageFrom(error) });
           setSignedOutView('auth');
           setPhase('signed-out');
+          markBootReady();
           return;
         }
       } else if (action === 'reset-password' && token) {
@@ -198,6 +212,7 @@ export function AccountRoot() {
         setProfile(emptyAccountProfile());
         setSignedOutView('auth');
         setPhase('signed-out');
+        markBootReady();
         return;
       }
 
@@ -216,10 +231,12 @@ export function AccountRoot() {
         setProfile(emptyAccountProfile());
         setSignedOutView('landing');
         setPhase('signed-out');
+        markBootReady();
         return;
       }
       setPhase('unavailable');
       setFormError(messageFrom(error));
+      markBootReady();
     } finally {
       window.clearTimeout(bootTimeout);
       window.clearTimeout(hardTimeout);

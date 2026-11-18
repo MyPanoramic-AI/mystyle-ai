@@ -127,7 +127,8 @@ function securityHeaders(res: Response, page: boolean): void {
       ].join('; ')
       : "default-src 'none'; frame-ancestors 'none'",
   );
-  if (!page) res.setHeader('Cache-Control', 'no-store');
+  // HTML must not stick on an old hashed bundle after deploys; API stays uncached.
+  res.setHeader('Cache-Control', page ? 'no-cache' : 'no-store');
 }
 
 export function createApp(deps: AppDeps): express.Express {
