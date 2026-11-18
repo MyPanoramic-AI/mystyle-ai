@@ -59,6 +59,26 @@ function supportsLiveVoice(): { ok: boolean; reason?: string } {
   return { ok: true };
 }
 
+function friendlyVoiceError(err: unknown): string {
+  if (!(err instanceof Error)) return 'Could not start the voice session.';
+  const name = 'name' in err ? String((err as DOMException).name) : '';
+  const raw = err.message || '';
+  if (
+    name === 'NotFoundError'
+    || /Requested device not found/i.test(raw)
+    || /no audio input/i.test(raw)
+  ) {
+    return 'No microphone was found. Open IStyleU in Chrome or Edge on a device with a mic, then allow microphone access.';
+  }
+  if (name === 'NotAllowedError' || /Permission denied|not allowed/i.test(raw)) {
+    return 'Microphone permission was blocked. Allow the mic for this site, then try Talk to Aria again.';
+  }
+  if (name === 'NotReadableError') {
+    return 'The microphone is busy in another app. Close other calls, then try again.';
+  }
+  return raw || 'Could not start the voice session.';
+}
+
 function extractTranscript(event: Record<string, unknown>): { role: 'user' | 'assistant'; text: string; final: boolean } | null {
   const type = typeof event.type === 'string' ? event.type : '';
   const text = typeof event.transcript === 'string'
@@ -362,7 +382,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
         void endRef.current('Inactivity timeout — ending the voice session.');
       }, result.limits.inactivitySeconds * 1000);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not start the voice session.';
+      const message = friendlyVoiceError(err);
       setError(message);
       setStatus('error');
       optionsRef.current.onError?.(message);
