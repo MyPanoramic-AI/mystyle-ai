@@ -774,27 +774,58 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
             <div className="px-4 sm:px-6 pt-2 max-w-4xl w-full mx-auto">
               <button
                 type="button"
-                disabled={!serverReady || isTyping}
+                disabled={!serverReady || isTyping || voice.isActive}
+                aria-busy={voice.isActive}
+                title={
+                  !voice.support.ok
+                    ? (voice.support.reason ?? 'Live voice is not available in this browser.')
+                    : !voiceEnabled
+                      ? 'Checking whether live voice is available…'
+                      : `Start a live voice conversation with ${stylistName}`
+                }
                 onClick={() => {
-                  if (!voiceEnabled) {
-                    setServiceNotice(voice.support.ok
-                      ? 'Live voice is switched off on the server. Text chat still works.'
-                      : (voice.support.reason ?? 'Live voice is not available in this browser.'));
-                    return;
-                  }
-                  if (!voice.support.ok) {
-                    setServiceNotice(voice.support.reason ?? 'Live voice is not available in this browser.');
-                    return;
-                  }
-                  setVoiceMode(true);
-                  setServiceNotice(null);
-                  void voice.startConversation();
+                  void (async () => {
+                    if (!voice.support.ok) {
+                      const reason = voice.support.reason ?? 'Live voice is not available in this browser.';
+                      setServiceNotice(reason);
+                      return;
+                    }
+                    let enabled = voiceEnabled;
+                    if (!enabled) {
+                      try {
+                        const availability = await accountApi.stylistVoiceAvailability();
+                        enabled = Boolean(availability.voiceEnabled);
+                        setVoiceEnabled(enabled);
+                        if (!enabled) {
+                          const reason = typeof availability.label === 'string'
+                            ? availability.label
+                            : 'Live voice is switched off on the server. Text chat still works.';
+                          setServiceNotice(reason);
+                          return;
+                        }
+                      } catch (error) {
+                        const reason = error instanceof AccountApiError
+                          ? error.message
+                          : 'Could not check live voice availability.';
+                        setServiceNotice(reason);
+                        return;
+                      }
+                    }
+                    setVoiceMode(true);
+                    setServiceNotice(null);
+                    await voice.startConversation();
+                  })();
                 }}
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#242326]/10 bg-white hover:bg-[#FAF7F2] text-xs font-medium text-[#242326] transition-colors disabled:opacity-40"
               >
                 <Phone className="w-3.5 h-3.5 text-[#9C6A61]" />
                 Talk to {stylistName}
               </button>
+              {serviceNotice && (
+                <p className="mt-2 text-[11px] text-[#5C585E]" role="status">
+                  {serviceNotice}
+                </p>
+              )}
             </div>
           )}
           <StylistInputBar
