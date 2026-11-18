@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Sql } from '../db.js';
-import { ApiError } from '../errors.js';
+import { ApiError, logEvent } from '../errors.js';
 import { getPreferences, getProfile } from '../domain/profiles.js';
 import { minimiseProfile, resolvePersonaFromProfile } from './context.js';
 import { assertVoiceAllowed, remainingSecondsAvailable } from './voiceGuards.js';
@@ -221,8 +221,31 @@ export async function createVoiceSession(opts: {
 
   if (!openaiResponse.ok) {
     const status = openaiResponse.status;
+    const providerError = (payload.error && typeof payload.error === 'object')
+      ? payload.error as Record<string, unknown>
+      : {};
+    const providerCode = typeof providerError.code === 'string' ? providerError.code : null;
+    const providerType = typeof providerError.type === 'string' ? providerError.type : null;
+    logEvent('voice_session_create_failed', {
+      status,
+      providerCode,
+      providerType,
+      model: config.model,
+    }, 'warn');
+
     if (status === 401 || status === 403) {
       throw new ApiError('voice_auth_failed', 'Voice model access was denied for this API key.', 503);
+    }
+    if (
+      providerCode === 'credit_balance_exhausted'
+      || providerCode === 'insufficient_quota'
+      || providerType === 'insufficient_quota'
+    ) {
+      throw new ApiError(
+        'voice_quota_exhausted',
+        'OpenAI credits are exhausted for this project. Add billing credits, then try Talk to Aria again.',
+        503,
+      );
     }
     if (status === 429) {
       throw new ApiError('voice_provider_rate_limited', 'The voice provider is busy. Try again shortly.', 429);

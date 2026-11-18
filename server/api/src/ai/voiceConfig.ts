@@ -55,9 +55,9 @@ export function loadVoiceConfig(env: NodeJS.ProcessEnv = process.env): VoiceConf
   const apiKey = env.OPENAI_API_KEY?.trim() || null;
   const allowExplicit = env.AI_VOICE_ALLOW_LIVE === 'true';
   const allowLive = allowExplicit && Boolean(apiKey);
-  const delegationModel = env.AI_VOICE_DELEGATION_MODEL?.trim()
-    || env.AI_MODEL?.trim()
-    || null;
+  // Only attach Responses delegation when explicitly configured for voice.
+  // Reusing the text stylist model by default can break Live session minting.
+  const delegationModel = env.AI_VOICE_DELEGATION_MODEL?.trim() || null;
 
   return {
     allowLive,

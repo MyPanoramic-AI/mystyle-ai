@@ -227,3 +227,35 @@ test('appendVoiceTranscripts skips blank turns', () => {
   assert.equal(off.voiceEnabled, false);
   assert.equal(off.tryOn, 'not_connected');
 });
+
+test('createVoiceSession maps exhausted OpenAI credits clearly', async () => {
+  resetVoiceSessionRegistryForTests();
+  const dbApi = await startApi({}, { voiceConfig: voiceConfig() });
+  try {
+    const ada = await session(dbApi.base, 'quota-voice@example.com');
+    await assert.rejects(
+      () => createVoiceSession({
+        db: dbApi.db,
+        userId: ada.body.userId,
+        sdp: 'offer-sdp',
+        config: voiceConfig(),
+        fetchImpl: async () => new Response(JSON.stringify({
+          error: {
+            message: 'You have no credits remaining.',
+            type: 'insufficient_quota',
+            code: 'credit_balance_exhausted',
+          },
+        }), { status: 429, headers: { 'content-type': 'application/json' } }),
+        now: () => dbApi.clock.value,
+      }),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /credits are exhausted/i);
+        return true;
+      },
+    );
+  } finally {
+    resetVoiceSessionRegistryForTests();
+    await dbApi.close();
+  }
+});
