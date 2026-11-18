@@ -162,7 +162,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   return (
     <div className="min-h-screen bg-[#F6F2EC] flex flex-col">
       {/* Onboarding Header */}
-      <header className="sticky top-0 z-40 bg-[#F6F2EC]/90 backdrop-blur-md border-b border-[#242326]/8 py-3 px-4 sm:px-6">
+      <header className="sticky top-0 z-40 bg-[#F6F2EC] border-b border-[#242326]/8 py-3 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
           {/* Back Action */}
           {currentStep > 1 ? (

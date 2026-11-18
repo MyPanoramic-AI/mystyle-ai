@@ -29,7 +29,7 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
 }) => {
   const stylist = resolveStylistPersona(profile);
   return (
-    <div className="bg-white/95 backdrop-blur-md border-b border-[#242326]/10 px-4 sm:px-6 py-3.5 sticky top-14 sm:top-16 z-30 transition-all">
+    <div className="bg-white border-b border-[#242326]/10 px-4 sm:px-6 py-3.5 sticky top-14 sm:top-16 z-30 transition-all">
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
         {/* Left: Back affordance + Stylist info */}
         <div className="flex items-center gap-2 min-w-0">

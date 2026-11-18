@@ -17,6 +17,12 @@
   function markReady() {
     document.documentElement.setAttribute('data-istyleu-boot', 'ready');
     removeRescue();
+    // Nudge Electron/Cursor compositors that can stick on a blank layer.
+    try {
+      document.body.style.transform = 'translateZ(0)';
+      void document.body.offsetHeight;
+      document.body.style.transform = '';
+    } catch (e) {}
   }
 
   window.__istyleuMarkBootReady = markReady;

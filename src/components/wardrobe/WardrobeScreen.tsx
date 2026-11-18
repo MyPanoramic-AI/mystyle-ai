@@ -342,7 +342,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
       )}
 
       {/* Sticky Header */}
-      <div className="bg-white border-b border-[#242326]/8 sticky top-16 z-30 backdrop-blur-md">
+      <div className="bg-white border-b border-[#242326]/8 sticky top-16 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button

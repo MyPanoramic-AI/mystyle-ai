@@ -105,7 +105,7 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
 }) => {
   return (
     <div className="min-h-screen bg-[#F6F2EC] text-[#242326]">
-      <header className="sticky top-0 z-40 bg-[#F6F2EC]/90 backdrop-blur-md border-b border-[#242326]/8">
+      <header className="sticky top-0 z-40 bg-[#F6F2EC] border-b border-[#242326]/8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
           <p className="font-serif text-xl sm:text-2xl tracking-tight">
             IStyleU

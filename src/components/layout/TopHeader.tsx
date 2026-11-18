@@ -53,7 +53,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     };
   }, [usesAccount, currentTab]);
   return (
-    <header className="sticky top-0 z-40 bg-[#F6F2EC]/90 backdrop-blur-md border-b border-[#242326]/8 transition-all">
+    <header className="sticky top-0 z-40 bg-[#F6F2EC] border-b border-[#242326]/8 transition-all">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Zone 1: Brand Wordmark (Single text element in editorial display face) */}
         <button
