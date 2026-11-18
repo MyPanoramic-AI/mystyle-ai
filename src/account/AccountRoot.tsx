@@ -98,9 +98,36 @@ export function AccountRoot() {
   const [authBoot, setAuthBoot] = useState<{ panel: 'register' | 'login' | 'forgot' | 'reset' | 'verify'; token?: string; message?: string }>({ panel: 'login' });
   const [signedOutView, setSignedOutView] = useState<SignedOutView>('landing');
   const generation = useRef(0);
+  const [loadingSlow, setLoadingSlow] = useState(false);
 
-  async function loadSignedIn(nextUserId: string, gen: number): Promise<void> {
-    const [session, rawProfile, preferences] = await Promise.all([accountApi.session(), accountApi.getProfile(), accountApi.getPreferences()]);
+  async function attachSavedLibraries(): Promise<void> {
+    await Promise.all([
+      savedLooksService.useAccount({
+        list: () => accountApi.looks(),
+        save: (sourceKey, title) => accountApi.createLook({ kind: 'inspiration', sourceKey, title }),
+        remove: (id) => accountApi.deleteLook(id),
+      }),
+      savedProductsService.useAccount({
+        list: () => accountApi.savedProducts(),
+        save: (externalProductId) => accountApi.saveProduct({ retailerSource: DEMO_CATALOGUE_SOURCE, externalProductId }),
+        remove: (id) => accountApi.deleteSavedProduct(id),
+      }),
+    ]);
+  }
+
+  async function loadSignedIn(nextUserId: string, gen: number, sessionHint?: { userId: string; email: string; emailVerified?: boolean }): Promise<void> {
+    const [session, rawProfile, preferences] = await Promise.all([
+      sessionHint
+        ? Promise.resolve({
+          userId: sessionHint.userId,
+          email: sessionHint.email,
+          emailVerified: sessionHint.emailVerified === true,
+          csrfToken: '',
+        })
+        : accountApi.session(),
+      accountApi.getProfile(),
+      accountApi.getPreferences(),
+    ]);
     if (gen !== generation.current) return;
     const nextProfile = profileForAccount(fromApiProfile(rawProfile));
     setUserId(nextUserId || session.userId);
@@ -108,32 +135,37 @@ export function AccountRoot() {
     setEmailVerified(session.emailVerified === true);
     setProfile(nextProfile);
     setAiConsentState(preferences.aiPersonalisationConsent === true);
-    await savedLooksService.useAccount({
-      list: () => accountApi.looks(),
-      save: (sourceKey, title) => accountApi.createLook({ kind: 'inspiration', sourceKey, title }),
-      remove: (id) => accountApi.deleteLook(id),
-    });
-    await savedProductsService.useAccount({
-      list: () => accountApi.savedProducts(),
-      save: (externalProductId) => accountApi.saveProduct({ retailerSource: DEMO_CATALOGUE_SOURCE, externalProductId }),
-      remove: (id) => accountApi.deleteSavedProduct(id),
-    });
     setMode('account');
     const stored = inspectBrowserStore(window.localStorage);
     const reviewed = window.sessionStorage.getItem(dismissKey(session.userId)) === '1';
     if (stored && !reviewed) {
       setPreview(stored);
       setPhase('import-review');
-      return;
+    } else {
+      setPreview(null);
+      setPhase('ready');
     }
-    setPreview(null);
-    setPhase('ready');
+    // Library sync must not block leaving the boot screen.
+    void attachSavedLibraries().catch(() => {
+      void savedLooksService.useAccount(null);
+      void savedProductsService.useAccount(null);
+    });
   }
 
   async function restore(): Promise<void> {
     const gen = ++generation.current;
     setPhase('loading');
+    setLoadingSlow(false);
     setFormError(null);
+    const bootTimeout = window.setTimeout(() => {
+      if (generation.current !== gen) return;
+      setLoadingSlow(true);
+    }, 4000);
+    const hardTimeout = window.setTimeout(() => {
+      if (generation.current !== gen) return;
+      setPhase('unavailable');
+      setFormError('Signing in is taking too long. Check your connection and try again.');
+    }, 20000);
     try {
       const ready = await accountApi.ready();
       if (!ready.ok || ready.database !== 'up') throw new AccountApiError('unavailable', 'The account service is unavailable.', 503);
@@ -170,7 +202,11 @@ export function AccountRoot() {
       }
 
       const session = await accountApi.session();
-      await loadSignedIn(session.userId, gen);
+      await loadSignedIn(session.userId, gen, {
+        userId: session.userId,
+        email: session.email,
+        emailVerified: session.emailVerified,
+      });
     } catch (error) {
       if (gen !== generation.current) return;
       if (error instanceof AccountApiError && error.status === 401) {
@@ -184,6 +220,9 @@ export function AccountRoot() {
       }
       setPhase('unavailable');
       setFormError(messageFrom(error));
+    } finally {
+      window.clearTimeout(bootTimeout);
+      window.clearTimeout(hardTimeout);
     }
   }
 
@@ -348,7 +387,32 @@ export function AccountRoot() {
     beauty,
   };
 
-  if (phase === 'loading') return <Status title="Checking your account" body="Looking for a saved session on this computer." />;
+  if (phase === 'loading') {
+    return (
+      <Status
+        title="Checking your account"
+        body={loadingSlow
+          ? 'This is taking longer than usual. You can keep waiting, try again, or browse the demonstration.'
+          : 'Looking for a saved session on this computer.'}
+      >
+        {loadingSlow ? (
+          <>
+            <Button variant="primary" onClick={() => void restore()}>Try again</Button>
+            <Button variant="secondary" onClick={() => {
+              generation.current += 1;
+              void savedLooksService.useAccount(null);
+              void savedProductsService.useAccount(null);
+              setMode('demo');
+              setProfile(profileService.getProfile());
+              setEmail(null);
+              setUserId(null);
+              setPhase('ready');
+            }}>Browse the demonstration</Button>
+          </>
+        ) : null}
+      </Status>
+    );
+  }
   if (phase === 'unavailable') {
     return (
       <Status title="Account service unavailable" body={formError ?? 'The local account service is not running. Demonstration browsing is separate from a saved account.'}>

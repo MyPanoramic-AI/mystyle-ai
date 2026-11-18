@@ -571,6 +571,8 @@ interface RequestOptions {
   body?: unknown;
   csrf?: boolean;
   headers?: Record<string, string>;
+  /** Optional client-side abort for hung boot/network requests. */
+  timeoutMs?: number;
 }
 
 export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeof fetch }): AccountApi {
@@ -590,15 +592,26 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     if (requestOptions.csrf && csrfToken) headers['x-csrf-token'] = csrfToken;
     Object.assign(headers, requestOptions.headers);
     let response: Response;
+    const timeoutMs = requestOptions.timeoutMs;
+    const controller = typeof timeoutMs === 'number' && timeoutMs > 0 && typeof AbortController !== 'undefined'
+      ? new AbortController()
+      : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
       response = await fetchImpl(`${baseUrl}${path}`, {
         method,
         credentials: 'include',
         headers,
         body: requestOptions.body !== undefined ? JSON.stringify(requestOptions.body) : undefined,
+        signal: controller?.signal,
       });
     } catch {
+      if (controller?.signal.aborted) {
+        throw new AccountApiError('network_timeout', 'The account service timed out.', 0);
+      }
       throw new AccountApiError('network_error', 'The account service could not be reached.', 0);
+    } finally {
+      if (timer != null) clearTimeout(timer);
     }
     const text = await response.text();
     let payload: { code?: string; message?: string; csrfToken?: string } = {};
@@ -622,8 +635,8 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
 
   return {
     health: () => request('/api/health'),
-    ready: () => request('/api/ready'),
-    session: async () => remember(await request<SessionResponse>('/api/auth/session')),
+    ready: () => request('/api/ready', { timeoutMs: 12_000 }),
+    session: async () => remember(await request<SessionResponse>('/api/auth/session', { timeoutMs: 12_000 })),
     register: async (email, password) => remember(await request<AuthResult>('/api/auth/register', { method: 'POST', body: { email, password } })),
     login: async (email, password) => remember(await request<AuthResult>('/api/auth/login', { method: 'POST', body: { email, password } })),
     logout: async () => {
