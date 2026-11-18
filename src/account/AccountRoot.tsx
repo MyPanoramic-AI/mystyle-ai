@@ -409,24 +409,21 @@ export function AccountRoot() {
       <Status
         title="Checking your account"
         body={loadingSlow
-          ? 'This is taking longer than usual. You can keep waiting, try again, or browse the demonstration.'
+          ? 'This is taking longer than usual. You can keep waiting, try again, or browse without signing in.'
           : 'Looking for a saved session on this computer.'}
       >
-        {loadingSlow ? (
-          <>
-            <Button variant="primary" onClick={() => void restore()}>Try again</Button>
-            <Button variant="secondary" onClick={() => {
-              generation.current += 1;
-              void savedLooksService.useAccount(null);
-              void savedProductsService.useAccount(null);
-              setMode('demo');
-              setProfile(profileService.getProfile());
-              setEmail(null);
-              setUserId(null);
-              setPhase('ready');
-            }}>Browse the demonstration</Button>
-          </>
-        ) : null}
+        <Button variant="primary" onClick={() => void restore()}>Try again</Button>
+        <Button variant="secondary" onClick={() => {
+          generation.current += 1;
+          markBootReady();
+          void savedLooksService.useAccount(null);
+          void savedProductsService.useAccount(null);
+          setMode('demo');
+          setProfile(profileService.getProfile());
+          setEmail(null);
+          setUserId(null);
+          setPhase('ready');
+        }}>Browse without signing in</Button>
       </Status>
     );
   }
