@@ -1,26 +1,25 @@
 /**
- * CSP-safe boot watchdog (script-src 'self' only — no inline script).
- * Shows a reload/clear overlay if React never marks the boot as ready.
+ * CSP-safe boot watchdog (external file — production script-src is 'self' only).
+ * Injects a simple rescue panel only if React never marks boot ready.
+ * Avoids a permanent max-z-index overlay (breaks paint in Cursor/Electron browsers).
  */
 (function () {
-  var RESCUE_MS = 5000;
-  var opened = false;
+  var RESCUE_MS = 8000;
+  var rescueEl = null;
+
+  function removeRescue() {
+    if (rescueEl && rescueEl.parentNode) {
+      rescueEl.parentNode.removeChild(rescueEl);
+    }
+    rescueEl = null;
+  }
 
   function markReady() {
     document.documentElement.setAttribute('data-istyleu-boot', 'ready');
-    var el = document.getElementById('istyleu-boot-rescue');
-    if (el) el.setAttribute('data-open', '0');
+    removeRescue();
   }
 
   window.__istyleuMarkBootReady = markReady;
-
-  function openRescue() {
-    if (opened) return;
-    if (document.documentElement.getAttribute('data-istyleu-boot') === 'ready') return;
-    opened = true;
-    var el = document.getElementById('istyleu-boot-rescue');
-    if (el) el.setAttribute('data-open', '1');
-  }
 
   function clearSiteDataAndReload() {
     var tasks = [];
@@ -47,36 +46,48 @@
     });
   }
 
-  function enableFonts() {
-    var links = document.querySelectorAll('link[data-istyleu-fonts="1"]');
-    for (var i = 0; i < links.length; i += 1) {
-      links[i].media = 'all';
-    }
-  }
+  function openRescue() {
+    if (document.documentElement.getAttribute('data-istyleu-boot') === 'ready') return;
+    if (rescueEl) return;
 
-  function onReady(fn) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', fn);
-    } else {
-      fn();
-    }
-  }
+    rescueEl = document.createElement('div');
+    rescueEl.id = 'istyleu-boot-rescue';
+    rescueEl.setAttribute('role', 'alertdialog');
+    rescueEl.setAttribute('aria-live', 'assertive');
+    rescueEl.style.cssText = [
+      'position:fixed',
+      'left:0',
+      'top:0',
+      'right:0',
+      'bottom:0',
+      'z-index:10000',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'padding:1rem',
+      'background:#F6F2EC',
+      'color:#242326',
+      'font-family:Georgia,\"Times New Roman\",serif',
+    ].join(';');
 
-  onReady(function () {
-    enableFonts();
+    rescueEl.innerHTML = [
+      '<div style="max-width:28rem;width:100%;background:#fff;border:1px solid rgba(36,35,38,0.1);border-radius:1.5rem;padding:2rem;box-shadow:0 1px 2px rgba(36,35,38,0.06)">',
+      '<div style="font-size:1.5rem">IStyleU</div>',
+      '<h1 style="margin:1.5rem 0 0;font-size:1.75rem">Still checking your account</h1>',
+      '<p style="margin:0.75rem 0 0;font:0.875rem/1.5 system-ui,sans-serif;color:#5C585E">The app has not finished signing you in. Reload, or clear the stuck session and continue.</p>',
+      '<div style="margin-top:1.5rem;display:flex;flex-direction:column;gap:0.75rem">',
+      '<button type="button" id="istyleu-boot-reload" style="appearance:none;border:0;border-radius:999px;padding:0.7rem 1.1rem;font:600 0.875rem system-ui,sans-serif;cursor:pointer;background:#9C6A61;color:#fff">Reload</button>',
+      '<button type="button" id="istyleu-boot-clear" style="appearance:none;border:1px solid rgba(36,35,38,0.12);border-radius:999px;padding:0.7rem 1.1rem;font:600 0.875rem system-ui,sans-serif;cursor:pointer;background:#F6F2EC;color:#242326">Clear session and continue</button>',
+      '</div></div>',
+    ].join('');
+
+    document.body.appendChild(rescueEl);
+
     var reloadBtn = document.getElementById('istyleu-boot-reload');
     var clearBtn = document.getElementById('istyleu-boot-clear');
     if (reloadBtn) reloadBtn.addEventListener('click', function () { window.location.reload(); });
     if (clearBtn) clearBtn.addEventListener('click', clearSiteDataAndReload);
-  });
-
-  try {
-    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-      navigator.serviceWorker.getRegistrations().then(function (regs) {
-        regs.forEach(function (reg) { reg.unregister(); });
-      });
-    }
-  } catch (e) {}
+  }
 
   setTimeout(openRescue, RESCUE_MS);
 })();
