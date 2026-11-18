@@ -118,16 +118,35 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
         </div>
 
         {error && (
-          <p className="text-xs text-[#9C6A61] bg-white/80 border border-[#242326]/10 rounded-xl px-3 py-2 mb-3">
-            {error}
-          </p>
+          <div className="text-xs text-[#5C585E] bg-white border border-[#242326]/10 rounded-xl px-3 py-3 mb-3 space-y-2">
+            <p className="text-[#9C6A61] font-medium">{error}</p>
+            {status === 'error' && (
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={typeof window !== 'undefined' ? window.location.href : 'https://mystyle-ai.onrender.com'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center px-3 py-1.5 rounded-full bg-[#9C6A61] text-white text-[11px] font-semibold"
+                >
+                  Open in Chrome / Edge
+                </a>
+                <button
+                  type="button"
+                  onClick={onBackToText}
+                  className="inline-flex items-center px-3 py-1.5 rounded-full border border-[#242326]/12 bg-[#F6F2EC] text-[11px] font-semibold text-[#242326]"
+                >
+                  Continue in text chat
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="flex items-center justify-center gap-3">
           <button
             type="button"
             onClick={onMuteToggle}
-            disabled={status === 'ending' || status === 'connecting' || status === 'requesting_mic'}
+            disabled={status === 'ending' || status === 'connecting' || status === 'requesting_mic' || status === 'error'}
             className={`w-12 h-12 rounded-full flex items-center justify-center border transition-colors disabled:opacity-40 ${
               muted
                 ? 'bg-[#242326] text-white border-[#242326]'
@@ -144,7 +163,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
             className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-[#9C6A61] hover:bg-[#875851] text-white text-sm font-medium transition-colors"
           >
             <PhoneOff className="w-4 h-4" />
-            End conversation
+            {status === 'error' ? 'Close' : 'End conversation'}
           </button>
         </div>
 

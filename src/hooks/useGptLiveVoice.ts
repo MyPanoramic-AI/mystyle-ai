@@ -45,6 +45,12 @@ export interface UseGptLiveVoiceOptions {
   onError?: (message: string) => void;
 }
 
+function isEmbeddedBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /Electron/i.test(ua) || /Cursor/i.test(ua);
+}
+
 function supportsLiveVoice(): { ok: boolean; reason?: string } {
   if (typeof window === 'undefined') return { ok: false, reason: 'Voice needs a browser.' };
   if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
@@ -59,6 +65,22 @@ function supportsLiveVoice(): { ok: boolean; reason?: string } {
   return { ok: true };
 }
 
+async function requestMicrophone(): Promise<MediaStream> {
+  const attempts: MediaStreamConstraints[] = [
+    { audio: { echoCancellation: true, noiseSuppression: true } },
+    { audio: true },
+  ];
+  let lastError: unknown;
+  for (const constraints of attempts) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Could not access the microphone.');
+}
+
 function friendlyVoiceError(err: unknown): string {
   if (!(err instanceof Error)) return 'Could not start the voice session.';
   const name = 'name' in err ? String((err as DOMException).name) : '';
@@ -68,7 +90,10 @@ function friendlyVoiceError(err: unknown): string {
     || /Requested device not found/i.test(raw)
     || /no audio input/i.test(raw)
   ) {
-    return 'No microphone was found. Open IStyleU in Chrome or Edge on a device with a mic, then allow microphone access.';
+    if (isEmbeddedBrowser()) {
+      return 'This editor browser has no microphone. Open IStyleU in Chrome or Edge on a phone or laptop that has a mic.';
+    }
+    return 'This computer has no usable microphone. Open IStyleU on a phone or laptop with a mic, allow microphone access, then try Talk to Aria again.';
   }
   if (name === 'NotAllowedError' || /Permission denied|not allowed/i.test(raw)) {
     return 'Microphone permission was blocked. Allow the mic for this site, then try Talk to Aria again.';
@@ -313,7 +338,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
         });
       });
 
-      const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const microphone = await requestMicrophone();
       micRef.current = microphone;
       for (const track of microphone.getAudioTracks()) {
         connection.addTrack(track, microphone);
