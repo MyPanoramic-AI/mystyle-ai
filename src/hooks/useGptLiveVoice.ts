@@ -106,6 +106,18 @@ function friendlyVoiceError(err: unknown): string {
 
 function extractTranscript(event: Record<string, unknown>): { role: 'user' | 'assistant'; text: string; final: boolean } | null {
   const type = typeof event.type === 'string' ? event.type : '';
+
+  // GPT-Live WebRTC transcript events use `delta` fragments.
+  if (type === 'session.input_transcript.delta' || type === 'session.output_transcript.delta') {
+    const delta = typeof event.delta === 'string' ? event.delta : '';
+    if (!delta) return null;
+    return {
+      role: type === 'session.input_transcript.delta' ? 'user' : 'assistant',
+      text: delta,
+      final: false,
+    };
+  }
+
   const text = typeof event.transcript === 'string'
     ? event.transcript
     : typeof event.text === 'string'
@@ -124,6 +136,28 @@ function extractTranscript(event: Record<string, unknown>): { role: 'user' | 'as
     return { role: 'assistant', text: text.trim(), final };
   }
   return null;
+}
+
+function ensurePlaybackElement(): HTMLAudioElement {
+  const existing = document.getElementById('istyleu-live-audio') as HTMLAudioElement | null;
+  if (existing) return existing;
+  const audio = document.createElement('audio');
+  audio.id = 'istyleu-live-audio';
+  audio.autoplay = true;
+  audio.setAttribute('playsinline', 'true');
+  audio.setAttribute('webkit-playsinline', 'true');
+  audio.style.display = 'none';
+  document.body.appendChild(audio);
+  return audio;
+}
+
+function sendLiveEvent(channel: RTCDataChannel | null, event: Record<string, unknown>): void {
+  if (!channel || channel.readyState !== 'open') return;
+  try {
+    channel.send(JSON.stringify(event));
+  } catch {
+    // Best-effort control-plane event.
+  }
 }
 
 export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
@@ -255,6 +289,15 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     if (type === 'session.started') {
       readyRef.current = true;
       setStatus('listening');
+      // Nudge Aria to open the conversation immediately after the Live session is ready.
+      sendLiveEvent(eventsRef.current, {
+        type: 'session.instructions.append',
+        event_id: `greet_${Date.now()}`,
+        delegation_id: null,
+        content:
+          'Immediately greet the caller out loud as their IStyleU stylist, ask what occasion they want help with, then pause and listen. Do not stay silent.',
+      });
+      void audioRef.current?.play().catch(() => undefined);
       return;
     }
     if (type === 'session.closed') {
@@ -270,34 +313,57 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       void finalizeClose(sessionIdRef.current, durationSeconds);
       return;
     }
-    if (type.includes('output_audio') || type.includes('response.audio') || type === 'response.created') {
+    if (
+      type === 'session.output_transcript.delta'
+      || type.includes('output_audio')
+      || type.includes('response.audio')
+      || type === 'response.created'
+    ) {
       setStatus('speaking');
+      void audioRef.current?.play().catch(() => undefined);
     }
-    if (type.includes('input_audio') || type === 'input_audio_buffer.speech_started') {
+    if (
+      type === 'session.input_transcript.delta'
+      || type.includes('input_audio')
+      || type === 'input_audio_buffer.speech_started'
+    ) {
       setStatus('listening');
     }
 
     const transcript = extractTranscript(event);
     if (transcript) {
       setTranscripts((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === transcript.role && !last.final) {
-          const updated = [...prev];
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        // Close the previous speaker's open turn when the other person starts talking.
+        if (last && !last.final && last.role !== transcript.role) {
+          const closed = { ...last, final: true };
+          updated[updated.length - 1] = closed;
+          optionsRef.current.onFinalTranscript?.(closed);
+        }
+        const open = updated[updated.length - 1];
+        if (open && open.role === transcript.role && !open.final) {
+          const nextText = type.endsWith('.delta')
+            ? `${open.text}${transcript.text}`
+            : transcript.text;
           updated[updated.length - 1] = {
-            ...last,
-            text: transcript.text,
+            ...open,
+            text: nextText,
             final: transcript.final,
           };
+          if (transcript.final) {
+            optionsRef.current.onFinalTranscript?.(updated[updated.length - 1]);
+          }
           return updated;
         }
         const turn: GptLiveTranscriptTurn = {
-          id: `${transcript.role}-${Date.now()}-${prev.length}`,
+          id: `${transcript.role}-${Date.now()}-${updated.length}`,
           role: transcript.role,
           text: transcript.text,
           final: transcript.final,
         };
         if (transcript.final) optionsRef.current.onFinalTranscript?.(turn);
-        return [...prev, turn];
+        return [...updated, turn];
       });
     }
   }, [bumpActivity, finalizeClose]);
@@ -326,17 +392,23 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       const connection = new RTCPeerConnection();
       peerRef.current = connection;
 
-      if (!audioRef.current) {
-        audioRef.current = new Audio();
-        audioRef.current.autoplay = true;
-      }
+      const playback = ensurePlaybackElement();
+      audioRef.current = playback;
+      playback.muted = false;
+      playback.volume = 1;
+      // Unlock audio on the same user gesture that started the call.
+      void playback.play().catch(() => undefined);
+
       connection.addEventListener('track', (event) => {
-        if (!audioRef.current) return;
-        audioRef.current.srcObject = new MediaStream([event.track]);
-        void audioRef.current.play().catch(() => {
-          setError('Tap to enable audio if the browser blocked playback.');
+        const stream = event.streams[0] ?? new MediaStream([event.track]);
+        playback.srcObject = stream;
+        void playback.play().catch(() => {
+          setError('Tap anywhere in the voice panel if you cannot hear Aria — the browser may have blocked audio.');
         });
       });
+
+      // Ensure the offer negotiates receive as well as send for Aria's voice track.
+      connection.addTransceiver('audio', { direction: 'sendrecv' });
 
       const microphone = await requestMicrophone();
       micRef.current = microphone;
@@ -347,6 +419,18 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       setStatus('connecting');
       const events = connection.createDataChannel('oai-events');
       eventsRef.current = events;
+      events.addEventListener('open', () => {
+        // Channel may open after session.started; re-send greeting nudge if still silent.
+        if (readyRef.current) {
+          sendLiveEvent(events, {
+            type: 'session.instructions.append',
+            event_id: `greet_open_${Date.now()}`,
+            delegation_id: null,
+            content:
+              'If you have not greeted yet, greet the caller now as their IStyleU stylist, ask what they want to style, then pause and listen.',
+          });
+        }
+      });
       events.addEventListener('message', ({ data }) => handleEvent(data));
       events.addEventListener('close', () => {
         if (eventsRef.current !== events) return;

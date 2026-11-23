@@ -59,14 +59,21 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   onEnd,
   onBackToText,
 }) => {
-  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [transcriptOpen, setTranscriptOpen] = useState(true);
   const speaking = status === 'speaking';
   const listening = status === 'listening' || status === 'connected';
+  const visibleTurns = transcripts.filter((t) => t.final || t.text.trim());
 
   const bars = useMemo(() => Array.from({ length: 7 }, (_, i) => i), []);
 
   return (
-    <div className="border-t border-[#242326]/10 bg-gradient-to-b from-[#FAF7F2] to-[#F6F2EC] px-4 sm:px-6 py-4">
+    <div
+      className="border-t border-[#242326]/10 bg-gradient-to-b from-[#FAF7F2] to-[#F6F2EC] px-4 sm:px-6 py-4"
+      onClick={() => {
+        const audio = document.getElementById('istyleu-live-audio') as HTMLAudioElement | null;
+        void audio?.play().catch(() => undefined);
+      }}
+    >
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="min-w-0">
@@ -89,6 +96,12 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
             Back to text
           </button>
         </div>
+
+        {listening && !speaking && visibleTurns.length === 0 && elapsedSeconds >= 3 && (
+          <p className="text-[11px] text-[#5C585E] mb-3">
+            Speak naturally — {stylistName} should greet you and answer after you pause. If you hear nothing, tap this panel once to enable sound.
+          </p>
+        )}
 
         {/* Waveform */}
         <div
@@ -173,15 +186,19 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
             onClick={() => setTranscriptOpen((v) => !v)}
             className="w-full flex items-center justify-between text-xs font-medium text-[#5C585E] hover:text-[#242326] py-1"
           >
-            <span>Transcript ({transcripts.filter((t) => t.final || t.text).length})</span>
+            <span>Transcript ({visibleTurns.length})</span>
             {transcriptOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
           {transcriptOpen && (
             <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-[#242326]/10 bg-white/90 px-3 py-2 space-y-2">
-              {transcripts.length === 0 && (
-                <p className="text-[11px] text-[#5C585E]">Spoken turns will appear here.</p>
+              {visibleTurns.length === 0 && (
+                <p className="text-[11px] text-[#5C585E]">
+                  {listening || speaking
+                    ? `Waiting for ${stylistName} and your spoken turns…`
+                    : 'Spoken turns will appear here.'}
+                </p>
               )}
-              {transcripts.map((turn) => (
+              {visibleTurns.map((turn) => (
                 <p key={turn.id} className={`text-[11px] leading-relaxed ${turn.role === 'user' ? 'text-[#242326]' : 'text-[#5C585E]'}`}>
                   <span className="font-semibold">{turn.role === 'user' ? 'You' : stylistName}: </span>
                   {turn.text}

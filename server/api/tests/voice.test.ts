@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { loadVoiceConfig, voiceServiceReady, estimateVoiceSessionUsd } from '../src/ai/voiceConfig.js';
-import { buildVoiceLiveInstructions, buildVoiceDelegationInstructions } from '../src/ai/voicePrompt.js';
+import {
+  buildVoiceLiveInstructions,
+  buildVoiceDelegationInstructions,
+  buildVoiceGreetingDeveloperMessage,
+} from '../src/ai/voicePrompt.js';
 import {
   closeVoiceSession,
   createVoiceSession,
@@ -52,7 +56,9 @@ test('voice instructions reuse stylist personality without inventing shops', () 
   });
   assert.match(prompt, /Nova/);
   assert.match(prompt, /efficient|practical|Clear/i);
-  assert.match(prompt, /not connected/i);
+  assert.match(prompt, /not connected|not_connected/i);
+  assert.match(prompt, /Backchannel policy/i);
+  assert.match(prompt, /real spoken conversation/i);
   assert.doesNotMatch(prompt, /responseText/);
   assert.match(buildVoiceDelegationInstructions({
     name: 'Nova',
@@ -61,6 +67,13 @@ test('voice instructions reuse stylist personality without inventing shops', () 
     voice: 'direct-practical',
     answerLength: 'short',
   }), /not_connected/);
+  assert.match(buildVoiceGreetingDeveloperMessage({
+    name: 'Nova',
+    gender: 'woman',
+    ageVibe: 'thirties',
+    voice: 'direct-practical',
+    answerLength: 'short',
+  }), /Greet the caller now/i);
 });
 
 test('voice availability and session minting stay authenticated and server-keyed', async () => {
@@ -112,6 +125,10 @@ test('voice availability and session minting stay authenticated and server-keyed
     assert.equal(postedSession.model, 'gpt-live-1');
     assert.equal(postedTransport.type, 'webrtc');
     assert.ok(String(postedSession.instructions).includes('IStyleU'));
+    const seeded = postedSession.input as Array<{ role?: string; content?: Array<{ text?: string }> }> | undefined;
+    assert.ok(Array.isArray(seeded) && seeded[0]?.role === 'developer');
+    assert.match(String(seeded?.[0]?.content?.[0]?.text ?? ''), /Greet the caller now/i);
+    assert.equal((postedSession.wake_policy as { type?: string } | undefined)?.type, 'speech');
     // API key must not appear in the client response
     assert.equal(JSON.stringify(minted).includes('test-key'), false);
 

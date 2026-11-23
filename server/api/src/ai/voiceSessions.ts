@@ -11,7 +11,11 @@ import {
   voiceServiceReady,
   type VoiceConfig,
 } from './voiceConfig.js';
-import { buildVoiceDelegationInstructions, buildVoiceLiveInstructions } from './voicePrompt.js';
+import {
+  buildVoiceDelegationInstructions,
+  buildVoiceGreetingDeveloperMessage,
+  buildVoiceLiveInstructions,
+} from './voicePrompt.js';
 
 const GPT_LIVE_MODEL_LABEL = 'gpt-live-1';
 
@@ -170,6 +174,24 @@ export async function createVoiceSession(opts: {
     instructions,
     audio: {
       output: { voice: audioVoice },
+    },
+    // Seed a developer greeting so Aria opens the conversation instead of waiting silently.
+    input: [
+      {
+        type: 'message',
+        role: 'developer',
+        content: [
+          {
+            type: 'input_text',
+            text: buildVoiceGreetingDeveloperMessage(persona),
+          },
+        ],
+      },
+    ],
+    // Slightly easier first wake so quiet mics still start a turn.
+    wake_policy: {
+      type: 'speech',
+      vad_threshold: 0.35,
     },
   };
 
