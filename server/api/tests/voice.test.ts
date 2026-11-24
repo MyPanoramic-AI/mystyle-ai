@@ -58,7 +58,7 @@ test('voice instructions reuse stylist personality without inventing shops', () 
   assert.match(prompt, /efficient|practical|Clear/i);
   assert.match(prompt, /not connected|not_connected/i);
   assert.match(prompt, /Backchannel policy/i);
-  assert.match(prompt, /real spoken conversation/i);
+  assert.match(prompt, /continuous spoken conversation|must answer out loud/i);
   assert.doesNotMatch(prompt, /responseText/);
   assert.match(buildVoiceDelegationInstructions({
     name: 'Nova',

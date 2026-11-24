@@ -106,9 +106,11 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
               <Volume2 className="w-3.5 h-3.5 text-[#9C6A61]" />
               Play {stylistName}&apos;s voice
             </button>
-            {listening && !speaking && visibleTurns.length === 0 && elapsedSeconds >= 2 && (
+            {listening && !speaking && (
               <p className="text-[11px] text-[#5C585E]">
-                {stylistName} should greet you first. Speak after she finishes, then pause so she can reply.
+                {visibleTurns.some((t) => t.role === 'user')
+                  ? `Pause for a moment after you speak — ${stylistName} will answer out loud.`
+                  : `${stylistName} should greet you first. Speak after she finishes, then pause so she can reply. Headphones help.`}
               </p>
             )}
           </div>

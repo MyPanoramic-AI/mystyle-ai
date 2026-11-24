@@ -185,20 +185,52 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const startingRef = useRef(false);
   const limitsRef = useRef<GptLiveSessionLimits | null>(null);
   const endRef = useRef<(reason?: string) => Promise<void>>(async () => undefined);
+  const replyNudgeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastReplyNudgeAtRef = useRef(0);
+  const awaitingUserReplyRef = useRef(false);
+  const assistantSpeakingRef = useRef(false);
 
   const optionsRef = useRef(options);
   optionsRef.current = options;
+
+  const clearReplyNudge = useCallback(() => {
+    if (replyNudgeTimeoutRef.current) clearTimeout(replyNudgeTimeoutRef.current);
+    replyNudgeTimeoutRef.current = null;
+  }, []);
+
+  const scheduleReplyNudge = useCallback(() => {
+    clearReplyNudge();
+    awaitingUserReplyRef.current = true;
+    replyNudgeTimeoutRef.current = setTimeout(() => {
+      replyNudgeTimeoutRef.current = null;
+      if (!awaitingUserReplyRef.current || assistantSpeakingRef.current) return;
+      if (!readyRef.current || !eventsRef.current) return;
+      const now = Date.now();
+      if (now - lastReplyNudgeAtRef.current < 2500) return;
+      lastReplyNudgeAtRef.current = now;
+      awaitingUserReplyRef.current = false;
+      // GPT-Live should answer on its own; nudge if a user turn stalls without speech back.
+      sendLiveEvent(eventsRef.current, {
+        type: 'session.instructions.append',
+        event_id: `reply_now_${now}`,
+        delegation_id: null,
+        content:
+          'The caller has finished speaking. Reply out loud now with concrete styling advice based on what they just said. Do not stay silent. Ask one short follow-up only if needed.',
+      });
+    }, 1600);
+  }, [clearReplyNudge]);
 
   const clearTimers = useCallback(() => {
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     if (maxTimeoutRef.current) clearTimeout(maxTimeoutRef.current);
     if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
     if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current);
+    clearReplyNudge();
     closeTimeoutRef.current = null;
     maxTimeoutRef.current = null;
     inactivityTimeoutRef.current = null;
     elapsedIntervalRef.current = null;
-  }, []);
+  }, [clearReplyNudge]);
 
   const hardCleanup = useCallback(() => {
     clearTimers();
@@ -215,6 +247,9 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     readyRef.current = false;
     startingRef.current = false;
     sessionIdRef.current = null;
+    awaitingUserReplyRef.current = false;
+    assistantSpeakingRef.current = false;
+    lastReplyNudgeAtRef.current = 0;
     setSessionId(null);
     setMuted(false);
   }, [clearTimers]);
@@ -300,20 +335,13 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     if (type === 'session.started') {
       readyRef.current = true;
       setStatus('listening');
-      // Force a spoken opening turn, then keep listening for the caller.
+      // One spoken opening only — avoid stacking appends that can stall later turns.
       sendLiveEvent(eventsRef.current, {
         type: 'session.commentary.append',
         event_id: `greet_say_${Date.now()}`,
         delegation_id: null,
         content:
           'Hello — I am your IStyleU personal stylist. What occasion or outfit can I help you with today?',
-      });
-      sendLiveEvent(eventsRef.current, {
-        type: 'session.instructions.append',
-        event_id: `greet_listen_${Date.now()}`,
-        delegation_id: null,
-        content:
-          'After greeting, pause and listen. When the caller finishes speaking, reply out loud with useful styling advice. Never stay silent after they ask a question.',
       });
       void audioRef.current?.play().catch(() => undefined);
       return;
@@ -337,6 +365,9 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       || type.includes('response.audio')
       || type === 'response.created'
     ) {
+      assistantSpeakingRef.current = true;
+      awaitingUserReplyRef.current = false;
+      clearReplyNudge();
       setStatus('speaking');
       void audioRef.current?.play().catch(() => undefined);
     }
@@ -345,7 +376,11 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       || type.includes('input_audio')
       || type === 'input_audio_buffer.speech_started'
     ) {
+      assistantSpeakingRef.current = false;
       setStatus('listening');
+      if (type === 'session.input_transcript.delta') {
+        scheduleReplyNudge();
+      }
     }
 
     const transcript = extractTranscript(event);
@@ -384,7 +419,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
         return [...updated, turn];
       });
     }
-  }, [bumpActivity, finalizeClose]);
+  }, [bumpActivity, clearReplyNudge, finalizeClose, scheduleReplyNudge]);
 
   const startConversation = useCallback(async () => {
     if (startingRef.current || readyRef.current || status === 'connecting' || status === 'connected' || status === 'listening' || status === 'speaking') {
@@ -442,16 +477,6 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       // Create the event channel BEFORE the SDP offer (required by GPT-Live).
       const events = connection.createDataChannel('oai-events');
       eventsRef.current = events;
-      events.addEventListener('open', () => {
-        if (!readyRef.current) return;
-        sendLiveEvent(events, {
-          type: 'session.commentary.append',
-          event_id: `greet_open_${Date.now()}`,
-          delegation_id: null,
-          content:
-            'Hello — I am your IStyleU personal stylist. What would you like to style today?',
-        });
-      });
       events.addEventListener('message', ({ data }) => handleEvent(data));
       events.addEventListener('close', () => {
         if (eventsRef.current !== events) return;
