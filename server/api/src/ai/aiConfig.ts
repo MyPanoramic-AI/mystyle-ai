@@ -57,7 +57,8 @@ export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
     outputUsdPerMillion: numberOrNull(env.AI_OUTPUT_USD_PER_MILLION),
     cachedInputUsdPerMillion: numberOrNull(env.AI_CACHED_INPUT_USD_PER_MILLION),
     lookImageAllowLive,
-    lookImageModel: env.AI_LOOK_IMAGE_MODEL?.trim() || 'gpt-image-1',
+    // gpt-image-1 was shut down; prefer a current GPT Image model.
+    lookImageModel: env.AI_LOOK_IMAGE_MODEL?.trim() || 'gpt-image-1.5',
     lookImageQuality,
     lookImageTimeoutMs: numberOrNull(env.AI_LOOK_IMAGE_TIMEOUT_MS) ?? 90_000,
     lookImageUsd: numberOrNull(env.AI_LOOK_IMAGE_USD) ?? 0.04,

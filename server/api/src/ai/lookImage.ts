@@ -74,28 +74,44 @@ export async function generateLookImage(input: {
   const timer = setTimeout(() => controller.abort(), input.config.lookImageTimeoutMs);
 
   try {
-    let response: Response;
-    if (refs.length) {
-      const form = new FormData();
-      form.set('model', model);
-      form.set('prompt', input.prompt.slice(0, 3200));
-      form.set('size', '1024x1536');
-      form.set('quality', input.config.lookImageQuality);
-      form.set('output_format', 'png');
-      form.set('input_fidelity', 'high');
-      for (const [index, image] of refs.entries()) {
-        const bytes = Buffer.from(image.base64, 'base64');
-        const blob = new Blob([Uint8Array.from(bytes)], { type: image.mimeType || 'image/png' });
-        form.append('image', blob, `reference-${index}.${extensionFor(image.mimeType || 'image/png')}`);
+    const parsePayload = async (response: Response): Promise<LookImageResult> => {
+      if (response.status === 401 || response.status === 403) {
+        throw Object.assign(new Error('provider_auth'), { code: 'provider_auth' });
       }
-      response = await fetchImpl('https://api.openai.com/v1/images/edits', {
-        method: 'POST',
-        headers: { authorization: `Bearer ${apiKey}` },
-        body: form,
-        signal: controller.signal,
-      });
-    } else {
-      response = await fetchImpl('https://api.openai.com/v1/images/generations', {
+      if (response.status === 429) {
+        throw Object.assign(new Error('provider_rate_limit'), { code: 'provider_rate_limit' });
+      }
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        logEvent('look_image_provider_error', { status: response.status, detail: detail.slice(0, 240) }, 'warn');
+        throw Object.assign(new Error('look_image_failed'), {
+          code: 'look_image_failed',
+          status: response.status,
+          detail,
+        });
+      }
+      const payload = await response.json() as {
+        data?: { b64_json?: string }[];
+        output_format?: string;
+        usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
+      };
+      const b64 = payload.data?.[0]?.b64_json;
+      if (!b64) throw new ApiError('look_image_failed', 'The stylist image response was empty.', 502);
+      return {
+        bytes: Buffer.from(b64, 'base64'),
+        contentType: contentTypeFromFormat(payload.output_format),
+        model,
+        durationMs: Date.now() - started,
+        usage: {
+          inputTokens: payload.usage?.input_tokens ?? null,
+          outputTokens: payload.usage?.output_tokens ?? null,
+          totalTokens: payload.usage?.total_tokens ?? null,
+        },
+      };
+    };
+
+    const generateWithoutRefs = async (): Promise<LookImageResult> => {
+      const response = await fetchImpl('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
           authorization: `Bearer ${apiKey}`,
@@ -110,38 +126,51 @@ export async function generateLookImage(input: {
         }),
         signal: controller.signal,
       });
+      return parsePayload(response);
+    };
+
+    if (!refs.length) {
+      return await generateWithoutRefs();
     }
 
-    if (response.status === 401 || response.status === 403) {
-      throw Object.assign(new Error('provider_auth'), { code: 'provider_auth' });
+    // GPT Image edits require array syntax: image[]= for one or more references.
+    const form = new FormData();
+    form.set('model', model);
+    form.set('prompt', input.prompt.slice(0, 3200));
+    form.set('size', '1024x1536');
+    form.set('quality', input.config.lookImageQuality);
+    form.set('output_format', 'png');
+    form.set('input_fidelity', 'high');
+    for (const [index, image] of refs.entries()) {
+      const bytes = Buffer.from(image.base64, 'base64');
+      const blob = new Blob([Uint8Array.from(bytes)], { type: image.mimeType || 'image/png' });
+      form.append('image[]', blob, `reference-${index}.${extensionFor(image.mimeType || 'image/png')}`);
     }
-    if (response.status === 429) {
-      throw Object.assign(new Error('provider_rate_limit'), { code: 'provider_rate_limit' });
+    try {
+      const response = await fetchImpl('https://api.openai.com/v1/images/edits', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${apiKey}` },
+        body: form,
+        signal: controller.signal,
+      });
+      return await parsePayload(response);
+    } catch (error) {
+      // If reference edits fail (bad form, retired model quirks), fall back to text-only generation
+      // so voice look requests still return a picture.
+      const detail = error instanceof Error && 'detail' in error
+        ? String((error as { detail?: string }).detail ?? '')
+        : '';
+      const code = error instanceof Error && 'code' in error ? String((error as { code?: string }).code) : '';
+      if (code === 'provider_auth' || code === 'provider_rate_limit') throw error;
+      logEvent('look_image_edit_fallback', { code, detail: detail.slice(0, 160) }, 'warn');
+      return await generateWithoutRefs();
     }
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      logEvent('look_image_provider_error', { status: response.status, detail: detail.slice(0, 200) }, 'warn');
-      throw new ApiError('look_image_failed', 'The stylist could not generate that look image.', 502);
-    }
-
-    const payload = await response.json() as {
-      data?: { b64_json?: string }[];
-      output_format?: string;
-      usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
-    };
-    const b64 = payload.data?.[0]?.b64_json;
-    if (!b64) throw new ApiError('look_image_failed', 'The stylist image response was empty.', 502);
-    return {
-      bytes: Buffer.from(b64, 'base64'),
-      contentType: contentTypeFromFormat(payload.output_format),
-      model,
-      durationMs: Date.now() - started,
-      usage: {
-        inputTokens: payload.usage?.input_tokens ?? null,
-        outputTokens: payload.usage?.output_tokens ?? null,
-        totalTokens: payload.usage?.total_tokens ?? null,
-      },
-    };
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    const code = error instanceof Error && 'code' in error ? String((error as { code?: string }).code) : 'look_image_failed';
+    if (code === 'provider_auth') throw new ApiError('look_image_failed', 'Look visualization access was denied for this API key.', 503);
+    if (code === 'provider_rate_limit') throw new ApiError('ai_provider_rate_limited', 'The stylist image service is busy. Try again shortly.', 429);
+    throw new ApiError('look_image_failed', 'The stylist could not generate that look image.', 502);
   } finally {
     clearTimeout(timer);
   }

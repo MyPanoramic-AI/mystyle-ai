@@ -75,7 +75,7 @@ services:
       - key: AI_LOOK_IMAGE_ALLOW_LIVE
         value: "true"
       - key: AI_LOOK_IMAGE_MODEL
-        value: gpt-image-1
+        value: gpt-image-1.5
       - key: AI_LOOK_IMAGE_QUALITY
         value: low
       - key: AI_LOOK_IMAGE_TIMEOUT_MS
