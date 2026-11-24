@@ -15,6 +15,7 @@ interface StylistLiveVoicePanelProps {
   elapsedSeconds: number;
   maxSessionSeconds: number | null;
   transcripts: GptLiveTranscriptTurn[];
+  hearingYou?: boolean;
   onMuteToggle: () => void;
   onPlayAudio: () => void;
   onEnd: () => void;
@@ -56,6 +57,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   elapsedSeconds,
   maxSessionSeconds,
   transcripts,
+  hearingYou = false,
   onMuteToggle,
   onPlayAudio,
   onEnd,
@@ -65,6 +67,14 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   const speaking = status === 'speaking';
   const listening = status === 'listening' || status === 'connected';
   const visibleTurns = transcripts.filter((t) => t.final || t.text.trim());
+  const hasUserTurn = visibleTurns.some((t) => t.role === 'user');
+  const liveHint = speaking
+    ? `${stylistName} is answering…`
+    : hearingYou
+      ? 'Hearing you… pause when you finish and she will reply.'
+      : hasUserTurn
+        ? `Pause for a moment after you speak — ${stylistName} will answer out loud.`
+        : `${stylistName} should greet you first. Speak after she finishes, then pause so she can reply. Headphones help.`;
 
   const bars = useMemo(() => Array.from({ length: 7 }, (_, i) => i), []);
 
@@ -75,8 +85,8 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
           <div className="min-w-0">
             <p className="font-serif text-base text-[#242326] truncate">{stylistName}</p>
             <p className="text-[11px] text-[#5C585E] flex items-center gap-1.5 mt-0.5">
-              <Radio className={`w-3 h-3 ${speaking || listening ? 'text-emerald-600' : 'text-[#9C6A61]'}`} />
-              {statusLabel(status, stylistName)}
+              <Radio className={`w-3 h-3 ${speaking || listening || hearingYou ? 'text-emerald-600' : 'text-[#9C6A61]'}`} />
+              {hearingYou && !speaking ? 'Hearing you…' : statusLabel(status, stylistName)}
               <span className="text-[#242326]/30">·</span>
               <span className="tabular-nums">
                 {formatSeconds(elapsedSeconds)}
@@ -106,12 +116,8 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
               <Volume2 className="w-3.5 h-3.5 text-[#9C6A61]" />
               Play {stylistName}&apos;s voice
             </button>
-            {listening && !speaking && (
-              <p className="text-[11px] text-[#5C585E]">
-                {visibleTurns.some((t) => t.role === 'user')
-                  ? `Pause for a moment after you speak — ${stylistName} will answer out loud.`
-                  : `${stylistName} should greet you first. Speak after she finishes, then pause so she can reply. Headphones help.`}
-              </p>
+            {(listening || speaking) && (
+              <p className="text-[11px] text-[#5C585E]">{liveHint}</p>
             )}
           </div>
         )}

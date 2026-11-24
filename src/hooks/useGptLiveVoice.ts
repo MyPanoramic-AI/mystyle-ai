@@ -45,6 +45,13 @@ export interface UseGptLiveVoiceOptions {
   onError?: (message: string) => void;
 }
 
+const SPEECH_ENERGY_THRESHOLD = 0.02;
+const SPEECH_END_SILENCE_MS = 1500;
+const ASSISTANT_DONE_SILENCE_MS = 1200;
+const REPLY_NUDGE_DEBOUNCE_MS = 2500;
+const FORCE_REPLY_INSTRUCTION =
+  'Immediately reply out loud to what the caller just said with concrete styling advice. Do not stay silent. Ask one short follow-up only if needed.';
+
 function isEmbeddedBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
@@ -160,6 +167,15 @@ function sendLiveEvent(channel: RTCDataChannel | null, event: Record<string, unk
   }
 }
 
+function rmsFromTimeDomain(data: Uint8Array): number {
+  let sum = 0;
+  for (let i = 0; i < data.length; i += 1) {
+    const centered = (data[i]! - 128) / 128;
+    sum += centered * centered;
+  }
+  return Math.sqrt(sum / Math.max(data.length, 1));
+}
+
 export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const [status, setStatus] = useState<GptLiveStatus>('idle');
   const [muted, setMuted] = useState(false);
@@ -168,6 +184,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const [transcripts, setTranscripts] = useState<GptLiveTranscriptTurn[]>([]);
   const [limits, setLimits] = useState<GptLiveSessionLimits | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [hearingYou, setHearingYou] = useState(false);
 
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const eventsRef = useRef<RTCDataChannel | null>(null);
@@ -186,9 +203,16 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const limitsRef = useRef<GptLiveSessionLimits | null>(null);
   const endRef = useRef<(reason?: string) => Promise<void>>(async () => undefined);
   const replyNudgeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const assistantDoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastReplyNudgeAtRef = useRef(0);
   const awaitingUserReplyRef = useRef(false);
   const assistantSpeakingRef = useRef(false);
+  const mutedRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const speechMonitorRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const localSpeechActiveRef = useRef(false);
+  const hearingYouRef = useRef(false);
 
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -198,27 +222,118 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     replyNudgeTimeoutRef.current = null;
   }, []);
 
+  const clearAssistantDoneTimer = useCallback(() => {
+    if (assistantDoneTimeoutRef.current) clearTimeout(assistantDoneTimeoutRef.current);
+    assistantDoneTimeoutRef.current = null;
+  }, []);
+
+  const stopSpeechMonitor = useCallback(() => {
+    if (speechMonitorRef.current) clearInterval(speechMonitorRef.current);
+    speechMonitorRef.current = null;
+    analyserRef.current = null;
+    const ctx = audioContextRef.current;
+    audioContextRef.current = null;
+    if (ctx) {
+      void ctx.close().catch(() => undefined);
+    }
+    localSpeechActiveRef.current = false;
+    hearingYouRef.current = false;
+    setHearingYou(false);
+  }, []);
+
+  const sendForceReply = useCallback(() => {
+    if (!readyRef.current || !eventsRef.current) return;
+    if (assistantSpeakingRef.current) return;
+    const now = Date.now();
+    if (now - lastReplyNudgeAtRef.current < REPLY_NUDGE_DEBOUNCE_MS) return;
+    lastReplyNudgeAtRef.current = now;
+    awaitingUserReplyRef.current = false;
+    hearingYouRef.current = false;
+    setHearingYou(false);
+    sendLiveEvent(eventsRef.current, {
+      type: 'session.instructions.append',
+      event_id: `reply_now_${now}`,
+      delegation_id: null,
+      content: FORCE_REPLY_INSTRUCTION,
+    });
+  }, []);
+
   const scheduleReplyNudge = useCallback(() => {
     clearReplyNudge();
     awaitingUserReplyRef.current = true;
     replyNudgeTimeoutRef.current = setTimeout(() => {
       replyNudgeTimeoutRef.current = null;
       if (!awaitingUserReplyRef.current || assistantSpeakingRef.current) return;
-      if (!readyRef.current || !eventsRef.current) return;
-      const now = Date.now();
-      if (now - lastReplyNudgeAtRef.current < 2500) return;
-      lastReplyNudgeAtRef.current = now;
-      awaitingUserReplyRef.current = false;
-      // GPT-Live should answer on its own; nudge if a user turn stalls without speech back.
-      sendLiveEvent(eventsRef.current, {
-        type: 'session.instructions.append',
-        event_id: `reply_now_${now}`,
-        delegation_id: null,
-        content:
-          'The caller has finished speaking. Reply out loud now with concrete styling advice based on what they just said. Do not stay silent. Ask one short follow-up only if needed.',
-      });
-    }, 1600);
-  }, [clearReplyNudge]);
+      sendForceReply();
+    }, SPEECH_END_SILENCE_MS);
+  }, [clearReplyNudge, sendForceReply]);
+
+  const markAssistantSpeaking = useCallback(() => {
+    assistantSpeakingRef.current = true;
+    awaitingUserReplyRef.current = false;
+    clearReplyNudge();
+    clearAssistantDoneTimer();
+    setHearingYou(false);
+    hearingYouRef.current = false;
+    localSpeechActiveRef.current = false;
+    setStatus('speaking');
+    void audioRef.current?.play().catch(() => undefined);
+    assistantDoneTimeoutRef.current = setTimeout(() => {
+      assistantDoneTimeoutRef.current = null;
+      assistantSpeakingRef.current = false;
+      setStatus((prev) => (prev === 'speaking' ? 'listening' : prev));
+    }, ASSISTANT_DONE_SILENCE_MS);
+  }, [clearAssistantDoneTimer, clearReplyNudge]);
+
+  const noteCallerSpeech = useCallback(() => {
+    if (assistantSpeakingRef.current || mutedRef.current) return;
+    if (!hearingYouRef.current) {
+      hearingYouRef.current = true;
+      setHearingYou(true);
+    }
+    setStatus('listening');
+    scheduleReplyNudge();
+  }, [scheduleReplyNudge]);
+
+  const startSpeechMonitor = useCallback((stream: MediaStream) => {
+    stopSpeechMonitor();
+    if (typeof AudioContext === 'undefined' && typeof (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext === 'undefined') {
+      return;
+    }
+    try {
+      const Ctx = window.AudioContext
+        ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new Ctx();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+      void ctx.resume().catch(() => undefined);
+
+      const samples = new Uint8Array(analyser.fftSize);
+      speechMonitorRef.current = setInterval(() => {
+        if (!analyserRef.current || mutedRef.current || !readyRef.current) return;
+        if (assistantSpeakingRef.current) {
+          localSpeechActiveRef.current = false;
+          return;
+        }
+        analyserRef.current.getByteTimeDomainData(samples);
+        const energy = rmsFromTimeDomain(samples);
+        if (energy >= SPEECH_ENERGY_THRESHOLD) {
+          localSpeechActiveRef.current = true;
+          noteCallerSpeech();
+        } else if (localSpeechActiveRef.current) {
+          // Still in a speech turn; silence timer is owned by scheduleReplyNudge.
+          scheduleReplyNudge();
+          localSpeechActiveRef.current = false;
+        }
+      }, 100);
+    } catch {
+      // Local energy detection is a fallback; Live transcripts may still drive nudges.
+    }
+  }, [noteCallerSpeech, scheduleReplyNudge, stopSpeechMonitor]);
 
   const clearTimers = useCallback(() => {
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
@@ -226,14 +341,16 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
     if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current);
     clearReplyNudge();
+    clearAssistantDoneTimer();
     closeTimeoutRef.current = null;
     maxTimeoutRef.current = null;
     inactivityTimeoutRef.current = null;
     elapsedIntervalRef.current = null;
-  }, [clearReplyNudge]);
+  }, [clearAssistantDoneTimer, clearReplyNudge]);
 
   const hardCleanup = useCallback(() => {
     clearTimers();
+    stopSpeechMonitor();
     micRef.current?.getTracks().forEach((track) => track.stop());
     micRef.current = null;
     const channel = eventsRef.current;
@@ -252,7 +369,8 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     lastReplyNudgeAtRef.current = 0;
     setSessionId(null);
     setMuted(false);
-  }, [clearTimers]);
+    mutedRef.current = false;
+  }, [clearTimers, stopSpeechMonitor]);
 
   const bumpActivity = useCallback(() => {
     const inactivity = limitsRef.current?.inactivitySeconds ?? 120;
@@ -335,14 +453,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     if (type === 'session.started') {
       readyRef.current = true;
       setStatus('listening');
-      // One spoken opening only — avoid stacking appends that can stall later turns.
-      sendLiveEvent(eventsRef.current, {
-        type: 'session.commentary.append',
-        event_id: `greet_say_${Date.now()}`,
-        delegation_id: null,
-        content:
-          'Hello — I am your IStyleU personal stylist. What occasion or outfit can I help you with today?',
-      });
+      // Greeting comes from the server session.input developer seed only.
       void audioRef.current?.play().catch(() => undefined);
       return;
     }
@@ -365,11 +476,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       || type.includes('response.audio')
       || type === 'response.created'
     ) {
-      assistantSpeakingRef.current = true;
-      awaitingUserReplyRef.current = false;
-      clearReplyNudge();
-      setStatus('speaking');
-      void audioRef.current?.play().catch(() => undefined);
+      markAssistantSpeaking();
     }
     if (
       type === 'session.input_transcript.delta'
@@ -377,9 +484,11 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       || type === 'input_audio_buffer.speech_started'
     ) {
       assistantSpeakingRef.current = false;
-      setStatus('listening');
+      clearAssistantDoneTimer();
       if (type === 'session.input_transcript.delta') {
-        scheduleReplyNudge();
+        noteCallerSpeech();
+      } else {
+        setStatus('listening');
       }
     }
 
@@ -419,7 +528,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
         return [...updated, turn];
       });
     }
-  }, [bumpActivity, clearReplyNudge, finalizeClose, scheduleReplyNudge]);
+  }, [bumpActivity, clearAssistantDoneTimer, finalizeClose, markAssistantSpeaking, noteCallerSpeech]);
 
   const startConversation = useCallback(async () => {
     if (startingRef.current || readyRef.current || status === 'connecting' || status === 'connected' || status === 'listening' || status === 'speaking') {
@@ -439,6 +548,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     setError(null);
     setTranscripts([]);
     setElapsedSeconds(0);
+    setHearingYou(false);
     setStatus('requesting_mic');
 
     try {
@@ -472,6 +582,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
         track.enabled = true;
         connection.addTrack(track, microphone);
       }
+      startSpeechMonitor(microphone);
 
       setStatus('connecting');
       // Create the event channel BEFORE the SDP offer (required by GPT-Live).
@@ -543,14 +654,22 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       optionsRef.current.onError?.(message);
       hardCleanup();
     }
-  }, [finalizeClose, handleEvent, hardCleanup, status]);
+  }, [finalizeClose, handleEvent, hardCleanup, startSpeechMonitor, status]);
 
   const setMicrophoneMuted = useCallback((next: boolean) => {
     setMuted(next);
+    mutedRef.current = next;
     micRef.current?.getAudioTracks().forEach((track) => {
       track.enabled = !next;
     });
-  }, []);
+    if (next) {
+      clearReplyNudge();
+      awaitingUserReplyRef.current = false;
+      localSpeechActiveRef.current = false;
+      hearingYouRef.current = false;
+      setHearingYou(false);
+    }
+  }, [clearReplyNudge]);
 
   const toggleMute = useCallback(() => {
     setMicrophoneMuted(!muted);
@@ -581,6 +700,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     transcripts,
     limits,
     elapsedSeconds,
+    hearingYou,
     isActive: status === 'connecting' || status === 'connected' || status === 'listening' || status === 'speaking' || status === 'requesting_mic' || status === 'ending',
     support: supportsLiveVoice(),
     startConversation,

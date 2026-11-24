@@ -63,7 +63,7 @@ export function buildVoiceGreetingDeveloperMessage(
     `Greet the caller now in English.`,
     `Introduce yourself as ${persona.name}, their IStyleU personal fashion stylist.`,
     'Ask what occasion or outfit they want help with today.',
-    'Then pause and listen.',
+    'Then wait for the caller, and answer out loud every time they finish speaking.',
   ].join(' ');
 }
 

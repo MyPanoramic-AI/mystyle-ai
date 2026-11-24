@@ -74,6 +74,13 @@ test('voice instructions reuse stylist personality without inventing shops', () 
     voice: 'direct-practical',
     answerLength: 'short',
   }), /Greet the caller now/i);
+  assert.match(buildVoiceGreetingDeveloperMessage({
+    name: 'Nova',
+    gender: 'woman',
+    ageVibe: 'thirties',
+    voice: 'direct-practical',
+    answerLength: 'short',
+  }), /answer out loud every time they finish speaking/i);
 });
 
 test('voice availability and session minting stay authenticated and server-keyed', async () => {
