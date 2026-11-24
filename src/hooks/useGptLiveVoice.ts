@@ -286,16 +286,34 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     const type = typeof event.type === 'string' ? event.type : '';
     bumpActivity();
 
+    if (type === 'error' || type === 'session.error' || type.endsWith('.failed')) {
+      const detail = typeof event.message === 'string'
+        ? event.message
+        : typeof (event.error as { message?: string } | undefined)?.message === 'string'
+          ? (event.error as { message: string }).message
+          : 'The live voice session reported an error.';
+      setError(detail);
+      setStatus('error');
+      optionsRef.current.onError?.(detail);
+      return;
+    }
     if (type === 'session.started') {
       readyRef.current = true;
       setStatus('listening');
-      // Nudge Aria to open the conversation immediately after the Live session is ready.
+      // Force a spoken opening turn, then keep listening for the caller.
       sendLiveEvent(eventsRef.current, {
-        type: 'session.instructions.append',
-        event_id: `greet_${Date.now()}`,
+        type: 'session.commentary.append',
+        event_id: `greet_say_${Date.now()}`,
         delegation_id: null,
         content:
-          'Immediately greet the caller out loud as their IStyleU stylist, ask what occasion they want help with, then pause and listen. Do not stay silent.',
+          'Hello — I am your IStyleU personal stylist. What occasion or outfit can I help you with today?',
+      });
+      sendLiveEvent(eventsRef.current, {
+        type: 'session.instructions.append',
+        event_id: `greet_listen_${Date.now()}`,
+        delegation_id: null,
+        content:
+          'After greeting, pause and listen. When the caller finishes speaking, reply out loud with useful styling advice. Never stay silent after they ask a question.',
       });
       void audioRef.current?.play().catch(() => undefined);
       return;
@@ -399,37 +417,40 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       // Unlock audio on the same user gesture that started the call.
       void playback.play().catch(() => undefined);
 
+      // Match OpenAI's GPT-Live WebRTC quickstart: one mic track, no extra transceiver.
       connection.addEventListener('track', (event) => {
-        const stream = event.streams[0] ?? new MediaStream([event.track]);
-        playback.srcObject = stream;
+        playback.srcObject = new MediaStream([event.track]);
         void playback.play().catch(() => {
-          setError('Tap anywhere in the voice panel if you cannot hear Aria — the browser may have blocked audio.');
+          setError('Tap “Play Aria’s voice” if you cannot hear her — the browser may have blocked audio.');
         });
       });
-
-      // Ensure the offer negotiates receive as well as send for Aria's voice track.
-      connection.addTransceiver('audio', { direction: 'sendrecv' });
+      connection.addEventListener('connectionstatechange', () => {
+        if (connection.connectionState === 'failed') {
+          setError('The live voice connection failed. Check your network and try again.');
+          setStatus('error');
+        }
+      });
 
       const microphone = await requestMicrophone();
       micRef.current = microphone;
       for (const track of microphone.getAudioTracks()) {
+        track.enabled = true;
         connection.addTrack(track, microphone);
       }
 
       setStatus('connecting');
+      // Create the event channel BEFORE the SDP offer (required by GPT-Live).
       const events = connection.createDataChannel('oai-events');
       eventsRef.current = events;
       events.addEventListener('open', () => {
-        // Channel may open after session.started; re-send greeting nudge if still silent.
-        if (readyRef.current) {
-          sendLiveEvent(events, {
-            type: 'session.instructions.append',
-            event_id: `greet_open_${Date.now()}`,
-            delegation_id: null,
-            content:
-              'If you have not greeted yet, greet the caller now as their IStyleU stylist, ask what they want to style, then pause and listen.',
-          });
-        }
+        if (!readyRef.current) return;
+        sendLiveEvent(events, {
+          type: 'session.commentary.append',
+          event_id: `greet_open_${Date.now()}`,
+          delegation_id: null,
+          content:
+            'Hello — I am your IStyleU personal stylist. What would you like to style today?',
+        });
       });
       events.addEventListener('message', ({ data }) => handleEvent(data));
       events.addEventListener('close', () => {
@@ -514,6 +535,19 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     void endRef.current();
   }, []);
 
+  const playAssistantAudio = useCallback(async () => {
+    const audio = audioRef.current ?? ensurePlaybackElement();
+    audioRef.current = audio;
+    audio.muted = false;
+    audio.volume = 1;
+    try {
+      await audio.play();
+      setError(null);
+    } catch {
+      setError('Tap “Play Aria’s voice” again, or allow sound for this site.');
+    }
+  }, []);
+
   return {
     status,
     muted,
@@ -528,6 +562,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     endConversation: () => endConversation(),
     toggleMute,
     setMicrophoneMuted,
+    playAssistantAudio,
     clearError: () => setError(null),
   };
 }

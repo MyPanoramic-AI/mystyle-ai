@@ -3,7 +3,7 @@
  * Duration-based billing is separate from text-model token budgets.
  */
 
-export const GPT_LIVE_MODEL = 'gpt-live-1';
+export const GPT_LIVE_MODEL = 'gpt-live-1.1';
 
 /** Voices verified for GPT-Live audio output in OpenAI docs / Live Console. */
 export const GPT_LIVE_AUDIO_VOICES = [

@@ -86,7 +86,7 @@ services:
       - key: AI_VOICE_ALLOW_LIVE
         value: "true"
       - key: AI_VOICE_MODEL
-        value: gpt-live-1
+        value: gpt-live-1.1
       - key: AI_VOICE_AUDIO_VOICE
         value: marin
       - key: AI_VOICE_MAX_SESSION_SECONDS

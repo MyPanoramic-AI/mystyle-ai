@@ -17,7 +17,7 @@ import {
   buildVoiceLiveInstructions,
 } from './voicePrompt.js';
 
-const GPT_LIVE_MODEL_LABEL = 'gpt-live-1';
+const GPT_LIVE_MODEL_LABEL = 'gpt-live-1.1';
 
 function stamp(now: number): string {
   return new Date(now).toISOString();
@@ -175,7 +175,7 @@ export async function createVoiceSession(opts: {
     audio: {
       output: { voice: audioVoice },
     },
-    // Seed a developer greeting so Aria opens the conversation instead of waiting silently.
+    // Seed a developer greeting so Aria opens the conversation immediately (no wake/standby delay).
     input: [
       {
         type: 'message',
@@ -188,11 +188,6 @@ export async function createVoiceSession(opts: {
         ],
       },
     ],
-    // Slightly easier first wake so quiet mics still start a turn.
-    wake_policy: {
-      type: 'speech',
-      vad_threshold: 0.35,
-    },
   };
 
   // Responses delegation for fashion reasoning; no shopping tools (not_connected).
@@ -392,7 +387,7 @@ export function appendVoiceTranscripts(opts: {
   let inserted = 0;
   const insert = opts.db.prepare(
     `INSERT INTO ai_messages (id, conversation_id, role, content, recommendation_json, provider, model, idempotency_key, created_at)
-     VALUES (?, ?, ?, ?, ?, 'gpt-live-1', ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, 'gpt-live-1.1', ?, ?, ?)`,
   );
   for (const turn of opts.turns.slice(0, 40)) {
     const content = typeof turn.content === 'string' ? turn.content.trim().slice(0, 4000) : '';
@@ -409,7 +404,7 @@ export function appendVoiceTranscripts(opts: {
       conversationId,
       turn.role,
       content,
-      JSON.stringify({ channel: 'voice', source: 'gpt-live-1' }),
+      JSON.stringify({ channel: 'voice', source: 'gpt-live-1.1' }),
       GPT_LIVE_MODEL_LABEL,
       key,
       stamp(nowMs),

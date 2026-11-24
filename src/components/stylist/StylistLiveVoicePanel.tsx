@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Mic, MicOff, PhoneOff, ChevronDown, ChevronUp, Radio } from 'lucide-react';
+import { Mic, MicOff, PhoneOff, ChevronDown, ChevronUp, Radio, Volume2 } from 'lucide-react';
 import type { GptLiveStatus, GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
 
 interface StylistLiveVoicePanelProps {
@@ -16,6 +16,7 @@ interface StylistLiveVoicePanelProps {
   maxSessionSeconds: number | null;
   transcripts: GptLiveTranscriptTurn[];
   onMuteToggle: () => void;
+  onPlayAudio: () => void;
   onEnd: () => void;
   onBackToText: () => void;
 }
@@ -56,6 +57,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   maxSessionSeconds,
   transcripts,
   onMuteToggle,
+  onPlayAudio,
   onEnd,
   onBackToText,
 }) => {
@@ -67,13 +69,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   const bars = useMemo(() => Array.from({ length: 7 }, (_, i) => i), []);
 
   return (
-    <div
-      className="border-t border-[#242326]/10 bg-gradient-to-b from-[#FAF7F2] to-[#F6F2EC] px-4 sm:px-6 py-4"
-      onClick={() => {
-        const audio = document.getElementById('istyleu-live-audio') as HTMLAudioElement | null;
-        void audio?.play().catch(() => undefined);
-      }}
-    >
+    <div className="border-t border-[#242326]/10 bg-gradient-to-b from-[#FAF7F2] to-[#F6F2EC] px-4 sm:px-6 py-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="min-w-0">
@@ -97,10 +93,25 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
           </button>
         </div>
 
-        {listening && !speaking && visibleTurns.length === 0 && elapsedSeconds >= 3 && (
-          <p className="text-[11px] text-[#5C585E] mb-3">
-            Speak naturally — {stylistName} should greet you and answer after you pause. If you hear nothing, tap this panel once to enable sound.
-          </p>
+        {(listening || speaking) && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onPlayAudio();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#242326]/12 bg-white text-[11px] font-semibold text-[#242326] hover:bg-[#FAF7F2]"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-[#9C6A61]" />
+              Play {stylistName}&apos;s voice
+            </button>
+            {listening && !speaking && visibleTurns.length === 0 && elapsedSeconds >= 2 && (
+              <p className="text-[11px] text-[#5C585E]">
+                {stylistName} should greet you first. Speak after she finishes, then pause so she can reply.
+              </p>
+            )}
+          </div>
         )}
 
         {/* Waveform */}

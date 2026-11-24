@@ -761,6 +761,9 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           maxSessionSeconds={voice.limits?.maxSessionSeconds ?? null}
           transcripts={voice.transcripts}
           onMuteToggle={voice.toggleMute}
+          onPlayAudio={() => {
+            void voice.playAssistantAudio();
+          }}
           onEnd={() => {
             void voice.endConversation().then(() => setVoiceMode(false));
           }}

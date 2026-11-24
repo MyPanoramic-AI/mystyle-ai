@@ -122,13 +122,13 @@ test('voice availability and session minting stay authenticated and server-keyed
     assert.ok(posted.body);
     const postedSession = (posted.body.session ?? {}) as Record<string, unknown>;
     const postedTransport = (posted.body.transport ?? {}) as Record<string, unknown>;
-    assert.equal(postedSession.model, 'gpt-live-1');
+    assert.equal(postedSession.model, 'gpt-live-1.1');
     assert.equal(postedTransport.type, 'webrtc');
     assert.ok(String(postedSession.instructions).includes('IStyleU'));
     const seeded = postedSession.input as Array<{ role?: string; content?: Array<{ text?: string }> }> | undefined;
     assert.ok(Array.isArray(seeded) && seeded[0]?.role === 'developer');
     assert.match(String(seeded?.[0]?.content?.[0]?.text ?? ''), /Greet the caller now/i);
-    assert.equal((postedSession.wake_policy as { type?: string } | undefined)?.type, 'speech');
+    assert.equal(postedSession.wake_policy, undefined);
     // API key must not appear in the client response
     assert.equal(JSON.stringify(minted).includes('test-key'), false);
 
@@ -163,7 +163,7 @@ test('voice availability and session minting stay authenticated and server-keyed
     });
     const conversationBody = await read.json() as { messages: Array<{ role: string; content: string; provider: string | null }> };
     assert.equal(conversationBody.messages.length, 2);
-    assert.equal(conversationBody.messages[0]?.provider, 'gpt-live-1');
+    assert.equal(conversationBody.messages[0]?.provider, 'gpt-live-1.1');
   } finally {
     resetVoiceSessionRegistryForTests();
     await api.close();
