@@ -98,7 +98,7 @@ function loadProfileReferenceImages(db: Sql, mediaDir: string, userId: string): 
 export function voiceWantsLookVisualization(text: string): boolean {
   if (wantsLookVisualization(text, false)) return true;
   const value = text.toLowerCase();
-  return /\b(show me what|show (me )?that|what (would|could) (it|this|that) look like|can you show|picture of (it|that|the look)|visual of|see (the|this|that) look|how (would|could) (i|that|it) look)\b/.test(value);
+  return /\b(give me (a |the )?(picture|photo|image|look)|i just want the picture|what you are imagining|picture of|photo of|image of|see (the|this|that) look|visual of)\b/.test(value);
 }
 
 export async function createVoiceLookVisual(opts: {

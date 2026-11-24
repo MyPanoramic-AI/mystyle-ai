@@ -41,7 +41,7 @@ import type { PreloadedGarment } from '../../types/shop';
 import { resolveStylistPersona } from '../../data/stylistPersona';
 import type { ShopPreloadedContext } from '../pages/ShopPlaceholder';
 import { useGptLiveVoice, type GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
-import { voiceWantsLookVisualization } from '../../utils/voiceVisualIntent';
+import { voiceAssistantPromisedLook, voiceWantsLookVisualization } from '../../utils/voiceVisualIntent';
 import type { VoiceLookVisual } from './StylistLiveVoicePanel';
 
 const STYLING_WAIT_LINES = [
@@ -138,6 +138,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [voiceLookError, setVoiceLookError] = useState<string | null>(null);
   const pendingVoiceTranscripts = useRef<GptLiveTranscriptTurn[]>([]);
   const voiceVisualInFlightRef = useRef(false);
+  const voiceVisualDoneForPromptRef = useRef<string | null>(null);
+  const recentUserVoiceRef = useRef<string[]>([]);
   const conversationIdRef = useRef<string | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
   const voiceAnnounceRef = useRef<(title: string) => void>(() => undefined);
@@ -164,14 +166,19 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
 
   const requestVoiceLookVisual = useCallback(async (prompt: string) => {
     const conversation = conversationIdRef.current;
-    if (!conversation || !connection || voiceVisualInFlightRef.current) return;
+    if (!conversation || !connection) return;
     const cleaned = prompt.replace(/\s+/g, ' ').trim();
     if (cleaned.length < 8) return;
+    if (voiceVisualInFlightRef.current) return;
+    // Avoid regenerating the same ask repeatedly in one call.
+    const dedupeKey = cleaned.slice(0, 160).toLowerCase();
+    if (voiceVisualDoneForPromptRef.current === dedupeKey) return;
     voiceVisualInFlightRef.current = true;
     setVoiceLookLoading(true);
     setVoiceLookError(null);
     try {
       const result = await accountApi.createStylistVoiceVisual(conversation, cleaned);
+      voiceVisualDoneForPromptRef.current = dedupeKey;
       setVoiceLookVisual({
         imageUrl: result.imageUrl,
         title: result.title,
@@ -199,6 +206,12 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       setVoiceLookLoading(false);
     }
   }, [connection]);
+
+  const buildVoiceLookPrompt = useCallback((seed: string) => {
+    const recentAssistant = [...messagesRef.current].reverse().find((message) => message.sender === 'stylist');
+    const recentUser = recentUserVoiceRef.current.slice(-3).join(' ');
+    return [seed, recentUser, recentAssistant?.text].filter(Boolean).join('. ').slice(0, 700);
+  }, []);
 
   const voice = useGptLiveVoice({
     createSession: async (sdp) => {
@@ -245,10 +258,16 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           },
         ];
       });
-      if (turn.role === 'user' && voiceWantsLookVisualization(turn.text)) {
-        const recentAssistant = [...messagesRef.current].reverse().find((message) => message.sender === 'stylist');
-        const prompt = [turn.text, recentAssistant?.text].filter(Boolean).join('. ');
-        void requestVoiceLookVisual(prompt);
+      if (turn.role === 'user') {
+        recentUserVoiceRef.current = [...recentUserVoiceRef.current.slice(-4), turn.text.trim()].filter(Boolean);
+        const combinedUser = recentUserVoiceRef.current.join(' ');
+        if (voiceWantsLookVisualization(turn.text) || voiceWantsLookVisualization(combinedUser)) {
+          void requestVoiceLookVisual(buildVoiceLookPrompt(combinedUser || turn.text));
+        }
+      } else if (turn.role === 'assistant' && voiceAssistantPromisedLook(turn.text)) {
+        // Aria promised a look on screen — generate even if the user's ask was fragmented.
+        const seed = recentUserVoiceRef.current.slice(-3).join(' ') || turn.text;
+        void requestVoiceLookVisual(buildVoiceLookPrompt(seed));
       }
     },
     onError: (message) => setServiceNotice(message),
@@ -890,6 +909,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
                     setVoiceLookVisual(null);
                     setVoiceLookError(null);
                     setVoiceLookLoading(false);
+                    voiceVisualDoneForPromptRef.current = null;
+                    recentUserVoiceRef.current = [];
                     setServiceNotice(null);
                     await voice.startConversation();
                   })();
