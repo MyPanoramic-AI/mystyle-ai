@@ -41,6 +41,8 @@ import type { PreloadedGarment } from '../../types/shop';
 import { resolveStylistPersona } from '../../data/stylistPersona';
 import type { ShopPreloadedContext } from '../pages/ShopPlaceholder';
 import { useGptLiveVoice, type GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
+import { voiceWantsLookVisualization } from '../../utils/voiceVisualIntent';
+import type { VoiceLookVisual } from './StylistLiveVoicePanel';
 
 const STYLING_WAIT_LINES = [
   'Still thinking how this would look…',
@@ -131,14 +133,21 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [garmentContext, setGarmentContext] = useState<{ name: string; url: string } | null>(null);
   const [voiceMode, setVoiceMode] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceLookVisual, setVoiceLookVisual] = useState<VoiceLookVisual | null>(null);
+  const [voiceLookLoading, setVoiceLookLoading] = useState(false);
+  const [voiceLookError, setVoiceLookError] = useState<string | null>(null);
   const pendingVoiceTranscripts = useRef<GptLiveTranscriptTurn[]>([]);
+  const voiceVisualInFlightRef = useRef(false);
+  const conversationIdRef = useRef<string | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const voiceAnnounceRef = useRef<(title: string) => void>(() => undefined);
 
   const stylistName = resolveStylistPersona(profile).name;
 
   const persistVoiceTurn = useCallback((turn: GptLiveTranscriptTurn) => {
     if (!turn.final || !turn.text.trim()) return;
     pendingVoiceTranscripts.current.push(turn);
-    const conversation = conversationId;
+    const conversation = conversationIdRef.current;
     if (!conversation || !connection) return;
     const batch = pendingVoiceTranscripts.current.splice(0, pendingVoiceTranscripts.current.length);
     void accountApi.appendStylistVoiceTranscripts(
@@ -151,11 +160,49 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     ).catch(() => {
       pendingVoiceTranscripts.current.unshift(...batch);
     });
-  }, [connection, conversationId]);
+  }, [connection]);
+
+  const requestVoiceLookVisual = useCallback(async (prompt: string) => {
+    const conversation = conversationIdRef.current;
+    if (!conversation || !connection || voiceVisualInFlightRef.current) return;
+    const cleaned = prompt.replace(/\s+/g, ' ').trim();
+    if (cleaned.length < 8) return;
+    voiceVisualInFlightRef.current = true;
+    setVoiceLookLoading(true);
+    setVoiceLookError(null);
+    try {
+      const result = await accountApi.createStylistVoiceVisual(conversation, cleaned);
+      setVoiceLookVisual({
+        imageUrl: result.imageUrl,
+        title: result.title,
+        promptUsed: result.promptUsed,
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `voice-look-${result.mediaId}`,
+          sender: 'stylist',
+          text: `Here is a look visualization for what we discussed.`,
+          timestamp: new Date().toISOString(),
+          lookImageUrl: result.imageUrl,
+        },
+      ]);
+      voiceAnnounceRef.current(result.title);
+    } catch (error) {
+      setVoiceLookError(
+        error instanceof AccountApiError
+          ? error.message
+          : 'Could not create a look visualization right now.',
+      );
+    } finally {
+      voiceVisualInFlightRef.current = false;
+      setVoiceLookLoading(false);
+    }
+  }, [connection]);
 
   const voice = useGptLiveVoice({
     createSession: async (sdp) => {
-      let id = conversationId;
+      let id = conversationIdRef.current;
       if (!id && connection) {
         const fresh = await connection.startFresh();
         id = fresh.id;
@@ -170,9 +217,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     closeSession: async (sessionId, body) => {
       await accountApi.closeStylistVoiceSession(sessionId, body);
       const leftover = pendingVoiceTranscripts.current.splice(0, pendingVoiceTranscripts.current.length);
-      if (leftover.length && conversationId) {
+      const conversation = conversationIdRef.current;
+      if (leftover.length && conversation) {
         await accountApi.appendStylistVoiceTranscripts(
-          conversationId,
+          conversation,
           leftover.map((item) => ({
             role: item.role,
             content: item.text,
@@ -197,9 +245,18 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           },
         ];
       });
+      if (turn.role === 'user' && voiceWantsLookVisualization(turn.text)) {
+        const recentAssistant = [...messagesRef.current].reverse().find((message) => message.sender === 'stylist');
+        const prompt = [turn.text, recentAssistant?.text].filter(Boolean).join('. ');
+        void requestVoiceLookVisual(prompt);
+      }
     },
     onError: (message) => setServiceNotice(message),
   });
+
+  voiceAnnounceRef.current = voice.announceOnScreenLook;
+  conversationIdRef.current = conversationId;
+  messagesRef.current = messages;
   const [lens, setLens] = useState<StylistFilterLens>({
     occasion: state.occasionTitle || 'Everyday Versatile',
     formality: 'Smart-Casual',
@@ -764,15 +821,26 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           promptingReply={voice.promptingReply}
           micLevel={voice.micLevel}
           micSilent={voice.micSilent}
+          lookVisual={voiceLookVisual}
+          lookVisualLoading={voiceLookLoading}
+          lookVisualError={voiceLookError}
           onMuteToggle={voice.toggleMute}
           onPlayAudio={() => {
             void voice.playAssistantAudio();
           }}
           onEnd={() => {
-            void voice.endConversation().then(() => setVoiceMode(false));
+            void voice.endConversation().then(() => {
+              setVoiceMode(false);
+              setVoiceLookLoading(false);
+              setVoiceLookError(null);
+            });
           }}
           onBackToText={() => {
-            void voice.endConversation().then(() => setVoiceMode(false));
+            void voice.endConversation().then(() => {
+              setVoiceMode(false);
+              setVoiceLookLoading(false);
+              setVoiceLookError(null);
+            });
           }}
         />
       ) : (
@@ -819,6 +887,9 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
                       }
                     }
                     setVoiceMode(true);
+                    setVoiceLookVisual(null);
+                    setVoiceLookError(null);
+                    setVoiceLookLoading(false);
                     setServiceNotice(null);
                     await voice.startConversation();
                   })();

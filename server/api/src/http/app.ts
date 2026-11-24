@@ -69,6 +69,7 @@ import {
   createVoiceSession,
   voiceAvailability,
 } from '../ai/voiceSessions.js';
+import { createVoiceLookVisual } from '../ai/voiceVisual.js';
 import { tryOnOpinionForUser } from '../ai/tryOnOpinion.js';
 import { loadWhatsAppConfig } from '../whatsapp/whatsappConfig.js';
 import {
@@ -944,6 +945,23 @@ export function createApp(deps: AppDeps): express.Express {
       turns,
       now: deps.now,
     }));
+  }));
+  app.post('/api/stylist/conversations/:id/voice-visual', route(async (req, res) => {
+    const userId = requireUser(req).userId;
+    const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt : '';
+    const result = await createVoiceLookVisual({
+      db: deps.db,
+      userId,
+      conversationId: String(req.params.id),
+      prompt,
+      config: aiConfig,
+      mediaDir: deps.config.mediaDir,
+      mediaMaxBytes: deps.config.mediaMaxBytes,
+      retentionMs: deps.config.retentionMs,
+      fetchImpl: deps.aiFetch,
+      now: deps.now,
+    });
+    res.status(201).json(result);
   }));
   app.get('/api/stylist/usage', route((req, res) => {
     res.json(usageFor(deps.db, requireUser(req).userId));

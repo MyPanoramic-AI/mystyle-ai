@@ -978,6 +978,17 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     }
   }, []);
 
+  const announceOnScreenLook = useCallback((title: string) => {
+    if (!readyRef.current || !eventsRef.current) return;
+    const label = title.trim() || 'look visualization';
+    sendLiveEvent(eventsRef.current, {
+      type: 'session.commentary.append',
+      event_id: `look_on_screen_${Date.now()}`,
+      delegation_id: null,
+      content: `A look visualization titled "${label}" is now on the caller's screen. Briefly acknowledge it out loud and describe one or two outfit details they can see. Do not say you cannot show photos.`,
+    });
+  }, []);
+
   return {
     status,
     muted,
@@ -997,6 +1008,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     toggleMute,
     setMicrophoneMuted,
     playAssistantAudio,
+    announceOnScreenLook,
     clearError: () => setError(null),
   };
 }

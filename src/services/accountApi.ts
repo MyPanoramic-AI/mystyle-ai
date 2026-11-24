@@ -72,6 +72,7 @@ export interface AccountApi {
     content: string;
     idempotencyKey?: string | null;
   }>): Promise<{ inserted: number }>;
+  createStylistVoiceVisual(conversationId: string, prompt: string): Promise<StylistVoiceVisualResult>;
   stylistConversations(): Promise<{ conversations: { id: string; title: string; lastActivityAt: string; createdAt?: string }[] }>;
   createStylistConversation(): Promise<{ id: string; title?: string; createdAt?: string; lastActivityAt?: string }>;
   stylistConversation(id: string): Promise<{ id: string; title?: string; createdAt?: string; lastActivityAt?: string; messages: StylistServerMessage[] }>;
@@ -555,6 +556,13 @@ export interface StylistVoiceSessionCreateResult {
   persona: { name: string; voice: string; audioVoice: string };
 }
 
+export interface StylistVoiceVisualResult {
+  mediaId: string;
+  imageUrl: string;
+  title: string;
+  promptUsed: string;
+}
+
 export interface StylistServerMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -680,6 +688,12 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
       method: 'POST',
       body: { turns },
       csrf: true,
+    }),
+    createStylistVoiceVisual: (conversationId, prompt) => request(`/api/stylist/conversations/${encodeURIComponent(conversationId)}/voice-visual`, {
+      method: 'POST',
+      body: { prompt },
+      csrf: true,
+      timeoutMs: 90_000,
     }),
     stylistConversations: () => request('/api/stylist/conversations'),
     createStylistConversation: () => request('/api/stylist/conversations', { method: 'POST', csrf: true }),

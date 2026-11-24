@@ -25,7 +25,7 @@ function contentTypeFromFormat(format: string | undefined): LookImageResult['con
 export function wantsLookVisualization(text: string, modelIntent: boolean): boolean {
   if (modelIntent) return true;
   const value = text.toLowerCase();
-  return /\b(generate|visuali[sz]e|show me (an? )?(image|picture|look|photo)|create (an? )?(image|picture|look)|render|picture of me|photo of me|style my hair|change my hair|restyle( my hair)?|add accessories|with accessories|make me look|show (me )?how (it|this) (would|could) look)\b/.test(value);
+  return /\b(generate|visuali[sz]e|show me (an? )?(image|picture|look|photo)|show me what|create (an? )?(image|picture|look)|render|picture of me|photo of me|style my hair|change my hair|restyle( my hair)?|add accessories|with accessories|make me look|show (me )?how (it|this) (would|could) look|what (this|it|that) would look like|can you show)\b/.test(value);
 }
 
 export function buildLookVisualPrompt(input: {
