@@ -17,6 +17,8 @@ interface StylistLiveVoicePanelProps {
   transcripts: GptLiveTranscriptTurn[];
   hearingYou?: boolean;
   promptingReply?: boolean;
+  micLevel?: number;
+  micSilent?: boolean;
   onMuteToggle: () => void;
   onPlayAudio: () => void;
   onEnd: () => void;
@@ -60,6 +62,8 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   transcripts,
   hearingYou = false,
   promptingReply = false,
+  micLevel = 0,
+  micSilent = false,
   onMuteToggle,
   onPlayAudio,
   onEnd,
@@ -70,17 +74,23 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   const listening = status === 'listening' || status === 'connected';
   const visibleTurns = transcripts.filter((t) => t.final || t.text.trim());
   const hasUserTurn = visibleTurns.some((t) => t.role === 'user');
+  const hasAssistantTurn = visibleTurns.some((t) => t.role === 'assistant');
   const liveHint = speaking
     ? `${stylistName} is answering…`
     : promptingReply
       ? `Asking ${stylistName} to reply…`
       : hearingYou
         ? 'Hearing you… pause when you finish and she will reply.'
-        : hasUserTurn
-          ? `Pause for a moment after you speak — ${stylistName} will answer out loud.`
-          : `${stylistName} should greet you first. Speak after she finishes, then pause so she can reply. Headphones help.`;
+        : micSilent
+          ? 'Desktop mic looks silent. Allow microphone for this site, pick the right input in browser settings, and prefer headphones.'
+          : hasUserTurn
+            ? `Pause for a moment after you speak — ${stylistName} will answer out loud.`
+            : hasAssistantTurn
+              ? `Your turn — speak clearly into the mic. The bars should move when it hears you.`
+              : `${stylistName} should greet you first. Speak after she finishes, then pause so she can reply. Headphones help.`;
 
   const bars = useMemo(() => Array.from({ length: 7 }, (_, i) => i), []);
+  const micActivity = muted ? 0 : Math.min(1, micLevel * 8);
 
   return (
     <div className="border-t border-[#242326]/10 bg-gradient-to-b from-[#FAF7F2] to-[#F6F2EC] px-4 sm:px-6 py-4">
@@ -132,32 +142,37 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
           </div>
         )}
 
-        {/* Waveform */}
+        {/* Live mic level (desktop debug + feedback) */}
         <div
-          className="flex items-end justify-center gap-1.5 h-12 mb-4"
+          className="flex items-end justify-center gap-1.5 h-12 mb-2"
           aria-hidden
         >
-          {bars.map((i) => (
-            <span
-              key={i}
-              className={`w-1.5 rounded-full bg-[#9C6A61] transition-all ${
-                speaking
-                  ? 'animate-pulse'
-                  : listening && !muted
-                    ? 'opacity-70'
-                    : 'opacity-30'
-              }`}
-              style={{
-                height: speaking
-                  ? `${18 + ((i * 7 + elapsedSeconds) % 22)}px`
-                  : listening
-                    ? `${10 + (i % 3) * 4}px`
-                    : '8px',
-                animationDelay: `${i * 80}ms`,
-              }}
-            />
-          ))}
+          {bars.map((i) => {
+            const threshold = (i + 1) / bars.length;
+            const active = speaking || micActivity >= threshold * 0.35;
+            const height = speaking
+              ? 18 + ((i * 7 + elapsedSeconds) % 22)
+              : Math.max(8, Math.round(8 + micActivity * (10 + i * 4)));
+            return (
+              <span
+                key={i}
+                className={`w-1.5 rounded-full transition-all ${
+                  active ? 'bg-[#9C6A61] opacity-100' : 'bg-[#9C6A61]/35 opacity-50'
+                }`}
+                style={{ height: `${height}px` }}
+              />
+            );
+          })}
         </div>
+        {(listening || speaking) && !muted && (
+          <p className={`text-center text-[10px] mb-3 ${micSilent ? 'text-[#9C6A61]' : 'text-[#5C585E]'}`}>
+            {micSilent
+              ? 'Mic level flat — check Windows/browser microphone input.'
+              : micActivity > 0.08
+                ? 'Mic is picking you up.'
+                : 'Speak to test the mic — these bars should move.'}
+          </p>
+        )}
 
         {error && (
           <div className="text-xs text-[#5C585E] bg-white border border-[#242326]/10 rounded-xl px-3 py-3 mb-3 space-y-2">

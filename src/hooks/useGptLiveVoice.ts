@@ -63,10 +63,9 @@ type BrowserSpeechRecognition = {
   abort: () => void;
 };
 
-const SPEECH_ENERGY_THRESHOLD = 0.012;
-const REMOTE_SPEECH_ENERGY_THRESHOLD = 0.018;
+const SPEECH_ENERGY_THRESHOLD = 0.01;
 const SPEECH_END_SILENCE_MS = 1400;
-const ASSISTANT_DONE_SILENCE_MS = 1400;
+const ASSISTANT_DONE_SILENCE_MS = 1600;
 const REPLY_NUDGE_DEBOUNCE_MS = 2800;
 const REPLY_RETRY_MS = 2800;
 
@@ -91,14 +90,51 @@ function supportsLiveVoice(): { ok: boolean; reason?: string } {
 }
 
 async function requestMicrophone(): Promise<MediaStream> {
+  // Prefer a real mic input on desktop (avoid stereo-mix / loopback devices).
+  let preferredDeviceId: string | undefined;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputs = devices.filter((d) => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default');
+    const named = inputs.find((d) => {
+      const label = (d.label || '').toLowerCase();
+      return label && !/stereo mix|loopback|what ?u ?hear|wave out|cable/i.test(label);
+    });
+    preferredDeviceId = named?.deviceId ?? inputs[0]?.deviceId;
+  } catch {
+    preferredDeviceId = undefined;
+  }
+
   const attempts: MediaStreamConstraints[] = [
-    { audio: { echoCancellation: true, noiseSuppression: true } },
+    {
+      audio: {
+        ...(preferredDeviceId ? { deviceId: { ideal: preferredDeviceId } } : {}),
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1,
+      },
+    },
+    {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    },
     { audio: true },
   ];
   let lastError: unknown;
   for (const constraints of attempts) {
     try {
-      return await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      for (const track of stream.getAudioTracks()) {
+        track.enabled = true;
+      }
+      if (stream.getAudioTracks().length === 0) {
+        stream.getTracks().forEach((t) => t.stop());
+        throw new Error('Microphone opened with no audio track.');
+      }
+      return stream;
     } catch (err) {
       lastError = err;
     }
@@ -220,6 +256,8 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [hearingYou, setHearingYou] = useState(false);
   const [promptingReply, setPromptingReply] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const [micSilent, setMicSilent] = useState(false);
 
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const eventsRef = useRef<RTCDataChannel | null>(null);
@@ -246,7 +284,6 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const mutedRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
-  const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
   const speechMonitorRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localSpeechActiveRef = useRef(false);
   const hearingYouRef = useRef(false);
@@ -255,8 +292,10 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const recognitionWantedRef = useRef(false);
   const forceReplyAttemptsRef = useRef(0);
-  const markAssistantSpeakingRef = useRef<() => void>(() => undefined);
+  const micPeakRef = useRef(0);
+  const greetedRef = useRef(false);
   const noteCallerSpeechRef = useRef<() => void>(() => undefined);
+  const startSpeechRecognitionDeferredRef = useRef<() => void>(() => undefined);
 
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -292,7 +331,6 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     if (speechMonitorRef.current) clearInterval(speechMonitorRef.current);
     speechMonitorRef.current = null;
     micAnalyserRef.current = null;
-    remoteAnalyserRef.current = null;
     const ctx = audioContextRef.current;
     audioContextRef.current = null;
     if (ctx) {
@@ -300,7 +338,10 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     }
     localSpeechActiveRef.current = false;
     hearingYouRef.current = false;
+    micPeakRef.current = 0;
     setHearingYou(false);
+    setMicLevel(0);
+    setMicSilent(false);
   }, []);
 
   const appendUserHeardText = useCallback((fragment: string, replace = false) => {
@@ -372,6 +413,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     assistantSpeakingRef.current = true;
     awaitingUserReplyRef.current = false;
     forceReplyAttemptsRef.current = 0;
+    greetedRef.current = true;
     clearReplyNudge();
     clearReplyRetry();
     clearAssistantDoneTimer();
@@ -388,10 +430,13 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       lastUserTextRef.current = '';
       browserSpeechTextRef.current = '';
       setStatus((prev) => (prev === 'speaking' ? 'listening' : prev));
+      // Start browser STT only after the greeting so it does not fight the WebRTC mic on desktop.
+      if (readyRef.current && !mutedRef.current && !recognitionRef.current) {
+        // late-bound via ref below
+        startSpeechRecognitionDeferredRef.current?.();
+      }
     }, ASSISTANT_DONE_SILENCE_MS);
   }, [clearAssistantDoneTimer, clearReplyNudge, clearReplyRetry]);
-
-  markAssistantSpeakingRef.current = markAssistantSpeaking;
 
   const noteCallerSpeech = useCallback(() => {
     if (assistantSpeakingRef.current || mutedRef.current) return;
@@ -399,6 +444,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       hearingYouRef.current = true;
       setHearingYou(true);
     }
+    setMicSilent(false);
     setPromptingReply(false);
     setStatus('listening');
     scheduleReplyNudge();
@@ -414,10 +460,11 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       const recognition = new Ctor();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-ZA';
+      // en-US is the most reliable desktop Chrome dictionary; South African English still recognises well.
+      recognition.lang = 'en-US';
       recognitionWantedRef.current = true;
       recognition.onresult = (event) => {
-        if (assistantSpeakingRef.current || mutedRef.current) return;
+        if (mutedRef.current) return;
         let interim = '';
         let finalChunk = '';
         for (let i = event.resultIndex; i < event.results.length; i += 1) {
@@ -432,10 +479,15 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
         browserSpeechTextRef.current = heard;
         if (finalChunk.trim()) appendUserHeardText(finalChunk, true);
         else appendUserHeardText(interim, true);
-        noteCallerSpeechRef.current();
+        // Even if Aria is still marked speaking, capture text for the next force-reply.
+        if (!assistantSpeakingRef.current) {
+          noteCallerSpeechRef.current();
+        }
       };
-      recognition.onerror = () => {
-        // Permission / no-speech errors are non-fatal; Live mic may still work.
+      recognition.onerror = (event) => {
+        if (event.error === 'not-allowed' || event.error === 'audio-capture' || event.error === 'service-not-allowed') {
+          recognitionWantedRef.current = false;
+        }
       };
       recognition.onend = () => {
         if (!recognitionWantedRef.current || mutedRef.current || finalizedRef.current) return;
@@ -449,7 +501,9 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     }
   }, [appendUserHeardText, stopSpeechRecognition]);
 
-  const startSpeechMonitor = useCallback((micStream: MediaStream, remoteStream?: MediaStream | null) => {
+  startSpeechRecognitionDeferredRef.current = startSpeechRecognition;
+
+  const startSpeechMonitor = useCallback((micStream: MediaStream) => {
     stopSpeechMonitor();
     if (typeof AudioContext === 'undefined' && typeof (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext === 'undefined') {
       return;
@@ -461,77 +515,64 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       const micSource = ctx.createMediaStreamSource(micStream);
       const micAnalyser = ctx.createAnalyser();
       micAnalyser.fftSize = 512;
+      micAnalyser.smoothingTimeConstant = 0.3;
       micSource.connect(micAnalyser);
       micAnalyserRef.current = micAnalyser;
-
-      if (remoteStream && remoteStream.getAudioTracks().length > 0) {
-        const remoteSource = ctx.createMediaStreamSource(remoteStream);
-        const remoteAnalyser = ctx.createAnalyser();
-        remoteAnalyser.fftSize = 512;
-        remoteSource.connect(remoteAnalyser);
-        remoteAnalyserRef.current = remoteAnalyser;
-      }
-
       audioContextRef.current = ctx;
       void ctx.resume().catch(() => undefined);
 
       const micSamples = new Uint8Array(micAnalyser.fftSize);
-      const remoteSamples = new Uint8Array(512);
+      let silentTicks = 0;
       speechMonitorRef.current = setInterval(() => {
         const activeCtx = audioContextRef.current;
         if (activeCtx?.state === 'suspended') {
           void activeCtx.resume().catch(() => undefined);
         }
-        if (!micAnalyserRef.current || mutedRef.current || !readyRef.current) return;
-
-        if (remoteAnalyserRef.current) {
-          if (remoteSamples.length !== remoteAnalyserRef.current.fftSize) {
-            // length fixed at create; analyser fftSize is 512
+        // Keep the uplink track alive — some desktop browsers soft-mute after focus changes.
+        micRef.current?.getAudioTracks().forEach((track) => {
+          if (track.readyState === 'live' && !mutedRef.current && !track.enabled) {
+            track.enabled = true;
           }
-          remoteAnalyserRef.current.getByteTimeDomainData(remoteSamples);
-          if (rmsFromTimeDomain(remoteSamples) >= REMOTE_SPEECH_ENERGY_THRESHOLD) {
-            markAssistantSpeakingRef.current();
-            localSpeechActiveRef.current = false;
-            return;
-          }
-        }
+        });
 
-        if (assistantSpeakingRef.current) {
-          localSpeechActiveRef.current = false;
+        if (!micAnalyserRef.current || mutedRef.current) {
+          setMicLevel(0);
           return;
         }
+        if (!readyRef.current) return;
 
         micAnalyserRef.current.getByteTimeDomainData(micSamples);
         const energy = rmsFromTimeDomain(micSamples);
+        micPeakRef.current = Math.max(micPeakRef.current * 0.98, energy);
+        setMicLevel((prev) => (Math.abs(prev - energy) > 0.004 ? energy : prev));
+
         if (energy >= SPEECH_ENERGY_THRESHOLD) {
-          localSpeechActiveRef.current = true;
-          noteCallerSpeechRef.current();
-        } else if (localSpeechActiveRef.current) {
+          silentTicks = 0;
+          setMicSilent(false);
+          if (!assistantSpeakingRef.current) {
+            localSpeechActiveRef.current = true;
+            noteCallerSpeechRef.current();
+          }
+        } else if (localSpeechActiveRef.current && !assistantSpeakingRef.current) {
           scheduleReplyNudge();
           localSpeechActiveRef.current = false;
+        } else if (
+          greetedRef.current
+          && !assistantSpeakingRef.current
+          && !hearingYouRef.current
+          && energy < SPEECH_ENERGY_THRESHOLD
+        ) {
+          silentTicks += 1;
+          // ~4s of near-silence after greeting with no heard speech → warn about desktop mic.
+          if (silentTicks === 40) {
+            setMicSilent(true);
+          }
         }
       }, 100);
     } catch {
       // Local energy detection is a fallback.
     }
   }, [scheduleReplyNudge, stopSpeechMonitor]);
-
-  const attachRemoteMonitor = useCallback((stream: MediaStream) => {
-    const ctx = audioContextRef.current;
-    if (!ctx) {
-      if (micRef.current) startSpeechMonitor(micRef.current, stream);
-      return;
-    }
-    try {
-      const remoteSource = ctx.createMediaStreamSource(stream);
-      const remoteAnalyser = ctx.createAnalyser();
-      remoteAnalyser.fftSize = 512;
-      remoteSource.connect(remoteAnalyser);
-      remoteAnalyserRef.current = remoteAnalyser;
-    } catch {
-      // Ignore if remote monitor cannot attach.
-    }
-  }, [startSpeechMonitor]);
 
   const clearTimers = useCallback(() => {
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
@@ -569,10 +610,14 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     lastReplyNudgeAtRef.current = 0;
     lastUserTextRef.current = '';
     browserSpeechTextRef.current = '';
+    greetedRef.current = false;
+    forceReplyAttemptsRef.current = 0;
     setSessionId(null);
     setMuted(false);
     mutedRef.current = false;
     setPromptingReply(false);
+    setMicSilent(false);
+    setMicLevel(0);
   }, [clearTimers, stopSpeechMonitor, stopSpeechRecognition]);
 
   const bumpActivity = useCallback(() => {
@@ -657,8 +702,18 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       readyRef.current = true;
       setStatus('listening');
       // Greeting comes from the server session.input developer seed only.
+      // Defer browser STT until after Aria finishes so desktop WebRTC keeps the mic.
       void audioRef.current?.play().catch(() => undefined);
-      startSpeechRecognition();
+      micRef.current?.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
+      // Fallback if output transcripts never mark the greeting done.
+      setTimeout(() => {
+        if (!readyRef.current || mutedRef.current || recognitionRef.current) return;
+        greetedRef.current = true;
+        assistantSpeakingRef.current = false;
+        startSpeechRecognitionDeferredRef.current?.();
+      }, 7000);
       return;
     }
     if (type === 'session.closed') {
@@ -741,7 +796,6 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     finalizeClose,
     markAssistantSpeaking,
     noteCallerSpeech,
-    startSpeechRecognition,
   ]);
 
   const startConversation = useCallback(async () => {
@@ -781,7 +835,6 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       connection.addEventListener('track', (event) => {
         const remoteStream = event.streams[0] ?? new MediaStream([event.track]);
         playback.srcObject = remoteStream;
-        attachRemoteMonitor(remoteStream);
         void playback.play().catch(() => {
           setError('Tap “Play Aria’s voice” if you cannot hear her — the browser may have blocked audio.');
         });
@@ -797,7 +850,20 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       micRef.current = microphone;
       for (const track of microphone.getAudioTracks()) {
         track.enabled = true;
+        track.addEventListener('mute', () => {
+          // Browser soft-mute — keep sending by re-enabling when possible.
+          if (!mutedRef.current) track.enabled = true;
+        });
+        track.addEventListener('ended', () => {
+          setError('Your microphone disconnected. Check desktop mic permissions, then try Talk to Aria again.');
+          setMicSilent(true);
+        });
         connection.addTrack(track, microphone);
+      }
+      // Ensure the uplink is sendrecv audio in the offer.
+      const audioSender = connection.getSenders().find((sender) => sender.track?.kind === 'audio');
+      if (!audioSender) {
+        throw new Error('Microphone track was not attached to the live connection.');
       }
       startSpeechMonitor(microphone);
 
@@ -870,7 +936,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       optionsRef.current.onError?.(message);
       hardCleanup();
     }
-  }, [attachRemoteMonitor, finalizeClose, handleEvent, hardCleanup, startSpeechMonitor, status]);
+  }, [finalizeClose, handleEvent, hardCleanup, startSpeechMonitor, status]);
 
   const setMicrophoneMuted = useCallback((next: boolean) => {
     setMuted(next);
@@ -922,6 +988,8 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     elapsedSeconds,
     hearingYou,
     promptingReply,
+    micLevel,
+    micSilent,
     isActive: status === 'connecting' || status === 'connected' || status === 'listening' || status === 'speaking' || status === 'requesting_mic' || status === 'ending',
     support: supportsLiveVoice(),
     startConversation,
