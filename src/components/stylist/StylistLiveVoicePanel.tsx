@@ -115,18 +115,19 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   const bars = useMemo(() => Array.from({ length: 9 }, (_, i) => i), []);
   const micActivity = muted ? 0 : Math.min(1, micLevel * 8);
 
+  const hasLook = Boolean(lookVisual?.imageUrl);
+
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-[#242326] text-white animate-in fade-in duration-300">
-      {/* Full-bleed visual stage */}
+    <div className="fixed inset-0 z-40 flex flex-col bg-[#1A1819] text-white animate-in fade-in duration-300">
+      {/* Ambient stage — blurred fill only; never crops the main look */}
       <div className="absolute inset-0 overflow-hidden">
-        {lookVisual?.imageUrl ? (
+        {hasLook ? (
           <ImageWithFallback
-            src={lookVisual.imageUrl}
-            alt={lookVisual.title || 'Look visualization'}
-            className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-out ${
-              imageRevealed ? 'scale-100 opacity-100' : 'scale-105 opacity-0'
-            }`}
-            fallbackTitle={lookVisual.title || 'Look'}
+            src={lookVisual!.imageUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-35"
+            fallbackTitle=""
           />
         ) : (
           <div
@@ -137,8 +138,8 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
             }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/25" />
-        {!lookVisual?.imageUrl && (
+        <div className={`absolute inset-0 ${hasLook ? 'bg-black/55' : 'bg-gradient-to-t from-black/90 via-black/45 to-black/25'}`} />
+        {!hasLook && (
           <div
             className="absolute inset-0 opacity-[0.07] pointer-events-none"
             style={{
@@ -184,9 +185,9 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
 
       {/* Main stage content */}
       <div className="relative z-10 flex-1 min-h-0 flex flex-col lg:flex-row gap-4 px-4 sm:px-6 pb-2">
-        <div className="flex-1 min-h-0 flex flex-col justify-end lg:justify-center">
-          {!lookVisual?.imageUrl && !lookVisualLoading && (
-            <div className="mb-6 max-w-xl animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className="flex-1 min-h-0 flex flex-col">
+          {!hasLook && !lookVisualLoading && (
+            <div className="mb-4 max-w-xl animate-in fade-in slide-in-from-bottom-2 duration-500">
               <p className="text-[11px] uppercase tracking-[0.18em] text-[#E5CDBE]/80 mb-2 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
                 Live styling
@@ -198,7 +199,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
           )}
 
           {(lookVisualLoading || lookVisualError) && (
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-black/45 backdrop-blur-md border border-white/15 px-3 py-1.5 text-[11px] text-white/90 w-fit">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-black/45 backdrop-blur-md border border-white/15 px-3 py-1.5 text-[11px] text-white/90 w-fit">
               {lookVisualLoading ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E5CDBE]" />
@@ -213,17 +214,37 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
             </div>
           )}
 
-          {lookVisual?.title && lookVisual.imageUrl && (
-            <div className="mb-3 animate-in fade-in duration-500">
-              <p className="inline-flex items-center gap-1.5 rounded-full bg-black/45 backdrop-blur-md border border-white/15 px-3 py-1.5 text-[11px] font-semibold text-white">
-                <ImageIcon className="w-3.5 h-3.5 text-[#B49361]" />
-                {lookVisual.title}
-              </p>
+          {/* Full look frame — object-contain so portrait outfits are not cropped */}
+          {hasLook && (
+            <div className="relative flex-1 min-h-0 flex flex-col animate-in fade-in duration-500">
+              <div className="mb-2 flex items-center gap-2">
+                <p className="inline-flex items-center gap-1.5 rounded-full bg-black/45 backdrop-blur-md border border-white/15 px-3 py-1.5 text-[11px] font-semibold text-white">
+                  <ImageIcon className="w-3.5 h-3.5 text-[#B49361]" />
+                  {lookVisual?.title || `${stylistName}'s look`}
+                </p>
+              </div>
+              <div className="relative flex-1 min-h-[40vh] rounded-2xl border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center">
+                <ImageWithFallback
+                  src={lookVisual!.imageUrl}
+                  alt={lookVisual?.title || 'Look visualization'}
+                  className={`max-h-full max-w-full h-full w-auto object-contain transition-all duration-700 ease-out ${
+                    imageRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]'
+                  }`}
+                  fallbackTitle={lookVisual?.title || 'Look'}
+                />
+              </div>
+              {latestAssistant?.text && (
+                <p className="mt-3 max-w-3xl text-sm text-white/90 leading-relaxed line-clamp-3 drop-shadow">
+                  <span className="font-semibold text-[#E5CDBE]">{stylistName}: </span>
+                  {latestAssistant.text}
+                  {!latestAssistant.final && <span className="opacity-50"> …</span>}
+                </p>
+              )}
             </div>
           )}
 
-          {latestAssistant?.text && (
-            <p className="max-w-2xl text-sm sm:text-base text-white/90 leading-relaxed line-clamp-4 drop-shadow">
+          {!hasLook && latestAssistant?.text && (
+            <p className="mt-auto max-w-2xl text-sm sm:text-base text-white/90 leading-relaxed line-clamp-4 drop-shadow">
               <span className="font-semibold text-[#E5CDBE]">{stylistName}: </span>
               {latestAssistant.text}
               {!latestAssistant.final && <span className="opacity-50"> …</span>}
