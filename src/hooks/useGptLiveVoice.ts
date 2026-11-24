@@ -45,12 +45,30 @@ export interface UseGptLiveVoiceOptions {
   onError?: (message: string) => void;
 }
 
-const SPEECH_ENERGY_THRESHOLD = 0.02;
-const SPEECH_END_SILENCE_MS = 1500;
-const ASSISTANT_DONE_SILENCE_MS = 1200;
-const REPLY_NUDGE_DEBOUNCE_MS = 2500;
-const FORCE_REPLY_INSTRUCTION =
-  'Immediately reply out loud to what the caller just said with concrete styling advice. Do not stay silent. Ask one short follow-up only if needed.';
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: {
+    resultIndex: number;
+    results: ArrayLike<{
+      isFinal: boolean;
+      0: { transcript: string };
+    }>;
+  }) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+const SPEECH_ENERGY_THRESHOLD = 0.012;
+const REMOTE_SPEECH_ENERGY_THRESHOLD = 0.018;
+const SPEECH_END_SILENCE_MS = 1400;
+const ASSISTANT_DONE_SILENCE_MS = 1400;
+const REPLY_NUDGE_DEBOUNCE_MS = 2800;
+const REPLY_RETRY_MS = 2800;
 
 function isEmbeddedBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -114,7 +132,6 @@ function friendlyVoiceError(err: unknown): string {
 function extractTranscript(event: Record<string, unknown>): { role: 'user' | 'assistant'; text: string; final: boolean } | null {
   const type = typeof event.type === 'string' ? event.type : '';
 
-  // GPT-Live WebRTC transcript events use `delta` fragments.
   if (type === 'session.input_transcript.delta' || type === 'session.output_transcript.delta') {
     const delta = typeof event.delta === 'string' ? event.delta : '';
     if (!delta) return null;
@@ -176,6 +193,23 @@ function rmsFromTimeDomain(data: Uint8Array): number {
   return Math.sqrt(sum / Math.max(data.length, 1));
 }
 
+function getSpeechRecognitionCtor(): (new () => BrowserSpeechRecognition) | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => BrowserSpeechRecognition;
+    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+function buildForceReplyCommentary(userText: string): string {
+  const cleaned = userText.replace(/\s+/g, ' ').trim().slice(0, 320);
+  if (cleaned) {
+    return `The caller just said: "${cleaned}". Speak your answer out loud now with concrete styling advice. Do not stay silent.`;
+  }
+  return 'The caller finished speaking. Speak your answer out loud now with concrete styling advice based on what they said. If you missed their words, ask them to repeat briefly. Do not stay silent.';
+}
+
 export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const [status, setStatus] = useState<GptLiveStatus>('idle');
   const [muted, setMuted] = useState(false);
@@ -185,6 +219,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const [limits, setLimits] = useState<GptLiveSessionLimits | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [hearingYou, setHearingYou] = useState(false);
+  const [promptingReply, setPromptingReply] = useState(false);
 
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const eventsRef = useRef<RTCDataChannel | null>(null);
@@ -203,16 +238,25 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
   const limitsRef = useRef<GptLiveSessionLimits | null>(null);
   const endRef = useRef<(reason?: string) => Promise<void>>(async () => undefined);
   const replyNudgeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const replyRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const assistantDoneTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastReplyNudgeAtRef = useRef(0);
   const awaitingUserReplyRef = useRef(false);
   const assistantSpeakingRef = useRef(false);
   const mutedRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
+  const micAnalyserRef = useRef<AnalyserNode | null>(null);
+  const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
   const speechMonitorRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localSpeechActiveRef = useRef(false);
   const hearingYouRef = useRef(false);
+  const lastUserTextRef = useRef('');
+  const browserSpeechTextRef = useRef('');
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const recognitionWantedRef = useRef(false);
+  const forceReplyAttemptsRef = useRef(0);
+  const markAssistantSpeakingRef = useRef<() => void>(() => undefined);
+  const noteCallerSpeechRef = useRef<() => void>(() => undefined);
 
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -222,15 +266,33 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     replyNudgeTimeoutRef.current = null;
   }, []);
 
+  const clearReplyRetry = useCallback(() => {
+    if (replyRetryTimeoutRef.current) clearTimeout(replyRetryTimeoutRef.current);
+    replyRetryTimeoutRef.current = null;
+  }, []);
+
   const clearAssistantDoneTimer = useCallback(() => {
     if (assistantDoneTimeoutRef.current) clearTimeout(assistantDoneTimeoutRef.current);
     assistantDoneTimeoutRef.current = null;
   }, []);
 
+  const stopSpeechRecognition = useCallback(() => {
+    recognitionWantedRef.current = false;
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (!recognition) return;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    try { recognition.stop(); } catch { /* ignore */ }
+    try { recognition.abort(); } catch { /* ignore */ }
+  }, []);
+
   const stopSpeechMonitor = useCallback(() => {
     if (speechMonitorRef.current) clearInterval(speechMonitorRef.current);
     speechMonitorRef.current = null;
-    analyserRef.current = null;
+    micAnalyserRef.current = null;
+    remoteAnalyserRef.current = null;
     const ctx = audioContextRef.current;
     audioContextRef.current = null;
     if (ctx) {
@@ -241,22 +303,60 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     setHearingYou(false);
   }, []);
 
-  const sendForceReply = useCallback(() => {
+  const appendUserHeardText = useCallback((fragment: string, replace = false) => {
+    const clean = fragment.replace(/\s+/g, ' ').trim();
+    if (!clean) return;
+    if (replace) {
+      lastUserTextRef.current = clean;
+      return;
+    }
+    const prev = lastUserTextRef.current;
+    if (!prev) {
+      lastUserTextRef.current = clean;
+      return;
+    }
+    if (prev.endsWith(clean) || clean.startsWith(prev)) {
+      lastUserTextRef.current = clean.length >= prev.length ? clean : prev;
+      return;
+    }
+    lastUserTextRef.current = `${prev} ${clean}`.replace(/\s+/g, ' ').trim().slice(0, 400);
+  }, []);
+
+  const sendForceReply = useCallback((isRetry = false) => {
     if (!readyRef.current || !eventsRef.current) return;
     if (assistantSpeakingRef.current) return;
     const now = Date.now();
-    if (now - lastReplyNudgeAtRef.current < REPLY_NUDGE_DEBOUNCE_MS) return;
+    if (!isRetry && now - lastReplyNudgeAtRef.current < REPLY_NUDGE_DEBOUNCE_MS) return;
+    if (isRetry && forceReplyAttemptsRef.current >= 2) {
+      setPromptingReply(false);
+      return;
+    }
     lastReplyNudgeAtRef.current = now;
+    forceReplyAttemptsRef.current = isRetry ? 2 : 1;
     awaitingUserReplyRef.current = false;
     hearingYouRef.current = false;
     setHearingYou(false);
+    setPromptingReply(true);
+    const userText = (lastUserTextRef.current || browserSpeechTextRef.current).trim();
+    // commentary.append is the reliable way to make GPT-Live speak (community + Live docs).
     sendLiveEvent(eventsRef.current, {
-      type: 'session.instructions.append',
-      event_id: `reply_now_${now}`,
+      type: 'session.commentary.append',
+      event_id: `reply_now_${now}${isRetry ? '_r' : ''}`,
       delegation_id: null,
-      content: FORCE_REPLY_INSTRUCTION,
+      content: buildForceReplyCommentary(userText),
     });
-  }, []);
+    clearReplyRetry();
+    if (!isRetry) {
+      replyRetryTimeoutRef.current = setTimeout(() => {
+        replyRetryTimeoutRef.current = null;
+        if (assistantSpeakingRef.current || !readyRef.current) {
+          setPromptingReply(false);
+          return;
+        }
+        sendForceReply(true);
+      }, REPLY_RETRY_MS);
+    }
+  }, [clearReplyRetry]);
 
   const scheduleReplyNudge = useCallback(() => {
     clearReplyNudge();
@@ -264,26 +364,34 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     replyNudgeTimeoutRef.current = setTimeout(() => {
       replyNudgeTimeoutRef.current = null;
       if (!awaitingUserReplyRef.current || assistantSpeakingRef.current) return;
-      sendForceReply();
+      sendForceReply(false);
     }, SPEECH_END_SILENCE_MS);
   }, [clearReplyNudge, sendForceReply]);
 
   const markAssistantSpeaking = useCallback(() => {
     assistantSpeakingRef.current = true;
     awaitingUserReplyRef.current = false;
+    forceReplyAttemptsRef.current = 0;
     clearReplyNudge();
+    clearReplyRetry();
     clearAssistantDoneTimer();
     setHearingYou(false);
     hearingYouRef.current = false;
     localSpeechActiveRef.current = false;
+    setPromptingReply(false);
     setStatus('speaking');
     void audioRef.current?.play().catch(() => undefined);
     assistantDoneTimeoutRef.current = setTimeout(() => {
       assistantDoneTimeoutRef.current = null;
       assistantSpeakingRef.current = false;
+      // Fresh user turn after Aria finishes.
+      lastUserTextRef.current = '';
+      browserSpeechTextRef.current = '';
       setStatus((prev) => (prev === 'speaking' ? 'listening' : prev));
     }, ASSISTANT_DONE_SILENCE_MS);
-  }, [clearAssistantDoneTimer, clearReplyNudge]);
+  }, [clearAssistantDoneTimer, clearReplyNudge, clearReplyRetry]);
+
+  markAssistantSpeakingRef.current = markAssistantSpeaking;
 
   const noteCallerSpeech = useCallback(() => {
     if (assistantSpeakingRef.current || mutedRef.current) return;
@@ -291,11 +399,57 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       hearingYouRef.current = true;
       setHearingYou(true);
     }
+    setPromptingReply(false);
     setStatus('listening');
     scheduleReplyNudge();
   }, [scheduleReplyNudge]);
 
-  const startSpeechMonitor = useCallback((stream: MediaStream) => {
+  noteCallerSpeechRef.current = noteCallerSpeech;
+
+  const startSpeechRecognition = useCallback(() => {
+    stopSpeechRecognition();
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    try {
+      const recognition = new Ctor();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-ZA';
+      recognitionWantedRef.current = true;
+      recognition.onresult = (event) => {
+        if (assistantSpeakingRef.current || mutedRef.current) return;
+        let interim = '';
+        let finalChunk = '';
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const result = event.results[i];
+          if (!result) continue;
+          const piece = result[0]?.transcript ?? '';
+          if (result.isFinal) finalChunk += piece;
+          else interim += piece;
+        }
+        const heard = (finalChunk || interim).replace(/\s+/g, ' ').trim();
+        if (!heard) return;
+        browserSpeechTextRef.current = heard;
+        if (finalChunk.trim()) appendUserHeardText(finalChunk, true);
+        else appendUserHeardText(interim, true);
+        noteCallerSpeechRef.current();
+      };
+      recognition.onerror = () => {
+        // Permission / no-speech errors are non-fatal; Live mic may still work.
+      };
+      recognition.onend = () => {
+        if (!recognitionWantedRef.current || mutedRef.current || finalizedRef.current) return;
+        try { recognition.start(); } catch { /* ignore restart races */ }
+      };
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      recognitionRef.current = null;
+      recognitionWantedRef.current = false;
+    }
+  }, [appendUserHeardText, stopSpeechRecognition]);
+
+  const startSpeechMonitor = useCallback((micStream: MediaStream, remoteStream?: MediaStream | null) => {
     stopSpeechMonitor();
     if (typeof AudioContext === 'undefined' && typeof (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext === 'undefined') {
       return;
@@ -304,36 +458,80 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       const Ctx = window.AudioContext
         ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const ctx = new Ctx();
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      source.connect(analyser);
+      const micSource = ctx.createMediaStreamSource(micStream);
+      const micAnalyser = ctx.createAnalyser();
+      micAnalyser.fftSize = 512;
+      micSource.connect(micAnalyser);
+      micAnalyserRef.current = micAnalyser;
+
+      if (remoteStream && remoteStream.getAudioTracks().length > 0) {
+        const remoteSource = ctx.createMediaStreamSource(remoteStream);
+        const remoteAnalyser = ctx.createAnalyser();
+        remoteAnalyser.fftSize = 512;
+        remoteSource.connect(remoteAnalyser);
+        remoteAnalyserRef.current = remoteAnalyser;
+      }
+
       audioContextRef.current = ctx;
-      analyserRef.current = analyser;
       void ctx.resume().catch(() => undefined);
 
-      const samples = new Uint8Array(analyser.fftSize);
+      const micSamples = new Uint8Array(micAnalyser.fftSize);
+      const remoteSamples = new Uint8Array(512);
       speechMonitorRef.current = setInterval(() => {
-        if (!analyserRef.current || mutedRef.current || !readyRef.current) return;
+        const activeCtx = audioContextRef.current;
+        if (activeCtx?.state === 'suspended') {
+          void activeCtx.resume().catch(() => undefined);
+        }
+        if (!micAnalyserRef.current || mutedRef.current || !readyRef.current) return;
+
+        if (remoteAnalyserRef.current) {
+          if (remoteSamples.length !== remoteAnalyserRef.current.fftSize) {
+            // length fixed at create; analyser fftSize is 512
+          }
+          remoteAnalyserRef.current.getByteTimeDomainData(remoteSamples);
+          if (rmsFromTimeDomain(remoteSamples) >= REMOTE_SPEECH_ENERGY_THRESHOLD) {
+            markAssistantSpeakingRef.current();
+            localSpeechActiveRef.current = false;
+            return;
+          }
+        }
+
         if (assistantSpeakingRef.current) {
           localSpeechActiveRef.current = false;
           return;
         }
-        analyserRef.current.getByteTimeDomainData(samples);
-        const energy = rmsFromTimeDomain(samples);
+
+        micAnalyserRef.current.getByteTimeDomainData(micSamples);
+        const energy = rmsFromTimeDomain(micSamples);
         if (energy >= SPEECH_ENERGY_THRESHOLD) {
           localSpeechActiveRef.current = true;
-          noteCallerSpeech();
+          noteCallerSpeechRef.current();
         } else if (localSpeechActiveRef.current) {
-          // Still in a speech turn; silence timer is owned by scheduleReplyNudge.
           scheduleReplyNudge();
           localSpeechActiveRef.current = false;
         }
       }, 100);
     } catch {
-      // Local energy detection is a fallback; Live transcripts may still drive nudges.
+      // Local energy detection is a fallback.
     }
-  }, [noteCallerSpeech, scheduleReplyNudge, stopSpeechMonitor]);
+  }, [scheduleReplyNudge, stopSpeechMonitor]);
+
+  const attachRemoteMonitor = useCallback((stream: MediaStream) => {
+    const ctx = audioContextRef.current;
+    if (!ctx) {
+      if (micRef.current) startSpeechMonitor(micRef.current, stream);
+      return;
+    }
+    try {
+      const remoteSource = ctx.createMediaStreamSource(stream);
+      const remoteAnalyser = ctx.createAnalyser();
+      remoteAnalyser.fftSize = 512;
+      remoteSource.connect(remoteAnalyser);
+      remoteAnalyserRef.current = remoteAnalyser;
+    } catch {
+      // Ignore if remote monitor cannot attach.
+    }
+  }, [startSpeechMonitor]);
 
   const clearTimers = useCallback(() => {
     if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
@@ -341,15 +539,17 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
     if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current);
     clearReplyNudge();
+    clearReplyRetry();
     clearAssistantDoneTimer();
     closeTimeoutRef.current = null;
     maxTimeoutRef.current = null;
     inactivityTimeoutRef.current = null;
     elapsedIntervalRef.current = null;
-  }, [clearAssistantDoneTimer, clearReplyNudge]);
+  }, [clearAssistantDoneTimer, clearReplyNudge, clearReplyRetry]);
 
   const hardCleanup = useCallback(() => {
     clearTimers();
+    stopSpeechRecognition();
     stopSpeechMonitor();
     micRef.current?.getTracks().forEach((track) => track.stop());
     micRef.current = null;
@@ -367,10 +567,13 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     awaitingUserReplyRef.current = false;
     assistantSpeakingRef.current = false;
     lastReplyNudgeAtRef.current = 0;
+    lastUserTextRef.current = '';
+    browserSpeechTextRef.current = '';
     setSessionId(null);
     setMuted(false);
     mutedRef.current = false;
-  }, [clearTimers, stopSpeechMonitor]);
+    setPromptingReply(false);
+  }, [clearTimers, stopSpeechMonitor, stopSpeechRecognition]);
 
   const bumpActivity = useCallback(() => {
     const inactivity = limitsRef.current?.inactivitySeconds ?? 120;
@@ -455,6 +658,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       setStatus('listening');
       // Greeting comes from the server session.input developer seed only.
       void audioRef.current?.play().catch(() => undefined);
+      startSpeechRecognition();
       return;
     }
     if (type === 'session.closed') {
@@ -494,10 +698,12 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
 
     const transcript = extractTranscript(event);
     if (transcript) {
+      if (transcript.role === 'user') {
+        appendUserHeardText(transcript.text);
+      }
       setTranscripts((prev) => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
-        // Close the previous speaker's open turn when the other person starts talking.
         if (last && !last.final && last.role !== transcript.role) {
           const closed = { ...last, final: true };
           updated[updated.length - 1] = closed;
@@ -528,7 +734,15 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
         return [...updated, turn];
       });
     }
-  }, [bumpActivity, clearAssistantDoneTimer, finalizeClose, markAssistantSpeaking, noteCallerSpeech]);
+  }, [
+    appendUserHeardText,
+    bumpActivity,
+    clearAssistantDoneTimer,
+    finalizeClose,
+    markAssistantSpeaking,
+    noteCallerSpeech,
+    startSpeechRecognition,
+  ]);
 
   const startConversation = useCallback(async () => {
     if (startingRef.current || readyRef.current || status === 'connecting' || status === 'connected' || status === 'listening' || status === 'speaking') {
@@ -549,6 +763,9 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     setTranscripts([]);
     setElapsedSeconds(0);
     setHearingYou(false);
+    setPromptingReply(false);
+    lastUserTextRef.current = '';
+    browserSpeechTextRef.current = '';
     setStatus('requesting_mic');
 
     try {
@@ -559,12 +776,12 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       audioRef.current = playback;
       playback.muted = false;
       playback.volume = 1;
-      // Unlock audio on the same user gesture that started the call.
       void playback.play().catch(() => undefined);
 
-      // Match OpenAI's GPT-Live WebRTC quickstart: one mic track, no extra transceiver.
       connection.addEventListener('track', (event) => {
-        playback.srcObject = new MediaStream([event.track]);
+        const remoteStream = event.streams[0] ?? new MediaStream([event.track]);
+        playback.srcObject = remoteStream;
+        attachRemoteMonitor(remoteStream);
         void playback.play().catch(() => {
           setError('Tap “Play Aria’s voice” if you cannot hear her — the browser may have blocked audio.');
         });
@@ -585,7 +802,6 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       startSpeechMonitor(microphone);
 
       setStatus('connecting');
-      // Create the event channel BEFORE the SDP offer (required by GPT-Live).
       const events = connection.createDataChannel('oai-events');
       eventsRef.current = events;
       events.addEventListener('message', ({ data }) => handleEvent(data));
@@ -654,7 +870,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       optionsRef.current.onError?.(message);
       hardCleanup();
     }
-  }, [finalizeClose, handleEvent, hardCleanup, startSpeechMonitor, status]);
+  }, [attachRemoteMonitor, finalizeClose, handleEvent, hardCleanup, startSpeechMonitor, status]);
 
   const setMicrophoneMuted = useCallback((next: boolean) => {
     setMuted(next);
@@ -668,8 +884,12 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       localSpeechActiveRef.current = false;
       hearingYouRef.current = false;
       setHearingYou(false);
+      setPromptingReply(false);
+      try { recognitionRef.current?.stop(); } catch { /* ignore */ }
+    } else if (readyRef.current) {
+      startSpeechRecognition();
     }
-  }, [clearReplyNudge]);
+  }, [clearReplyNudge, startSpeechRecognition]);
 
   const toggleMute = useCallback(() => {
     setMicrophoneMuted(!muted);
@@ -701,6 +921,7 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
     limits,
     elapsedSeconds,
     hearingYou,
+    promptingReply,
     isActive: status === 'connecting' || status === 'connected' || status === 'listening' || status === 'speaking' || status === 'requesting_mic' || status === 'ending',
     support: supportsLiveVoice(),
     startConversation,

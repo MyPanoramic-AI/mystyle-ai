@@ -16,6 +16,7 @@ interface StylistLiveVoicePanelProps {
   maxSessionSeconds: number | null;
   transcripts: GptLiveTranscriptTurn[];
   hearingYou?: boolean;
+  promptingReply?: boolean;
   onMuteToggle: () => void;
   onPlayAudio: () => void;
   onEnd: () => void;
@@ -58,6 +59,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   maxSessionSeconds,
   transcripts,
   hearingYou = false,
+  promptingReply = false,
   onMuteToggle,
   onPlayAudio,
   onEnd,
@@ -70,11 +72,13 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   const hasUserTurn = visibleTurns.some((t) => t.role === 'user');
   const liveHint = speaking
     ? `${stylistName} is answering…`
-    : hearingYou
-      ? 'Hearing you… pause when you finish and she will reply.'
-      : hasUserTurn
-        ? `Pause for a moment after you speak — ${stylistName} will answer out loud.`
-        : `${stylistName} should greet you first. Speak after she finishes, then pause so she can reply. Headphones help.`;
+    : promptingReply
+      ? `Asking ${stylistName} to reply…`
+      : hearingYou
+        ? 'Hearing you… pause when you finish and she will reply.'
+        : hasUserTurn
+          ? `Pause for a moment after you speak — ${stylistName} will answer out loud.`
+          : `${stylistName} should greet you first. Speak after she finishes, then pause so she can reply. Headphones help.`;
 
   const bars = useMemo(() => Array.from({ length: 7 }, (_, i) => i), []);
 
@@ -86,7 +90,13 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
             <p className="font-serif text-base text-[#242326] truncate">{stylistName}</p>
             <p className="text-[11px] text-[#5C585E] flex items-center gap-1.5 mt-0.5">
               <Radio className={`w-3 h-3 ${speaking || listening || hearingYou ? 'text-emerald-600' : 'text-[#9C6A61]'}`} />
-              {hearingYou && !speaking ? 'Hearing you…' : statusLabel(status, stylistName)}
+              {speaking
+                ? statusLabel(status, stylistName)
+                : promptingReply
+                  ? `Asking ${stylistName} to reply…`
+                  : hearingYou
+                    ? 'Hearing you…'
+                    : statusLabel(status, stylistName)}
               <span className="text-[#242326]/30">·</span>
               <span className="tabular-nums">
                 {formatSeconds(elapsedSeconds)}
