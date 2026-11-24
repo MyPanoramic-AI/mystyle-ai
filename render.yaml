@@ -52,9 +52,9 @@ services:
       - key: AI_LIVE_APPROVAL_ACK
         value: i-approve-paid-openai-stylist
       - key: AI_MAX_BUDGET_USD
-        value: "5"
+        value: "25"
       - key: AI_MAX_USER_BUDGET_USD
-        value: "1"
+        value: "5"
       - key: AI_MAX_LIVE_REQUESTS
         value: "500"
       - key: AI_MAX_OUTPUT_TOKENS

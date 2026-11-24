@@ -23,15 +23,18 @@ function stamp(now: number): string {
   return new Date(now).toISOString();
 }
 
+/** Text + look-image spend only. Voice has its own AI_VOICE_* budgets. */
 function spent(db: Sql, userId?: string): number {
   const row = userId
     ? db.prepare(
       `SELECT COALESCE(SUM(cost_usd), 0) AS spent FROM ai_usage
-       WHERE user_id = ? AND request_status = 'succeeded'`,
+       WHERE user_id = ? AND request_status = 'succeeded'
+         AND operation_type != 'stylist_voice_session'`,
     ).get(userId) as { spent: number }
     : db.prepare(
       `SELECT COALESCE(SUM(cost_usd), 0) AS spent FROM ai_usage
-       WHERE request_status = 'succeeded'`,
+       WHERE request_status = 'succeeded'
+         AND operation_type != 'stylist_voice_session'`,
     ).get() as { spent: number };
   return Number(row?.spent ?? 0);
 }
