@@ -45,8 +45,8 @@ function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = 0.92): Promise<Bl
   });
 }
 
-async function flattenOnLightGrey(cutout: Blob): Promise<Blob> {
-  const image = await loadImage(cutout);
+async function flattenOnLightGrey(source: Blob): Promise<Blob> {
+  const image = await loadImage(source);
   const sourceWidth = Math.max(1, image.naturalWidth || image.width);
   const sourceHeight = Math.max(1, image.naturalHeight || image.height);
   const scale = Math.min(1, MAX_EDGE_PX / Math.max(sourceWidth, sourceHeight));
@@ -65,29 +65,42 @@ async function flattenOnLightGrey(cutout: Blob): Promise<Blob> {
   return canvasToJpegBlob(canvas);
 }
 
+function asStudioFile(blob: Blob, original: File): File {
+  const baseName = original.name.replace(/\.[^.]+$/, '') || 'styling-photo';
+  return new File([blob], `${baseName}-studio.jpg`, {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  });
+}
+
 /**
  * Remove the background and replace it with a light-grey plain backdrop.
  * Returns a JPEG File ready for preview or private upload.
+ * If cutout fails, still saves a resized studio JPEG so upload is not blocked.
  */
 export async function prepareProfilePhoto(file: File): Promise<File> {
   try {
     const cutout = await removeBackground(file, {
+      // Quantized model: smaller download and more reliable on phones / low memory.
+      model: 'isnet_quint8',
+      device: 'cpu',
+      proxyToWorker: false,
       output: { format: 'image/png', quality: 0.9 },
     });
-    const flattened = await flattenOnLightGrey(cutout);
-    const baseName = file.name.replace(/\.[^.]+$/, '') || 'styling-photo';
-    return new File([flattened], `${baseName}-studio.jpg`, {
-      type: 'image/jpeg',
-      lastModified: Date.now(),
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message.trim()) {
-      throw new Error(
-        error.message.includes('photograph')
-          ? error.message
-          : 'The background could not be removed from that photograph. Try another clear photo.',
-      );
+    return asStudioFile(await flattenOnLightGrey(cutout), file);
+  } catch (cutoutError) {
+    console.warn('[prepareProfilePhoto] background removal failed; saving studio flatten instead', cutoutError);
+    try {
+      return asStudioFile(await flattenOnLightGrey(file), file);
+    } catch {
+      if (cutoutError instanceof Error && cutoutError.message.trim()) {
+        throw new Error(
+          cutoutError.message.includes('photograph')
+            ? cutoutError.message
+            : 'The background could not be removed from that photograph. Try another clear photo.',
+        );
+      }
+      throw new Error('The background could not be removed from that photograph. Try another clear photo.');
     }
-    throw new Error('The background could not be removed from that photograph. Try another clear photo.');
   }
 }

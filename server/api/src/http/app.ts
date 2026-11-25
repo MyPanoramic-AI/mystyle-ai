@@ -117,7 +117,9 @@ function securityHeaders(res: Response, page: boolean): void {
       // Profile photo cutouts use @imgly/background-removal (WASM + workers + CDN model files).
       ? [
         "default-src 'self'",
-        "script-src 'self' 'wasm-unsafe-eval'",
+        // blob: + wasm-unsafe-eval: @imgly/background-removal / onnxruntime-web workers.
+        // unsafe-eval: required by some onnxruntime-web WASM bootstrap paths.
+        "script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval' blob:",
         "worker-src 'self' blob:",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
