@@ -152,15 +152,17 @@ function asStylistPersonaFromApi(body: Record<string, unknown>): StylistPersona 
     return asStylistPersona({
       ...nested,
       answerLength: nested.answerLength ?? body.stylistAnswerLength,
+      audioVoice: nested.audioVoice ?? body.stylistAudioVoice,
     });
   }
-  return {
-    name: asStylistName(body.stylistName),
-    gender: asStylistGender(body.stylistGender),
-    ageVibe: asStylistAgeVibe(body.stylistAgeVibe),
-    voice: asStylistVoice(body.stylistVoice),
-    answerLength: asStylistAnswerLength(body.stylistAnswerLength),
-  };
+  return asStylistPersona({
+    name: body.stylistName,
+    gender: body.stylistGender,
+    ageVibe: body.stylistAgeVibe,
+    voice: body.stylistVoice,
+    answerLength: body.stylistAnswerLength,
+    audioVoice: body.stylistAudioVoice,
+  });
 }
 
 function measurementText(value: unknown): string {
@@ -256,6 +258,7 @@ export function toApiProfile(profile: UserProfile): Record<string, unknown> {
     stylistAgeVibe: profile.stylistPersona?.ageVibe ?? DEFAULT_STYLIST_PERSONA.ageVibe,
     stylistVoice: profile.stylistPersona?.voice ?? DEFAULT_STYLIST_PERSONA.voice,
     stylistAnswerLength: profile.stylistPersona?.answerLength ?? DEFAULT_STYLIST_PERSONA.answerLength,
+    stylistAudioVoice: profile.stylistPersona?.audioVoice ?? DEFAULT_STYLIST_PERSONA.audioVoice,
     stylistPersona: profile.stylistPersona ?? { ...DEFAULT_STYLIST_PERSONA },
     onboardingStatus: profile.onboardingStatus ?? (profile.isOnboardingCompleted ? 'completed' : 'pending'),
     measurements: {

@@ -69,6 +69,7 @@ import {
   createVoiceSession,
   voiceAvailability,
 } from '../ai/voiceSessions.js';
+import { createVoicePreview } from '../ai/voicePreview.js';
 import { createVoiceLookVisual } from '../ai/voiceVisual.js';
 import { tryOnOpinionForUser } from '../ai/tryOnOpinion.js';
 import { loadWhatsAppConfig } from '../whatsapp/whatsappConfig.js';
@@ -891,6 +892,25 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/stylist/voice/availability', route((req, res) => {
     requireUser(req);
     res.json(voiceAvailability(voiceConfig));
+  }));
+  app.post('/api/stylist/voice/preview', route(async (req, res) => {
+    const userId = requireUser(req).userId;
+    requireCsrf(req);
+    const voice = typeof req.body?.voice === 'string' ? req.body.voice : '';
+    const stylistName = typeof req.body?.stylistName === 'string'
+      ? req.body.stylistName
+      : (getProfile(deps.db, userId).stylistName as string | undefined);
+    const preview = await createVoicePreview({
+      voice,
+      stylistName,
+      fetchImpl: deps.aiFetch,
+      apiKey: voiceConfig.apiKey,
+    });
+    res.setHeader('Content-Type', preview.contentType);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('X-Voice-Preview', preview.voice);
+    res.setHeader('X-Voice-Preview-Cached', preview.cached ? '1' : '0');
+    res.send(preview.bytes);
   }));
   app.post('/api/stylist/voice/sessions', route(async (req, res) => {
     const userId = requireUser(req).userId;

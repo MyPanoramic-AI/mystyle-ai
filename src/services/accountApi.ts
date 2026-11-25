@@ -58,6 +58,7 @@ export interface AccountApi {
   savePreferences(body: Record<string, unknown>): Promise<Record<string, unknown>>;
   stylistAvailability(): Promise<StylistAvailability>;
   stylistVoiceAvailability(): Promise<StylistVoiceAvailability>;
+  previewStylistVoice(body: { voice: string; stylistName?: string | null }): Promise<Blob>;
   createStylistVoiceSession(body: {
     sdp: string;
     conversationId?: string | null;
@@ -674,6 +675,37 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     savePreferences: (body) => request('/api/preferences', { method: 'PUT', body, csrf: true }),
     stylistAvailability: () => request('/api/stylist/availability'),
     stylistVoiceAvailability: () => request('/api/stylist/voice/availability'),
+    previewStylistVoice: async (body) => {
+      const run = async (allowCsrfRetry: boolean): Promise<Blob> => {
+        const headers: Record<string, string> = { 'content-type': 'application/json' };
+        if (csrfToken) headers['x-csrf-token'] = csrfToken;
+        const response = await fetchImpl(`${baseUrl}/api/stylist/voice/preview`, {
+          method: 'POST',
+          credentials: 'include',
+          headers,
+          body: JSON.stringify(body),
+        });
+        if (response.status === 403 && allowCsrfRetry) {
+          const session = await request<SessionResponse>('/api/auth/session');
+          remember(session);
+          return run(false);
+        }
+        if (!response.ok) {
+          let message = 'Could not play that voice preview.';
+          let code = 'voice_preview_failed';
+          try {
+            const payload = await response.json() as { code?: string; message?: string };
+            if (payload.message) message = payload.message;
+            if (payload.code) code = payload.code;
+          } catch {
+            // Binary error bodies are uncommon; keep the default message.
+          }
+          throw new AccountApiError(code, message, response.status);
+        }
+        return response.blob();
+      };
+      return run(true);
+    },
     createStylistVoiceSession: (body) => request('/api/stylist/voice/sessions', {
       method: 'POST',
       body,

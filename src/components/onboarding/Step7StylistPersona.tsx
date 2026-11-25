@@ -44,12 +44,12 @@ export const Step7StylistPersona: React.FC<Step7StylistPersonaProps> = ({
             Meet your personal stylist
           </h2>
           <p className="mt-1.5 text-xs sm:text-sm text-[#5C585E]">
-            Choose their name, how they present, their age vibe, the way they talk, and how long their answers should be.
-            You can change this later in your profile.
+            Choose their spoken voice, tone, how long they talk, name, and presentation.
+            You can listen to voices and change this later in your profile.
           </p>
         </div>
 
-        <StylistPersonaFields value={persona} onChange={setPersona} />
+        <StylistPersonaFields value={persona} onChange={setPersona} allowVoicePreview />
 
         <div className="mt-8 flex items-center justify-between gap-3">
           <button

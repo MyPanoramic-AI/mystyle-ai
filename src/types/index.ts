@@ -153,12 +153,26 @@ export type StylistVoiceId =
 /** How long stylist chat replies should run. */
 export type StylistAnswerLengthId = 'short' | 'balanced' | 'detailed';
 
+/** Spoken GPT-Live voice used in Talk to Aria. */
+export type StylistAudioVoiceId =
+  | 'alloy'
+  | 'ash'
+  | 'ballad'
+  | 'coral'
+  | 'echo'
+  | 'marin'
+  | 'sage'
+  | 'shimmer'
+  | 'verse'
+  | 'cedar';
+
 export interface StylistPersona {
   name: string;
   gender: StylistGenderId;
   ageVibe: StylistAgeVibeId;
   voice: StylistVoiceId;
   answerLength: StylistAnswerLengthId;
+  audioVoice: StylistAudioVoiceId;
 }
 
 export type FitPreference = 'relaxed' | 'regular' | 'fitted' | 'no-preference';

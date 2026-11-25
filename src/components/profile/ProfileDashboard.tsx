@@ -52,6 +52,7 @@ import {
   stylistGenderLabel,
   stylistVoiceLabel,
   stylistAnswerLengthLabel,
+  stylistAudioVoiceLabel,
 } from '../../data/stylistPersona';
 import { FamilyLinkInvitePanel } from '../family/FamilyLinkInvitePanel';
 import { WhatsAppConnectPanel } from './WhatsAppConnectPanel';
@@ -469,13 +470,14 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               {([
                 { label: 'Name', value: stylistPersona.name },
-                { label: 'Presentation', value: stylistGenderLabel(stylistPersona.gender) },
-                { label: 'Age vibe', value: stylistAgeVibeLabel(stylistPersona.ageVibe) },
+                { label: 'Spoken voice', value: stylistAudioVoiceLabel(stylistPersona.audioVoice) },
                 { label: 'Tone', value: stylistVoiceLabel(stylistPersona.voice) },
                 { label: 'Talk length', value: stylistAnswerLengthLabel(stylistPersona.answerLength) },
+                { label: 'Presentation', value: stylistGenderLabel(stylistPersona.gender) },
+                { label: 'Age vibe', value: stylistAgeVibeLabel(stylistPersona.ageVibe) },
               ] as const).map((chip) => (
                 <button
                   key={chip.label}

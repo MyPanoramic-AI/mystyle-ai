@@ -163,9 +163,12 @@ export async function createVoiceSession(opts: {
   const consent = getPreferences(opts.db, opts.userId).aiPersonalisationConsent === true;
   const styleContext = consent ? minimiseProfile(profile, true) : null;
   const instructions = buildVoiceLiveInstructions(persona, styleContext);
+  const profileAudio = typeof profile.stylistAudioVoice === 'string' ? profile.stylistAudioVoice : null;
   const audioVoice = (opts.audioVoice && (GPT_LIVE_AUDIO_VOICES as readonly string[]).includes(opts.audioVoice))
     ? opts.audioVoice
-    : config.audioVoice;
+    : (profileAudio && (GPT_LIVE_AUDIO_VOICES as readonly string[]).includes(profileAudio)
+      ? profileAudio
+      : config.audioVoice);
 
   const maxSeconds = remainingSecondsAvailable(config, dailySecondsUsed);
 

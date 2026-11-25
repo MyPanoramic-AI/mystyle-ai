@@ -380,9 +380,14 @@ export const EditSectionModal: React.FC<EditSectionModalProps> = ({
         {section === 'stylist' && (
           <div className="space-y-3">
             <p className="text-xs text-[#5C585E] leading-relaxed">
-              Edit how your stylist talks: conversational tone, how long or short they answer, then name and presentation. Changes apply in chat and Talk to Aria after you save.
+              Listen to spoken voices, pick a tone, and choose how long or short they answer. Changes apply in chat and Talk to Aria after you save.
             </p>
-            <StylistPersonaFields value={stylistPersona} onChange={setStylistPersona} compact />
+            <StylistPersonaFields
+              value={stylistPersona}
+              onChange={setStylistPersona}
+              compact
+              allowVoicePreview={usesAccount}
+            />
           </div>
         )}
 

@@ -282,6 +282,7 @@ test('existing accounts stay unverified after migration 010 and mailbox hides to
       '020_whatsapp_outbound.sql',
       '021_ai_message_attachments.sql',
       '022_profile_weight.sql',
+      '023_stylist_audio_voice.sql',
     ]);
     const row = db.prepare(`SELECT email_verified_at AS verifiedAt FROM users WHERE id = ?`).get('legacy-user') as { verifiedAt: string | null };
     assert.equal(row.verifiedAt, null);

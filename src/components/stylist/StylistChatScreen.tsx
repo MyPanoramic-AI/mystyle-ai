@@ -225,6 +225,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       return accountApi.createStylistVoiceSession({
         sdp,
         conversationId: id,
+        audioVoice: resolveStylistPersona(profile).audioVoice,
       });
     },
     closeSession: async (sessionId, body) => {
