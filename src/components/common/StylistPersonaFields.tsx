@@ -67,16 +67,29 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
         voice: voiceId,
         stylistName: value.name,
       });
-      const url = URL.createObjectURL(blob);
+      const typed = blob.type?.startsWith('audio/')
+        ? blob
+        : new Blob([await blob.arrayBuffer()], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(typed);
       objectUrlRef.current = url;
       const audio = new Audio(url);
+      audio.preload = 'auto';
       audioRef.current = audio;
       audio.onended = () => setPreviewing((current) => (current === voiceId ? null : current));
       audio.onerror = () => {
         setPreviewError('Could not play that voice sample.');
         setPreviewing(null);
       };
-      await audio.play();
+      try {
+        await audio.play();
+      } catch (playError) {
+        setPreviewError(
+          playError instanceof Error && /NotAllowedError|not allowed/i.test(playError.name + playError.message)
+            ? 'Your browser blocked the sample. Tap Listen again to play it.'
+            : 'Could not play that voice sample.',
+        );
+        setPreviewing(null);
+      }
     } catch (error) {
       setPreviewError(
         error instanceof AccountApiError

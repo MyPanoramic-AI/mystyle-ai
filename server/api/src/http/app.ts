@@ -894,8 +894,8 @@ export function createApp(deps: AppDeps): express.Express {
     res.json(voiceAvailability(voiceConfig));
   }));
   app.post('/api/stylist/voice/preview', route(async (req, res) => {
+    // requireUser already enforces CSRF for POST.
     const userId = requireUser(req).userId;
-    requireCsrf(req);
     const voice = typeof req.body?.voice === 'string' ? req.body.voice : '';
     const stylistName = typeof req.body?.stylistName === 'string'
       ? req.body.stylistName
@@ -910,7 +910,8 @@ export function createApp(deps: AppDeps): express.Express {
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.setHeader('X-Voice-Preview', preview.voice);
     res.setHeader('X-Voice-Preview-Cached', preview.cached ? '1' : '0');
-    res.send(preview.bytes);
+    res.setHeader('Content-Length', String(preview.bytes.length));
+    res.end(preview.bytes);
   }));
   app.post('/api/stylist/voice/sessions', route(async (req, res) => {
     const userId = requireUser(req).userId;

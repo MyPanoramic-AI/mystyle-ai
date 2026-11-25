@@ -304,3 +304,31 @@ test('createVoiceSession maps exhausted OpenAI credits clearly', async () => {
     await dbApi.close();
   }
 });
+
+test('voice preview returns mp3 audio without crashing CSRF checks', async () => {
+  const api = await startApi({}, {
+    voiceConfig: voiceConfig(),
+    aiFetch: async (input) => {
+      assert.match(String(input), /\/v1\/audio\/speech/);
+      return new Response(Buffer.from('ID3fake-mp3-bytes'), {
+        status: 200,
+        headers: { 'content-type': 'audio/mpeg' },
+      });
+    },
+  });
+  try {
+    const ada = await session(api.base, 'voice-preview@example.com');
+    const response = await fetch(`${api.base}/api/stylist/voice/preview`, {
+      method: 'POST',
+      headers: authHeaders(ada.cookie, ada.body.csrfToken),
+      body: JSON.stringify({ voice: 'marin', stylistName: 'Aria' }),
+    });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') ?? '', /audio\/mpeg/);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    assert.ok(bytes.length > 0);
+    assert.equal(response.headers.get('x-voice-preview'), 'marin');
+  } finally {
+    await api.close();
+  }
+});
