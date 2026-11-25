@@ -28,28 +28,71 @@ export function wantsLookVisualization(text: string, modelIntent: boolean): bool
   return /\b(generate|visuali[sz]e|show me|give me|send me|can you show|can you give|i want (to see|the picture|a picture|a photo|a look)|i just want the picture|show me what|create (an? )?(image|picture|look|photo)|render|picture of|photo of|image of|a picture|a photo|picture of me|photo of me|style my hair|change my hair|restyle( my hair)?|add accessories|with accessories|make me look|show (me )?how (it|this) (would|could) look|what (this|it|that|you) (would|are) look|what you are imagining)\b/.test(value);
 }
 
+/** True when the brief is mainly adding/swapping one finishing piece rather than a whole new outfit. */
+export function isAdditiveLookEdit(text: string): boolean {
+  const value = text.toLowerCase();
+  if (/\b(add|adds|adding|put on|swap in|swap out)\b/.test(value)) return true;
+  if (/\bpair(?:ed)?\b.{0,24}\b(with|to)\b/.test(value)) return true;
+  if (/\bchange (?:the )?(?:shoes?|footwear|heels?|pumps?|sandals?|bags?|handbag|jewell?ery|earrings?|necklace|belt|hat|jacket|blazer)\b/.test(value)) return true;
+  if (/\bnude pumps?\b/.test(value)) return true;
+  if (/\bon (?:her|his|the) feet\b/.test(value)) return true;
+  return false;
+}
+
+const LOOK_COMPOSITION_RULES = [
+  'Show a complete full-body fashion look on a person from head to toe — never a product close-up or isolated item.',
+  'If the request only adds or swaps one piece (shoes, bag, jewellery, jacket, hair, makeup), keep every other garment and the overall silhouette unchanged.',
+  'Place additions correctly: shoes on the feet, bag in hand or on the shoulder, jewellery on ears/neck/wrists, jacket worn on the body.',
+  'Never redesign the whole outfit into a single shoe, bag, or accessory. Never crop to only the added item.',
+].join(' ');
+
 export function buildLookVisualPrompt(input: {
   userText: string;
   modelPrompt: string | null;
   hasReferencePhoto: boolean;
+  /** Previous stylist look image is being edited (follow-up like “add nude pumps”). */
+  hasPriorLook?: boolean;
 }): string {
   const brief = (input.modelPrompt || input.userText).trim().slice(0, 700);
+  const additive = isAdditiveLookEdit(`${input.userText} ${input.modelPrompt ?? ''}`);
+  const additiveHint = additive
+    ? 'This is an additive edit: preserve the existing outfit and only apply the requested addition or swap.'
+    : '';
+
+  if (input.hasPriorLook) {
+    return [
+      'Edit the previous fashion look visualization.',
+      'Preserve the same person, pose, framing, garments, colours, and overall outfit unless the brief explicitly changes them.',
+      'Apply ONLY the requested addition or change from the styling request.',
+      LOOK_COMPOSITION_RULES,
+      additiveHint,
+      'Photorealistic editorial styling photo, natural lighting, South African fashion context.',
+      'No logos, no retailer watermarks, no text overlays, no price tags.',
+      `Styling request: ${brief}`,
+    ].filter(Boolean).join(' ');
+  }
+
   if (input.hasReferencePhoto) {
     return [
       "Edit this customer's photograph into a polished fashion look visualization.",
       'Keep the same person, face, body, and identity. Do not invent a different person.',
-      'Apply the requested styling changes only (for example hair, accessories, makeup accents, or outfit finishing).',
+      'Apply the requested styling changes only (for example hair, accessories, makeup accents, shoes on the feet, or outfit finishing).',
+      LOOK_COMPOSITION_RULES,
+      additiveHint,
       'Photorealistic editorial styling photo, natural lighting, South African fashion context.',
       'No logos, no retailer watermarks, no text overlays, no price tags.',
       `Styling request: ${brief}`,
-    ].join(' ');
+    ].filter(Boolean).join(' ');
   }
+
   return [
     'Create a photorealistic fashion look visualization for an adult customer.',
-    'Show the full styled look clearly. No logos, watermarks, or readable text.',
+    LOOK_COMPOSITION_RULES,
+    additiveHint,
     'South African fashion context, natural lighting, editorial quality.',
+    'No logos, watermarks, or readable text.',
     `Styling request: ${brief}`,
-  ].join(' ');
+  ].filter(Boolean).join(' ');
 }
 
 export async function generateLookImage(input: {

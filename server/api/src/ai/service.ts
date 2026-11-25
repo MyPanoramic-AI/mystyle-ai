@@ -258,6 +258,33 @@ function loadProfileReferenceImages(runtime: StylistRuntime, userId: string): Pr
   }
 }
 
+/** Most recent generated look in this chat — used so follow-ups edit that image instead of inventing a new scene. */
+function loadLatestLookReference(runtime: StylistRuntime, userId: string, conversationId: string): ProviderImagePart | null {
+  if (!runtime.mediaDir) return null;
+  try {
+    const rows = runtime.db.prepare(
+      `SELECT recommendation_json AS recommendationJson FROM ai_messages
+       WHERE conversation_id = ? AND role = 'assistant' AND recommendation_json IS NOT NULL
+       ORDER BY created_at DESC LIMIT 24`,
+    ).all(conversationId) as { recommendationJson: string }[];
+    for (const row of rows) {
+      let parsed: { generatedMediaId?: unknown };
+      try {
+        parsed = JSON.parse(row.recommendationJson) as { generatedMediaId?: unknown };
+      } catch {
+        continue;
+      }
+      const mediaId = typeof parsed.generatedMediaId === 'string' ? parsed.generatedMediaId.trim() : '';
+      if (!mediaId) continue;
+      const ownedMedia = readOwnedMedia(runtime.db, runtime.mediaDir, userId, mediaId);
+      return { mimeType: ownedMedia.contentType, base64: ownedMedia.bytes.toString('base64') };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function maybeAttachLookImage(
   runtime: StylistRuntime,
   userId: string,
@@ -276,8 +303,19 @@ async function maybeAttachLookImage(
   if (spent(runtime.db) + lookCost > runtime.config.maxBudgetUsd) return reply;
   if (spent(runtime.db, userId) + lookCost > runtime.config.maxUserBudgetUsd) return reply;
 
-  let references = attachmentImages.slice(0, 2);
-  if (!references.length) references = loadProfileReferenceImages(runtime, userId);
+  let references: ProviderImagePart[] = [];
+  let hasPriorLook = false;
+  if (attachmentImages.length) {
+    references = attachmentImages.slice(0, 2);
+  } else {
+    const priorLook = loadLatestLookReference(runtime, userId, conversationId);
+    if (priorLook) {
+      references = [priorLook];
+      hasPriorLook = true;
+    } else {
+      references = loadProfileReferenceImages(runtime, userId);
+    }
+  }
 
   try {
     if (references.length) requireExternalPhotoConsentForVision(runtime.db, userId);
@@ -285,6 +323,7 @@ async function maybeAttachLookImage(
       userText,
       modelPrompt: reply.lookVisualPrompt,
       hasReferencePhoto: references.length > 0,
+      hasPriorLook,
     });
     const image = await generateLookImage({
       config: runtime.config,

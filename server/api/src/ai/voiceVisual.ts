@@ -97,6 +97,31 @@ function loadProfileReferenceImages(db: Sql, mediaDir: string, userId: string): 
   }
 }
 
+function loadLatestLookReference(db: Sql, mediaDir: string, userId: string, conversationId: string): ProviderImagePart | null {
+  try {
+    const rows = db.prepare(
+      `SELECT recommendation_json AS recommendationJson FROM ai_messages
+       WHERE conversation_id = ? AND role = 'assistant' AND recommendation_json IS NOT NULL
+       ORDER BY created_at DESC LIMIT 24`,
+    ).all(conversationId) as { recommendationJson: string }[];
+    for (const row of rows) {
+      let parsed: { generatedMediaId?: unknown };
+      try {
+        parsed = JSON.parse(row.recommendationJson) as { generatedMediaId?: unknown };
+      } catch {
+        continue;
+      }
+      const mediaId = typeof parsed.generatedMediaId === 'string' ? parsed.generatedMediaId.trim() : '';
+      if (!mediaId) continue;
+      const ownedMedia = readOwnedMedia(db, mediaDir, userId, mediaId);
+      return { mimeType: ownedMedia.contentType, base64: ownedMedia.bytes.toString('base64') };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /** Broader voice phrasing for “show me the look”. */
 export function voiceWantsLookVisualization(text: string): boolean {
   if (wantsLookVisualization(text, false)) return true;
@@ -139,7 +164,11 @@ export async function createVoiceLookVisual(opts: {
   }
 
   const nowMs = (opts.now ?? Date.now)();
-  const references = loadProfileReferenceImages(opts.db, opts.mediaDir, opts.userId);
+  const priorLook = loadLatestLookReference(opts.db, opts.mediaDir, opts.userId, conversationId);
+  const hasPriorLook = Boolean(priorLook);
+  const references = priorLook
+    ? [priorLook]
+    : loadProfileReferenceImages(opts.db, opts.mediaDir, opts.userId);
   if (references.length) {
     requireExternalPhotoConsentForVision(opts.db, opts.userId);
   }
@@ -149,6 +178,7 @@ export async function createVoiceLookVisual(opts: {
     userText: promptText,
     modelPrompt: promptText,
     hasReferencePhoto: references.length > 0,
+    hasPriorLook,
   });
 
   try {
