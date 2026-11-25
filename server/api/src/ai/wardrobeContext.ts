@@ -38,8 +38,8 @@ export function wardrobeLabelsFor(db: Sql, userId: string): {
       if (name) ownedNames.add(name);
       const label = pieceLabel(item);
       if (!label) continue;
-      // Capsule-flagged rows are starter/checklist basics — not "already bought" wardrobe.
-      if (item.isCapsule === true) continue;
+      // Everything saved in Wardrobe counts as owned (including starter pieces).
+      // Capsule checklist below is separate: basics the customer is supposed to build toward.
       wardrobePieces.push(label);
     }
 

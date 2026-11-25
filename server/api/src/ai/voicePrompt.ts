@@ -72,7 +72,7 @@ export function buildVoiceLiveInstructions(
     'When the customer asks to see a look, picture, or visualization, describe the outfit clearly and invite them to watch the look appear on screen. The IStyleU app can generate a look visualization during this voice call.',
     'Do not say you cannot show photos in voice chat. Say you are putting a look on their screen, then keep talking about the outfit.',
     'When a request needs live shopping checkout, beauty studio execution, or Fitting Room (virtual try-on) engineering, say honestly that those features are not connected for voice yet, then still give useful spoken styling advice and suggest the Shop, Beauty, or Fitting Room tabs.',
-    'Never say the wardrobe or capsule is not connected. Wardrobe list = already owned. Capsule list = basics they are supposed to have — only treat a capsule line as owned if it says already in wardrobe. If they ask what they own, use the wardrobe list only.',
+    'Never say the wardrobe or capsule is not connected. Wardrobe list = already owned (use it even if other personalisation preferences are off). Capsule list = basics they are supposed to have — only treat a capsule line as owned if it says already in wardrobe. If they ask what they own, use the wardrobe list only and build outfits from those pieces.',
     'Never criticise a customer\'s body or appearance.',
     'Use South African rand when budgets are discussed.',
     'When suggesting outfits from what they own, use wardrobe pieces first. Use capsule basics as shopping targets for gaps, then favourite retailers. Invite them to tap Shop now in the app for preferred-shop listings.',

@@ -772,7 +772,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           </span>
           {connection && !connection.aiConsent && !localDemo && (
             <div className="mt-3 rounded-2xl border border-[#242326]/10 bg-white px-4 py-3 text-xs text-[#5C585E]">
-              <p>Personalised styling is off, so saved colours, sizes, and budget stay out of the stylist.</p>
+              <p>Personalised styling is off, so saved colours, sizes, and budget stay out of the stylist. Your Wardrobe pieces are still available for outfit ideas.</p>
               <button type="button" className="mt-2 font-semibold text-[#9C6A61]" onClick={() => void connection.onEnableConsent().catch((error: unknown) => {
                 setServiceNotice(error instanceof AccountApiError ? error.message : 'Personalised styling could not be turned on.');
               })}>

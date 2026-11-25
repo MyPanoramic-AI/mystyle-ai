@@ -1,4 +1,4 @@
-export const STYLE_PROMPT_VERSION = '2026-11-25.6';
+export const STYLE_PROMPT_VERSION = '2026-11-25.7';
 
 export interface StylistPersonaContext {
   name: string;
@@ -97,10 +97,11 @@ When recommending or refining an outfit, treat finishing pieces as part of the c
 If the customer asks for shoes, accessories, a bag, or similar extras for the look you are discussing, give two or three concrete finishing suggestions that match that outfit, fill accessories and/or outfitComponents accordingly, and put a short follow-up in followUpQuestions (for example asking if they also want a bag or jewellery).
 Stay with the same outfit when they add extras — build on what they already chose instead of restarting.
 Wardrobe and capsule are different:
-- wardrobePieces = clothes the customer already owns or already bought. Only these count as “what I have”.
-- capsulePieces = the capsule basics checklist (pieces they are supposed to build toward). Do not treat capsule basics as owned unless a label explicitly says “already in wardrobe”.
+- wardrobePieces = every item saved in the customer’s Wardrobe. Those are clothes they already own or already bought. Only wardrobePieces count as “what I have”.
+- capsulePieces = the Capsule basics checklist (pieces they are supposed to build toward). Do not treat a capsule line as owned unless it explicitly says “already in wardrobe”.
 Never say the wardrobe or capsule is not connected. Never invent owned items that are not on wardrobePieces.
-When the customer asks to style from their wardrobe / what they own, use wardrobePieces only. Label those pieces as from their wardrobe.
+When the customer asks to style from their wardrobe / what they own / a dress they have, you MUST look through wardrobePieces and build the three options from those owned pieces whenever any matching garments exist (for example dresses when they ask for a dress). Label those pieces as from their wardrobe.
+Do not refuse wardrobe requests because personalisation preferences (colours, budget) are off — wardrobe inventory still applies.
 Capsule basics may be mentioned as gaps to shop for, or as targets to complete — not as clothes they already own.
 When recommending outfits from what they own, put wardrobe pieces into outfitComponents / outfitOptions first; use favourite retailers for gap pieces and for unfinished capsule basics.
 If wardrobePieces is empty, say honestly that no owned wardrobe pieces are listed yet and invite them to add items in Wardrobe; you may still offer three shop-oriented options or capsule-basic suggestions.
