@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ChatMessage, StylistQuickAction, TemporaryPhotos, UserProfile } from '../../types';
 import type { StylistOutfitRecommendation } from '../../types/stylist';
 import { PreloadedGarment } from '../../types/shop';
@@ -11,6 +11,8 @@ import { OutfitRecommendationCard } from './OutfitRecommendationCard';
 import { BeautyTipCard } from './BeautyTipCard';
 import { Sparkles, Paperclip } from 'lucide-react';
 import { ImageWithFallback } from '../common/ImageWithFallback';
+import { ShareToFriendButton } from '../common/ShareToFriendButton';
+import { imageSharePayload } from '../../services/shareToFriend';
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -34,6 +36,11 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   onSelectAction,
 }) => {
   const isStylist = message.sender === 'stylist';
+  const [shareToast, setShareToast] = useState<string | null>(null);
+  const showShareToast = (msg: string) => {
+    setShareToast(msg);
+    window.setTimeout(() => setShareToast(null), 2500);
+  };
 
   // Format simple markdown bolding and linebreaks
   const renderFormattedText = (rawText: string) => {
@@ -118,12 +125,25 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
               <div className={`grid gap-1.5 ${message.userAttachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {message.userAttachments.map((item) => (
                   <div key={`${item.url}-${item.name}`} className="rounded-xl overflow-hidden bg-[#242326]/5">
-                    <div className="aspect-square">
+                    <div className="aspect-square relative">
                       <img
                         src={item.url}
                         alt={item.name}
                         className="w-full h-full object-cover"
                       />
+                      <div className="absolute top-1.5 right-1.5">
+                        <ShareToFriendButton
+                          variant="icon"
+                          className="w-8 h-8 bg-white/95 shadow-xs"
+                          label={`Share ${item.name} to a friend`}
+                          payload={imageSharePayload({
+                            title: item.name,
+                            caption: `A piece from my IStyleU chat: ${item.name}`,
+                            imageUrl: item.url,
+                          })}
+                          onToast={showShareToast}
+                        />
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 px-1.5 py-1 text-[10px] text-[#5C585E]">
                       <Paperclip className="w-2.5 h-2.5 text-[#9C6A61] shrink-0" />
@@ -134,12 +154,29 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
               </div>
             ) : (
               <>
-                <div className="w-48 h-48 rounded-xl overflow-hidden bg-[#242326]/5">
+                <div className="w-48 h-48 rounded-xl overflow-hidden bg-[#242326]/5 relative">
                   <img
                     src={message.userAttachmentUrl}
                     alt={message.userAttachmentName || 'Attached clothing item'}
                     className="w-full h-full object-cover"
                   />
+                  {message.userAttachmentUrl && (
+                    <div className="absolute top-1.5 right-1.5">
+                      <ShareToFriendButton
+                        variant="icon"
+                        className="w-8 h-8 bg-white/95 shadow-xs"
+                        label="Share image to a friend"
+                        payload={imageSharePayload({
+                          title: message.userAttachmentName || 'Chat image',
+                          caption: message.userAttachmentName
+                            ? `A piece from my IStyleU chat: ${message.userAttachmentName}`
+                            : 'An image from my IStyleU stylist chat.',
+                          imageUrl: message.userAttachmentUrl,
+                        })}
+                        onToast={showShareToast}
+                      />
+                    </div>
+                  )}
                 </div>
                 {message.userAttachmentName && (
                   <div className="flex items-center gap-1.5 pt-1.5 px-1 text-[11px] text-[#5C585E]">
@@ -166,17 +203,42 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         {/* Generated look visualization (hair, accessories, styled finish) */}
         {isStylist && message.lookImageUrl && (
           <div className="rounded-2xl overflow-hidden border border-[#242326]/10 shadow-xs bg-white max-w-sm">
-            <div className="aspect-3/4 bg-[#242326]/5">
+            <div className="aspect-3/4 bg-[#242326]/5 relative">
               <ImageWithFallback
                 src={message.lookImageUrl}
                 alt="Generated look"
                 className="w-full h-full object-cover"
                 fallbackTitle="Generated look"
               />
+              <div className="absolute top-2 right-2">
+                <ShareToFriendButton
+                  variant="icon"
+                  className="w-8 h-8 bg-white/95 shadow-xs"
+                  label="Share look to a friend"
+                  payload={imageSharePayload({
+                    title: 'Look visualization',
+                    caption: message.text?.slice(0, 160) || 'A look from my IStyleU stylist.',
+                    imageUrl: message.lookImageUrl,
+                  })}
+                  onToast={showShareToast}
+                />
+              </div>
             </div>
-            <div className="px-3 py-2 text-[11px] text-[#5C585E] flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-[#9C6A61]" />
-              <span>Look visualization</span>
+            <div className="px-3 py-2 text-[11px] text-[#5C585E] flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 min-w-0">
+                <Sparkles className="w-3 h-3 text-[#9C6A61] shrink-0" />
+                <span className="truncate">Look visualization</span>
+              </span>
+              <ShareToFriendButton
+                variant="chip"
+                label="Share look to a friend"
+                payload={imageSharePayload({
+                  title: 'Look visualization',
+                  caption: message.text?.slice(0, 160) || 'A look from my IStyleU stylist.',
+                  imageUrl: message.lookImageUrl,
+                })}
+                onToast={showShareToast}
+              />
             </div>
           </div>
         )}
@@ -211,6 +273,12 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 <span>{action.label}</span>
               </button>
             ))}
+          </div>
+        )}
+
+        {shareToast && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#242326] text-white text-xs font-medium shadow-lg">
+            {shareToast}
           </div>
         )}
       </div>

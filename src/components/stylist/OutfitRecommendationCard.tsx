@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { StylistOutfitRecommendation, TemporaryPhotos, UserProfile } from '../../types';
 import { PreloadedGarment } from '../../types/shop';
 import { ImageWithFallback } from '../common/ImageWithFallback';
+import { ShareToFriendButton } from '../common/ShareToFriendButton';
+import { listingSharePayload, outfitSharePayload } from '../../services/shareToFriend';
 import { Sparkles, Camera, ShoppingBag, Heart, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface OutfitRecommendationCardProps {
@@ -129,9 +131,9 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
             {displayedPieces.map((piece, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between p-2.5 rounded-lg bg-[#F6F2EC]/60 border border-[#242326]/5 text-xs"
+                className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[#F6F2EC]/60 border border-[#242326]/5 text-xs"
               >
-                <div className="pr-2">
+                <div className="pr-1 min-w-0 flex-1">
                   <p className="font-medium text-[#242326] leading-tight line-clamp-1">
                     {piece.name}
                   </p>
@@ -147,11 +149,26 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
                     )}
                   </p>
                 </div>
-                {outfit.conceptOnly ? null : (
-                  <span className="font-bold text-[#242326] shrink-0">
-                    Demo R{piece.priceZar.toLocaleString()}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {outfit.conceptOnly ? null : (
+                    <span className="font-bold text-[#242326]">
+                      Demo R{piece.priceZar.toLocaleString()}
+                    </span>
+                  )}
+                  <ShareToFriendButton
+                    variant="chip"
+                    label={`Share ${piece.name} to a friend`}
+                    payload={listingSharePayload({
+                      name: piece.name,
+                      retailer: piece.retailer,
+                      priceZar: piece.priceZar,
+                      category: piece.category,
+                      productId: piece.productId,
+                      imageUrl: outfit.imageUrl,
+                    })}
+                    onToast={showToast}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -195,6 +212,11 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
             <ShoppingBag className="w-3.5 h-3.5" />
             <span>Shop now</span>
           </button>
+
+          <ShareToFriendButton
+            payload={outfitSharePayload(outfit)}
+            onToast={showToast}
+          />
 
           <button
             onClick={handleToggleSave}

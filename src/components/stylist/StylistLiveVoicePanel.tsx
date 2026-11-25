@@ -7,6 +7,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Mic, MicOff, PhoneOff, Radio, Volume2, Sparkles, ImageIcon, Loader2 } from 'lucide-react';
 import type { GptLiveStatus, GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
 import { ImageWithFallback } from '../common/ImageWithFallback';
+import { ShareToFriendButton } from '../common/ShareToFriendButton';
+import { imageSharePayload } from '../../services/shareToFriend';
 
 export interface VoiceLookVisual {
   imageUrl: string;
@@ -217,11 +219,23 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
           {/* Full look frame — object-contain so portrait outfits are not cropped */}
           {hasLook && (
             <div className="relative flex-1 min-h-0 flex flex-col animate-in fade-in duration-500">
-              <div className="mb-2 flex items-center gap-2">
+              <div className="mb-2 flex items-center gap-2 flex-wrap">
                 <p className="inline-flex items-center gap-1.5 rounded-full bg-black/45 backdrop-blur-md border border-white/15 px-3 py-1.5 text-[11px] font-semibold text-white">
                   <ImageIcon className="w-3.5 h-3.5 text-[#B49361]" />
                   {lookVisual?.title || `${stylistName}'s look`}
                 </p>
+                {lookVisual?.imageUrl && (
+                  <ShareToFriendButton
+                    variant="chip"
+                    className="bg-white/90 border-white/30"
+                    label="Share look to a friend"
+                    payload={imageSharePayload({
+                      title: lookVisual.title || `${stylistName}'s look`,
+                      caption: latestAssistant?.text?.slice(0, 160) || 'A look from my IStyleU stylist.',
+                      imageUrl: lookVisual.imageUrl,
+                    })}
+                  />
+                )}
               </div>
               <div className="relative flex-1 min-h-[40vh] rounded-2xl border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center">
                 <ImageWithFallback
