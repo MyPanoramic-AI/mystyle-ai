@@ -61,6 +61,8 @@ test('voice instructions reuse stylist personality without inventing shops', () 
   assert.match(prompt, /continuous spoken conversation|must answer out loud/i);
   assert.match(prompt, /look visualization|putting a look on their screen/i);
   assert.match(prompt, /Do not say you cannot show photos in voice chat/i);
+  assert.match(prompt, /shoes|accessories|finishing/i);
+  assert.match(prompt, /Option 1.*Option 2.*Option 3|exactly three/i);
   assert.doesNotMatch(prompt, /responseText/);
   assert.match(buildVoiceDelegationInstructions({
     name: 'Nova',

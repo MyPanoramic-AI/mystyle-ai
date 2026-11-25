@@ -126,7 +126,7 @@ export class MockTextProvider implements TextProvider {
         outfitComponents: photoOptions[0].components,
         outfitOptions: photoOptions,
         suggestedColours: ['stone', 'ivory', 'navy'],
-        followUpQuestions: ['What occasion are you dressing for?', 'Which of the three options feels closest?'],
+        followUpQuestions: ['Which of the three options feels closest?', 'Want shoe or accessory ideas for that look?'],
       }) };
     }
     if (/try[- ]?on|photograph|photo of me/.test(text)) {
@@ -195,7 +195,9 @@ export class MockTextProvider implements TextProvider {
         outfitOptions: weddingOptions,
         accessories: ['fine gold earrings'],
         responseText: `For a wedding, here are three guest looks.${colourNote}${avoidNote} Option 1: a champagne midi with a polished flat. Option 2: a sage tailored suit with an ivory shell. Option 3: champagne top with a sage midi skirt. Which direction feels right?`,
-        followUpQuestions: asked(request.messages, 'daytime') ? [] : ['Is the wedding daytime or evening?'],
+        followUpQuestions: asked(request.messages, 'daytime')
+          ? ['Want different shoe or jewellery options for that guest look?']
+          : ['Is the wedding daytime or evening?', 'Want shoe or accessory ideas next?'],
         budgetGuidance: personal?.budgetTier ? `Your saved budget band is ${personal.budgetTier}. This is a concept, not a price.` : null,
       }) };
     }
@@ -236,7 +238,8 @@ export class MockTextProvider implements TextProvider {
         suggestedColours: ['navy', 'ivory', 'stone'],
         outfitComponents: workOptions[0].components,
         outfitOptions: workOptions,
-        responseText: `Here are three work looks.${colourNote}${avoidNote} Option 1: navy bottom, ivory knit, soft blazer. Option 2: ivory and stone monochrome with a loafer. Option 3: navy dress with a light layer. Which feels closest to your day?`,
+        responseText: `Here are three work looks.${colourNote}${avoidNote} Option 1: navy bottom, ivory knit, soft blazer. Option 2: ivory and stone monochrome with a loafer. Option 3: navy dress with a light layer. Which feels closest to your day? I can add shoe or accessory ideas once you pick one.`,
+        followUpQuestions: ['Which option feels closest?', 'Want shoe or accessory ideas for that look?'],
       }) };
     }
     if (/navy/.test(text)) {
@@ -283,7 +286,50 @@ export class MockTextProvider implements TextProvider {
         suggestedColours: ['sand', 'coral', 'white'],
         outfitComponents: partyOptions[0].components,
         outfitOptions: partyOptions,
-        responseText: 'For a summer birthday, here are three options. Option 1: white linen top with sand bottoms. Option 2: a soft coral sundress. Option 3: white blouse with a flowing sand skirt. Which vibe fits the party?',
+        responseText: 'For a summer birthday, here are three options. Option 1: white linen top with sand bottoms. Option 2: a soft coral sundress. Option 3: white blouse with a flowing sand skirt. Which vibe fits the party? I can suggest shoes or accessories next.',
+        followUpQuestions: ['Which vibe fits the party?', 'Want shoe or accessory ideas next?'],
+      }) };
+    }
+    if (/\b(shoes?|accessories|jewellery|jewelry|bag|belt|earrings?)\b/.test(text) && !/try[- ]?on|buy|price|in stock/.test(text)) {
+      return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+        recommendationType: 'style_suggestion',
+        occasion: 'Outfit finishing',
+        outfitTitle: 'Finishing pieces for your look',
+        suggestedColours: ['navy', 'ivory', 'soft gold'],
+        outfitComponents: [
+          { name: 'Leather loafer or low block heel', category: 'shoes', colour: 'navy', notes: 'Polished without stealing focus from the outfit.' },
+          { name: 'Structured mini bag or slim crossbody', category: 'bags', colour: 'ivory', notes: 'Keeps hands free and finishes the line.' },
+          { name: 'Fine gold earrings or slim bracelet', category: 'accessories', colour: 'soft gold', notes: 'One metallic accent is enough.' },
+        ],
+        outfitOptions: [
+          {
+            title: 'Polished loafer finish',
+            whyItWorks: 'Grounds most smart-casual outfits without a high heel.',
+            components: [
+              { name: 'Leather loafer', category: 'shoes', colour: 'navy', notes: 'Comfortable all-day finish.' },
+              { name: 'Slim belt if the trouser needs shape', category: 'accessories', colour: 'navy', notes: 'Optional.' },
+            ],
+          },
+          {
+            title: 'Soft heel finish',
+            whyItWorks: 'Lifts evening or guest looks without a stiletto.',
+            components: [
+              { name: 'Low block heel or elegant flat', category: 'shoes', colour: 'neutral', notes: 'Choose based on how long you will stand.' },
+              { name: 'Fine gold earring', category: 'accessories', colour: 'soft gold', notes: 'Keeps the finish light.' },
+            ],
+          },
+          {
+            title: 'Bag-led finish',
+            whyItWorks: 'Useful when you want a practical extra with the outfit.',
+            components: [
+              { name: 'Structured crossbody or mini tote', category: 'bags', colour: 'ivory', notes: 'Matches light neutrals.' },
+              { name: 'Simple flat or trainer in a clean colour', category: 'shoes', colour: 'white', notes: 'If the day is more casual.' },
+            ],
+          },
+        ],
+        accessories: ['fine gold earrings', 'slim belt'],
+        responseText: `Happy to finish the look.${colourNote}${avoidNote} Option 1: navy loafer with an optional slim belt. Option 2: a low block heel or elegant flat with fine gold earrings. Option 3: an ivory crossbody with a clean flat or trainer. Want jewellery, a different shoe height, or a bag tweak next?`,
+        followUpQuestions: ['Want jewellery ideas too?', 'Should the shoes stay flat or go a little dressier?'],
       }) };
     }
     if (/r\s?1[,.]?500|budget|rands?/.test(text)) {
