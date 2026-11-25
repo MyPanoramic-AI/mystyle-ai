@@ -103,8 +103,8 @@ export const STYLIST_AUDIO_VOICE_OPTIONS: Array<{
   tone: StylistAudioVoiceTone;
 }> = [
   { id: 'marin', label: 'Marin', hint: 'Warm, clear default for Talk to Aria', tone: 'feminine' },
-  { id: 'coral', label: 'Coral', hint: 'Bright and friendly', tone: 'feminine' },
-  { id: 'sage', label: 'Sage', hint: 'Calm and steady', tone: 'feminine' },
+  { id: 'coral', label: 'Coral', hint: 'Soft, bright, and friendly', tone: 'feminine' },
+  { id: 'sage', label: 'Sage', hint: 'Soft, calm, and steady', tone: 'feminine' },
   { id: 'cedar', label: 'Cedar', hint: 'Rich and confident', tone: 'masculine' },
   { id: 'echo', label: 'Echo', hint: 'Deeper and grounded', tone: 'masculine' },
   { id: 'ash', label: 'Ash', hint: 'Soft-spoken and natural', tone: 'masculine' },

@@ -10,6 +10,16 @@ const PREVIEW_TEXT = "Hi, I'm your personal stylist. Let's find a look you'll lo
 const previewCache = new Map<string, { bytes: Buffer; contentType: string; createdAt: number }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
+/** Softer TTS voices need a stronger delivery cue so Listen samples stay clear. */
+const SOFT_VOICES = new Set(['coral', 'sage', 'ballad', 'shimmer', 'ash']);
+
+function previewInstructions(voice: string): string {
+  if (SOFT_VOICES.has(voice)) {
+    return 'Speak as a personal fashion stylist with warm confidence and clear projection. Keep energy present and easy to hear — not whispery, muted, or far away. Natural pace, friendly, and articulate.';
+  }
+  return 'Speak warmly, clearly, and with natural presence as a personal fashion stylist.';
+}
+
 export function isGptLiveAudioVoice(value: string): value is GptLiveAudioVoice {
   return (GPT_LIVE_AUDIO_VOICES as readonly string[]).includes(value);
 }
@@ -54,7 +64,7 @@ export async function createVoicePreview(opts: {
         voice,
         input: input || PREVIEW_TEXT,
         response_format: 'mp3',
-        instructions: 'Speak warmly and clearly as a personal fashion stylist.',
+        instructions: previewInstructions(voice),
       }),
       signal: controller.signal,
     });

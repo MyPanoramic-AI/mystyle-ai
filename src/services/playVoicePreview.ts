@@ -42,7 +42,11 @@ export async function playVoicePreviewBlob(
 
   const source = context.createBufferSource();
   source.buffer = buffer;
-  source.connect(context.destination);
+  // Soft TTS voices (Coral, Sage, etc.) benefit from a modest gain so Listen is easy to hear.
+  const gain = context.createGain();
+  gain.gain.value = 1.45;
+  source.connect(gain);
+  gain.connect(context.destination);
   let stopped = false;
   const stop = () => {
     if (stopped) return;
@@ -54,6 +58,7 @@ export async function playVoicePreviewBlob(
     }
     try {
       source.disconnect();
+      gain.disconnect();
     } catch {
       // ignore
     }
@@ -83,6 +88,7 @@ async function playWithHtmlAudio(
   const url = URL.createObjectURL(typed);
   const audio = new Audio(url);
   audio.preload = 'auto';
+  audio.volume = 1;
   const stop = () => {
     audio.pause();
     audio.removeAttribute('src');
