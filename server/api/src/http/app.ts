@@ -122,6 +122,8 @@ function securityHeaders(res: Response, page: boolean): void {
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: blob: https://images.unsplash.com",
+        // Voice preview Listen buttons play blob:/data: audio samples in the browser.
+        "media-src 'self' blob: data:",
         "connect-src 'self' blob: data: https://staticimgly.com",
         "frame-ancestors 'none'",
         "base-uri 'self'",

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import type { StylistAudioVoiceId, StylistPersona } from '../../types';
 import {
@@ -15,6 +15,7 @@ import {
   STYLIST_VOICE_OPTIONS,
 } from '../../data/stylistPersona';
 import { AccountApiError, accountApi } from '../../services/accountApi';
+import { playVoicePreviewBlob, stopVoicePreview } from '../../services/playVoicePreview';
 
 interface StylistPersonaFieldsProps {
   value: StylistPersona;
@@ -33,18 +34,9 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
   const gap = compact ? 'space-y-5' : 'space-y-6';
   const [previewing, setPreviewing] = useState<StylistAudioVoiceId | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
+    stopVoicePreview();
   }, []);
 
   const playPreview = async (voiceId: StylistAudioVoiceId) => {
@@ -55,46 +47,25 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
     setPreviewError(null);
     setPreviewing(voiceId);
     try {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
+      stopVoicePreview();
       const blob = await accountApi.previewStylistVoice({
         voice: voiceId,
         stylistName: value.name,
       });
-      const typed = blob.type?.startsWith('audio/')
-        ? blob
-        : new Blob([await blob.arrayBuffer()], { type: 'audio/mpeg' });
-      const url = URL.createObjectURL(typed);
-      objectUrlRef.current = url;
-      const audio = new Audio(url);
-      audio.preload = 'auto';
-      audioRef.current = audio;
-      audio.onended = () => setPreviewing((current) => (current === voiceId ? null : current));
-      audio.onerror = () => {
-        setPreviewError('Could not play that voice sample.');
-        setPreviewing(null);
-      };
-      try {
-        await audio.play();
-      } catch (playError) {
-        setPreviewError(
-          playError instanceof Error && /NotAllowedError|not allowed/i.test(playError.name + playError.message)
-            ? 'Your browser blocked the sample. Tap Listen again to play it.'
-            : 'Could not play that voice sample.',
-        );
-        setPreviewing(null);
-      }
+      await playVoicePreviewBlob(blob, {
+        onEnded: () => setPreviewing((current) => (current === voiceId ? null : current)),
+        onError: (message) => {
+          setPreviewError(message || 'Could not play that voice sample.');
+          setPreviewing(null);
+        },
+      });
     } catch (error) {
       setPreviewError(
         error instanceof AccountApiError
           ? error.message
-          : 'Could not play that voice sample.',
+          : error instanceof Error && /NotAllowedError|not allowed/i.test(error.name + error.message)
+            ? 'Your browser blocked the sample. Tap Listen again to play it.'
+            : 'Could not play that voice sample.',
       );
       setPreviewing(null);
     }
