@@ -470,26 +470,24 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
-                <span className="text-[10px] text-[#5C585E] block">Name</span>
-                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistPersona.name}</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
-                <span className="text-[10px] text-[#5C585E] block">Presentation</span>
-                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistGenderLabel(stylistPersona.gender)}</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
-                <span className="text-[10px] text-[#5C585E] block">Age vibe</span>
-                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistAgeVibeLabel(stylistPersona.ageVibe)}</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
-                <span className="text-[10px] text-[#5C585E] block">How they talk</span>
-                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistVoiceLabel(stylistPersona.voice)}</span>
-              </div>
-              <div className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8">
-                <span className="text-[10px] text-[#5C585E] block">Answer length</span>
-                <span className="font-semibold text-[#242326] mt-0.5 block truncate">{stylistAnswerLengthLabel(stylistPersona.answerLength)}</span>
-              </div>
+              {([
+                { label: 'Name', value: stylistPersona.name },
+                { label: 'Presentation', value: stylistGenderLabel(stylistPersona.gender) },
+                { label: 'Age vibe', value: stylistAgeVibeLabel(stylistPersona.ageVibe) },
+                { label: 'Tone', value: stylistVoiceLabel(stylistPersona.voice) },
+                { label: 'Talk length', value: stylistAnswerLengthLabel(stylistPersona.answerLength) },
+              ] as const).map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => setActiveEditSection('stylist')}
+                  className="p-2.5 rounded-xl bg-[#F6F2EC] border border-[#242326]/8 text-left hover:border-[#9C6A61]/40 hover:bg-white transition-colors cursor-pointer"
+                  title="Edit personal stylist"
+                >
+                  <span className="text-[10px] text-[#5C585E] block">{chip.label}</span>
+                  <span className="font-semibold text-[#242326] mt-0.5 block truncate">{chip.value}</span>
+                </button>
+              ))}
             </div>
 
             <div className="mt-4">

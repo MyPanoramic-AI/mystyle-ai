@@ -78,17 +78,17 @@ export const STYLIST_ANSWER_LENGTH_OPTIONS: Array<{ id: StylistAnswerLengthId; l
   {
     id: 'short',
     label: 'Short',
-    hint: 'A few tight sentences — quick answer, then stop',
+    hint: 'A few tight sentences in chat and on voice — quick answer, then stop',
   },
   {
     id: 'balanced',
     label: 'Balanced',
-    hint: 'A clear reply with enough detail to act on',
+    hint: 'Clear replies with enough detail to act on, without long monologues',
   },
   {
     id: 'detailed',
     label: 'Detailed',
-    hint: 'Fuller guidance with options, reasons, and next steps',
+    hint: 'Fuller guidance with options, reasons, and next steps in chat and voice',
   },
 ];
 

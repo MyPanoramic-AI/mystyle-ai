@@ -66,6 +66,7 @@ test('voice instructions reuse stylist personality without inventing shops', () 
   assert.match(prompt, /Language policy|any spoken language|same language/i);
   assert.doesNotMatch(prompt, /responseText/);
   assert.match(prompt, /Do not force English/i);
+  assert.match(prompt, /Answer-length preference|Honour the answer-length/i);
   assert.match(buildVoiceDelegationInstructions({
     name: 'Nova',
     gender: 'woman',
