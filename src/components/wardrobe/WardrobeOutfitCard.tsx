@@ -178,7 +178,7 @@ export const WardrobeOutfitCard: React.FC<WardrobeOutfitCardProps> = ({
                 className="px-3 py-1.5 text-xs font-medium text-white bg-[#9C6A61] hover:bg-[#8A5B53] rounded-lg transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
               >
                 <Camera className="w-3.5 h-3.5" />
-                <span>Try On</span>
+                <span>Fitting Room</span>
               </button>
             )}
           </div>

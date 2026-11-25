@@ -112,7 +112,7 @@ export const OCCASION_SHORTCUTS: OccasionShortcut[] = [
 export const FEATURE_CARDS: FeatureCardItem[] = [
   {
     id: 'virtual-try-on',
-    title: 'Virtual Try-On',
+    title: 'Fitting Room',
     description: 'Upload your photo and preview how outfits drape before ordering.',
     targetTab: 'try-on',
     accent: 'rose',

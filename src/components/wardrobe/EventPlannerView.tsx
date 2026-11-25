@@ -244,7 +244,7 @@ export const EventPlannerView: React.FC<EventPlannerViewProps> = ({
                         onClick={() => onSendToTryOn(assignedOutfit, resolvedPieces)}
                         className="flex-1 py-1.5 px-3 text-xs font-medium text-[#242326] bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 rounded-xl transition-colors cursor-pointer text-center"
                       >
-                        Preview in Try-On
+                        Preview in Fitting Room
                       </button>
                       <button
                         onClick={() =>

@@ -170,7 +170,7 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
           {outfit.conceptOnly || !onSendToTryOn ? (
             <span className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
               <Camera className="w-3.5 h-3.5" />
-              <span>Try-on is not connected</span>
+              <span>Fitting Room is not connected</span>
             </span>
           ) : (
             <button
@@ -180,7 +180,7 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
               data-testid="stylist-virtual-try-on"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Virtual Try-On</span>
+              <span>Fitting Room</span>
             </button>
           )}
 

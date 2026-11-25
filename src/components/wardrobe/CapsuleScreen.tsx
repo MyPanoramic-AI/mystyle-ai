@@ -220,7 +220,7 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
                           className="mt-auto inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-[#9C6A61] bg-[#E5CDBE]/25 hover:bg-[#E5CDBE]/50 rounded-lg cursor-pointer"
                         >
                           <Shirt className="w-3 h-3" />
-                          Try on
+                          Fitting Room
                         </button>
                       </div>
                     </article>

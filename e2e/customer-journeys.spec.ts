@@ -71,7 +71,7 @@ test('shop and try-on stay labelled as demonstrations', async ({ page }) => {
   await skipToApp(page);
   await page.getByRole('button', { name: 'Shop' }).first().click();
   await expect(page.getByText(/illustrative demonstration mockups/i)).toBeVisible();
-  await page.getByRole('button', { name: 'Try On' }).first().click();
+  await page.getByRole('button', { name: 'Fitting Room' }).first().click();
   await expect(page.getByRole('heading', { name: 'Virtual Fitting Room' })).toBeVisible();
   await expect(page.getByText(/Local development demonstration mode|Virtual Try-On is currently unavailable/i).first()).toBeVisible();
   await expect(page.getByText('Neural fitting model simulation')).toHaveCount(0);

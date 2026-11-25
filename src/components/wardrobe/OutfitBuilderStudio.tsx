@@ -529,7 +529,7 @@ export const OutfitBuilderStudio: React.FC<OutfitBuilderStudioProps> = ({
               className="w-full py-2.5 bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 disabled:opacity-50 text-[#242326] text-xs font-medium rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
               <Camera className="w-4 h-4 text-[#9C6A61]" />
-              <span>Try On in Virtual Studio</span>
+              <span>Open Fitting Room</span>
             </button>
 
             <button

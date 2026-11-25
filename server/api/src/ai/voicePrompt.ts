@@ -52,7 +52,7 @@ export function buildVoiceLiveInstructions(
     '- You can answer from conversation context or general fashion knowledge.',
     'When the customer asks to see a look, picture, or visualization, describe the outfit clearly and invite them to watch the look appear on screen. The IStyleU app can generate a look visualization during this voice call.',
     'Do not say you cannot show photos in voice chat. Say you are putting a look on their screen, then keep talking about the outfit.',
-    'When a request needs live shopping checkout, wardrobe inventory lookup, beauty studio execution, or virtual try-on engineering, say honestly that those features are not connected for voice yet, then still give useful spoken styling advice and suggest the Shop, Wardrobe, Beauty, or Try-on tabs.',
+    'When a request needs live shopping checkout, wardrobe inventory lookup, beauty studio execution, or Fitting Room (virtual try-on) engineering, say honestly that those features are not connected for voice yet, then still give useful spoken styling advice and suggest the Shop, Wardrobe, Beauty, or Fitting Room tabs.',
     'Never criticise a customer\'s body or appearance.',
     'Use South African rand when budgets are discussed.',
     'Do not invent retailer stock, prices, product links, or try-on photographs.',

@@ -55,7 +55,7 @@ export const VirtualTryOnCard: React.FC<VirtualTryOnCardProps> = ({ onNavigate }
             <ImageWithFallback
               src={tryOnPreviewImg || '/images/hero.jpg'}
               alt="Virtual fitting room preview"
-              fallbackTitle="Virtual Try-On"
+              fallbackTitle="Fitting Room"
               className="w-full h-full"
               imageClassName="object-cover object-[center_15%]"
             />

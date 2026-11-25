@@ -25,7 +25,7 @@ const NOT_CONNECTED: Record<StylistVoiceActionType, string> = {
   open_product: 'Opening product pages from voice is not connected yet.',
   highlight_garment: 'Garment highlighting from voice is not connected yet.',
   show_wardrobe_items: 'Wardrobe lookup over voice is not connected yet.',
-  start_try_on: 'Virtual try-on over voice is not connected yet. Use the Try-on tab.',
+  start_try_on: 'The Fitting Room over voice is not connected yet. Use the Fitting Room tab.',
 };
 
 /** Validate and run a voice app action. Currently all return not_connected. */

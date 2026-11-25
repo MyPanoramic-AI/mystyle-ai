@@ -95,7 +95,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 : 'hover:text-[#242326]'
             }`}
           >
-            Try On
+            Fitting Room
           </button>
           <button
             onClick={() => onNavigate('shop')}

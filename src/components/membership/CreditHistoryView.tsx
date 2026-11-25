@@ -105,7 +105,7 @@ export const CreditHistoryView: React.FC<CreditHistoryViewProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           {[
             { id: 'all', label: 'All Activities' },
-            { id: 'try_on', label: 'Try-On' },
+            { id: 'try_on', label: 'Fitting Room' },
             { id: 'beauty', label: 'Beauty' },
             { id: 'family', label: 'Family' },
             { id: 'topups', label: 'Replenishments' },

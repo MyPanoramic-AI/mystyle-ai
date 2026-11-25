@@ -180,7 +180,7 @@ export const PrivatePhotoSlotsEditor: React.FC<PrivatePhotoSlotsEditorProps> = (
         <p className="text-[11px] font-semibold text-[#242326]">Four private photo slots</p>
         <p className="text-[11px] text-[#5C585E] mt-0.5 leading-relaxed">
           Portrait · Full-body <strong className="text-[#242326]">front</strong> · Full-body <strong className="text-[#242326]">back</strong> · optional <strong className="text-[#242326]">45° / side</strong>.
-          The back photo unlocks Back view in Virtual Try-On. Each upload has its background removed and replaced with a plain light-grey studio backdrop.
+          The back photo unlocks Back view in the Fitting Room. Each upload has its background removed and replaced with a plain light-grey studio backdrop.
         </p>
       </div>
 

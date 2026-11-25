@@ -17,7 +17,7 @@ test('signed-in screens stay within the viewport and can be captured', async ({ 
     { name: 'profile', open: async () => { await page.getByRole('button', { name: 'My Profile' }).first().click(); } },
     { name: 'stylist', open: async () => { await page.getByRole('button', { name: 'My Stylist' }).first().click(); } },
     { name: 'shop', open: async () => { await page.getByRole('button', { name: 'Shop' }).first().click(); } },
-    { name: 'try-on', open: async () => { await page.getByRole('button', { name: 'Try On' }).first().click(); } },
+    { name: 'try-on', open: async () => { await page.getByRole('button', { name: 'Fitting Room' }).first().click(); } },
     { name: 'wardrobe', open: async () => { await page.getByRole('button', { name: 'Home' }).first().click(); await page.getByRole('button', { name: /Browse All/ }).click(); } },
     { name: 'family', open: async () => { await page.getByRole('button', { name: 'Home' }).first().click(); await page.getByRole('button', { name: 'Coordinate Family Outfits' }).click(); } },
     { name: 'beauty', open: async () => { await page.getByRole('button', { name: 'Home' }).first().click(); await page.getByRole('button', { name: 'Open AI Beauty Studio' }).click(); } },
@@ -67,7 +67,7 @@ test('automated accessibility scan of primary modules', async ({ page }, testInf
     await scan('home', async () => { await page.getByRole('button', { name: 'Home' }).first().click(); }),
     await scan('stylist', async () => { await page.getByRole('button', { name: 'My Stylist' }).first().click(); }),
     await scan('shop', async () => { await page.getByRole('button', { name: 'Shop' }).first().click(); }),
-    await scan('try-on', async () => { await page.getByRole('button', { name: 'Try On' }).first().click(); }),
+    await scan('try-on', async () => { await page.getByRole('button', { name: 'Fitting Room' }).first().click(); }),
     await scan('profile', async () => { await page.getByRole('button', { name: 'My Profile' }).first().click(); }),
     await scan('wardrobe', async () => {
       await page.getByRole('button', { name: 'Home' }).first().click();

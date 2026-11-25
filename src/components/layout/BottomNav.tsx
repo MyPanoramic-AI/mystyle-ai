@@ -16,7 +16,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onNavigate }) 
   const navItems = [
     { id: 'home' as NavigationTab, label: 'Home', icon: Home },
     { id: 'stylist' as NavigationTab, label: 'My Stylist', icon: Sparkles },
-    { id: 'try-on' as NavigationTab, label: 'Try On', icon: Camera },
+    { id: 'try-on' as NavigationTab, label: 'Fitting Room', icon: Camera },
     { id: 'shop' as NavigationTab, label: 'Shop', icon: ShoppingBag },
     { id: 'wardrobe' as NavigationTab, label: 'Wardrobe', icon: Shirt },
     { id: 'capsule' as NavigationTab, label: 'Capsule', icon: Layers },

@@ -320,7 +320,7 @@ async function blobOrDataUrlToBase64(url: string): Promise<string> {
  * API key / budget are never shown to customers (ops-only).
  */
 function generationBlockers(availability: TryOnAvailabilityResponse | null, usesAccount: boolean): string[] {
-  if (!usesAccount) return ['Sign in with an adult account to use Virtual Try-On.'];
+  if (!usesAccount) return ['Sign in with an adult account to use the Fitting Room.'];
   if (!availability) return ['Checking try-on availability…'];
   if (availability.generationMode !== 'unavailable') return [];
 
@@ -928,7 +928,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
     const providerId = resolveProviderId();
     if (!providerId) {
       if (generationMode === 'unavailable') {
-        showStatus(availability?.note || 'Virtual Try-On is currently unavailable. Your photographs have not been sent for AI processing.');
+        showStatus(availability?.note || 'The Fitting Room is currently unavailable. Your photographs have not been sent for AI processing.');
       } else {
         showStatus('Adding a jacket, shoes, or accessories on top of a look needs Try-On Max. Live Try-On Max is not ready on this server yet.');
       }
@@ -1017,7 +1017,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
 
   const handleGenerate = async () => {
     if (!usesAccount) {
-      showStatus('Sign in to use Virtual Try-On with your private photographs.');
+      showStatus('Sign in to use the Fitting Room with your private photographs.');
       return;
     }
     if (!personMediaId) {
@@ -1056,7 +1056,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
 
   const handleGenerateBackView = async () => {
     if (!usesAccount) {
-      showStatus('Sign in to use Virtual Try-On with your private photographs.');
+      showStatus('Sign in to use the Fitting Room with your private photographs.');
       return;
     }
     if (!garmentReady) {
@@ -1186,13 +1186,13 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
   };
   const blockers = generationBlockers(availability, usesAccount);
   const generateLabel = generationMode === 'unavailable'
-    ? 'Virtual Try-On Unavailable'
+    ? 'Fitting Room Unavailable'
     : orderedLayers.length > 0
       ? (generationMode === 'live'
         ? `Generate layered look (${1 + orderedLayers.length})`
         : `Demo layered look (${1 + orderedLayers.length})`)
       : generationMode === 'live'
-        ? 'Generate Virtual Try-On'
+        ? 'Generate Fitting'
         : 'Run Local Development Demo';
 
   const goToStep = (next: Step) => {
@@ -1670,7 +1670,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                 <p className="text-xs sm:text-sm text-[#5C585E] max-w-md mx-auto mt-1.5 mb-6">
                   {usesAccount
                     ? 'Add a private full-body front photograph in My Profile → Manage Photos. It stays on this account until you grant separate external AI consent for live generation.'
-                    : 'Sign in and save a private full-body photograph before using Virtual Try-On.'}
+                    : 'Sign in and save a private full-body photograph before using the Fitting Room.'}
                 </p>
                 <Button type="button" variant="primary" size="md" onClick={() => onNavigate('profile')}>Open My Profile</Button>
               </div>

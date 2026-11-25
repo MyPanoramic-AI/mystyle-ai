@@ -879,7 +879,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                     : 'No fitting photos selected yet'}
                 </span>
                 <span className="block text-[10px] text-[#9C6A61] mt-0.5">
-                  Upload a <strong>full-body back</strong> photo to unlock Back view in Virtual Try-On. Optional 45° helps with drape. Front photos also power silhouette scanning (on-device — not sent to external AI from Profile).
+                  Upload a <strong>full-body back</strong> photo to unlock Back view in the Fitting Room. Optional 45° helps with drape. Front photos also power silhouette scanning (on-device — not sent to external AI from Profile).
                 </span>
                 {!photos.fullBodyBackUrl && (
                   <button

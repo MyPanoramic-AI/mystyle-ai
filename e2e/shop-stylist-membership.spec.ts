@@ -54,7 +54,7 @@ test('try-on screen explains demonstration fits and stays offline from FASHN', a
   const external = watchExternal(page);
   await register(page, `qa-tryon-${Date.now()}@example.com`);
   await skipToApp(page);
-  await page.getByRole('button', { name: 'Try On' }).first().click();
+  await page.getByRole('button', { name: 'Fitting Room' }).first().click();
   await expect(page.getByRole('heading', { name: 'Virtual Fitting Room' })).toBeVisible();
   await expect(page.getByText(/Local development demonstration mode|Virtual Try-On is currently unavailable|Select clothing/i).first()).toBeVisible();
   await expect(page.getByText(/completed transformation|fitting result ready/i)).toHaveCount(0);

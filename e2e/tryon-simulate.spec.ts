@@ -27,7 +27,7 @@ test('local development demo runs a labelled mock without calling FASHN', async 
   await skipToApp(page);
   await uploadFullBody(page);
 
-  await page.getByRole('button', { name: 'Try On' }).first().click();
+  await page.getByRole('button', { name: 'Fitting Room' }).first().click();
   await expect(page.getByRole('heading', { name: 'Virtual Fitting Room' })).toBeVisible();
   await expect(page.getByText(/Local development demonstration mode/i)).toBeVisible();
 
@@ -63,7 +63,7 @@ test('local development demo runs a labelled mock without calling FASHN', async 
   expect(resultSrc).toContain(resultMediaId!);
 
   await page.reload();
-  await page.getByRole('button', { name: 'Try On' }).first().click();
+  await page.getByRole('button', { name: 'Fitting Room' }).first().click();
   await page.getByRole('button', { name: 'My Fittings' }).click();
   await expect(page.getByText(/Local demo/i).first()).toBeVisible();
   await page.locator('ul li button').first().click();
@@ -142,7 +142,7 @@ test('fittings list and delete stay account-private', async ({ page, browser }) 
   await skipToApp(page);
   await uploadFullBody(page);
 
-  await page.getByRole('button', { name: 'Try On' }).first().click();
+  await page.getByRole('button', { name: 'Fitting Room' }).first().click();
   const fileInput = page.locator('input[type="file"][accept*="image"]');
   await fileInput.setInputFiles({
     name: 'garment.png',

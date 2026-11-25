@@ -61,7 +61,7 @@ export const ShopTheLookBanner: React.FC<ShopTheLookBannerProps> = ({ context, o
           </div>
           <div className="min-w-0">
             <span className="text-[10px] uppercase font-bold tracking-wider text-[#9C6A61]">
-              Try on with
+              Fit with
             </span>
             <p className="text-xs font-medium text-[#242326] truncate">
               {context.completeWith.name}

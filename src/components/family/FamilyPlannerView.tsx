@@ -701,7 +701,7 @@ export const FamilyPlannerView: React.FC<FamilyPlannerViewProps> = ({
                   className="flex-1 py-2.5 px-3 rounded-xl bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 text-[#242326] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Eye className="w-3.5 h-3.5 text-[#9C6A61]" />
-                  <span>Try On in Studio</span>
+                  <span>Open Fitting Room</span>
                 </button>
 
                 <button

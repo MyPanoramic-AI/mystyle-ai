@@ -371,7 +371,7 @@ export const PrivacyDataView: React.FC<PrivacyDataViewProps> = ({
           </div>
           <div className="py-3.5 flex items-center justify-between gap-4">
             <div>
-              <span className="text-xs font-semibold text-[#242326] block">Cache High-Resolution Try-On Renders Locally</span>
+              <span className="text-xs font-semibold text-[#242326] block">Cache High-Resolution Fitting Room Renders Locally</span>
               <span className="text-[11px] text-[#5C585E] block">Browser demonstration preference only. Generation is not active.</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer shrink-0">

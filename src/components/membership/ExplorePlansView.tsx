@@ -76,7 +76,7 @@ export const ExplorePlansView: React.FC<ExplorePlansViewProps> = ({
         <p className="text-xs sm:text-sm text-[#5C585E] leading-relaxed">
           {accountMode
             ? `Current membership: ${accountPlanName ?? 'Loading…'}. Selecting a package activates that provisional entitlement on your account. Live card billing is not connected.`
-            : 'From casual daily wardrobe organization to high-definition 4K Virtual Try-Ons and coordinated household styling, choose the tier that harmonizes with your lifestyle.'}
+            : 'From casual daily wardrobe organization to high-definition 4K Fitting Room renders and coordinated household styling, choose the tier that harmonizes with your lifestyle.'}
         </p>
         {accountMode && publishedPlans.length > 0 && (
           <p className="text-[11px] text-[#5C585E]">

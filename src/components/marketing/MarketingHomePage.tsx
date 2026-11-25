@@ -70,7 +70,7 @@ const CAPABILITIES = [
   },
   {
     icon: Camera,
-    title: 'Virtual try-on previews',
+    title: 'Fitting Room previews',
     body: 'Preview how a dress, blazer, or full look may sit on your silhouette before you spend — so you shop with clearer confidence.',
     image: styleMinimalImg,
     alt: 'Modern minimal outfit preview',
@@ -144,7 +144,7 @@ export const MarketingHomePage: React.FC<MarketingHomePageProps> = ({
               Your private fashion, beauty, and shopping companion.
             </h1>
             <p className="mt-4 text-sm sm:text-base text-[#5C585E] leading-relaxed">
-              Build a style profile, digitise your wardrobe, ask an AI stylist for looks, preview try-ons, shop South African retailers, and style your family — all in one calm, personal space.
+              Build a style profile, digitise your wardrobe, ask an AI stylist for looks, preview looks in the Fitting Room, shop South African retailers, and style your family — all in one calm, personal space.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Button variant="primary" size="lg" onClick={onCreateAccount} icon={<ArrowRight className="w-4 h-4" />}>
