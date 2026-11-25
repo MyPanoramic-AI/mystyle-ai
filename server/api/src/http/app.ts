@@ -1252,6 +1252,10 @@ export function createApp(deps: AppDeps): express.Express {
     });
   }
 
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ code: 'not_found', message: 'That account service route was not found.' });
+  });
+
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const body = publicError(error);
     if (body.status >= 500) {

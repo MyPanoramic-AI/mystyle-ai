@@ -56,6 +56,28 @@ test('network and credential failures stay explicit', async () => {
   await assert.rejects(() => denied.login('ada@example.com', 'correct-horse-12'), (error: unknown) => error instanceof AccountApiError && error.code === 'invalid_credentials');
 });
 
+test('HTML gateway failures retry until JSON is available', async () => {
+  let attempts = 0;
+  const api = createAccountApi({
+    fetchImpl: async () => {
+      attempts += 1;
+      if (attempts < 3) {
+        return new Response('<!DOCTYPE html><html><body>Bad Gateway</body></html>', {
+          status: 502,
+          headers: { 'content-type': 'text/html' },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true, status: 'live' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    },
+  });
+  const health = await api.health();
+  assert.equal(health.ok, true);
+  assert.equal(attempts, 3);
+});
+
 test('browser demonstration records are not imported unless selected, and family keys never are', () => {
   const store = new Map<string, string>();
   store.set('mystyle_ai_user_profile_v1', JSON.stringify({

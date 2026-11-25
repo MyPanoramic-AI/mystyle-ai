@@ -594,7 +594,17 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     return payload;
   }
 
-  async function request<T>(path: string, requestOptions: RequestOptions = {}, allowCsrfRetry = true): Promise<T> {
+  function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function isTransientGateway(status: number, text: string): boolean {
+    if (status === 502 || status === 503 || status === 504) return true;
+    const trimmed = text.trim().toLowerCase();
+    return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html') || trimmed.includes('bad gateway');
+  }
+
+  async function requestOnce<T>(path: string, requestOptions: RequestOptions, allowCsrfRetry: boolean): Promise<T> {
     const method = requestOptions.method ?? 'GET';
     const headers: Record<string, string> = {};
     if (requestOptions.body !== undefined) headers['content-type'] = 'application/json';
@@ -628,18 +638,51 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
       try {
         payload = JSON.parse(text) as typeof payload;
       } catch {
-        throw new AccountApiError('invalid_response', 'The account service returned an unexpected response.', response.status);
+        throw new AccountApiError(
+          'invalid_response',
+          isTransientGateway(response.status, text)
+            ? 'The account service is waking up. Trying again…'
+            : 'The account service returned an unexpected response.',
+          response.status,
+        );
       }
     }
     if (response.status === 403 && payload.code === 'invalid_csrf' && allowCsrfRetry) {
       const session = await request<SessionResponse>('/api/auth/session');
       remember(session);
-      return request<T>(path, requestOptions, false);
+      return requestOnce<T>(path, requestOptions, false);
     }
     if (!response.ok) {
       throw new AccountApiError(payload.code ?? 'request_failed', payload.message ?? 'The request was not accepted.', response.status);
     }
     return payload as T;
+  }
+
+  async function request<T>(path: string, requestOptions: RequestOptions = {}, allowCsrfRetry = true): Promise<T> {
+    // Gateway HTML/502s are common while a free Render instance wakes; keep retrying those.
+    // Hard network failures get a shorter retry window so truly offline clients fail faster.
+    const gatewayDelaysMs = [0, 1500, 3000, 6000, 12000];
+    const networkDelaysMs = [0, 1200, 2500];
+    let lastError: unknown;
+    for (let attempt = 0; attempt < gatewayDelaysMs.length; attempt += 1) {
+      const delayMs = gatewayDelaysMs[attempt] ?? 0;
+      if (delayMs > 0) await sleep(delayMs);
+      try {
+        return await requestOnce<T>(path, requestOptions, allowCsrfRetry);
+      } catch (error) {
+        lastError = error;
+        if (!(error instanceof AccountApiError)) throw error;
+        const gateway = error.code === 'invalid_response'
+          || error.status === 502
+          || error.status === 503
+          || error.status === 504;
+        const network = error.code === 'network_error' || error.code === 'network_timeout';
+        if (gateway && attempt < gatewayDelaysMs.length - 1) continue;
+        if (network && attempt < networkDelaysMs.length - 1) continue;
+        throw error;
+      }
+    }
+    throw lastError;
   }
 
   return {

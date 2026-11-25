@@ -94,7 +94,8 @@ function isTransientBootError(error: unknown): boolean {
 }
 
 async function withBootRetries<T>(run: () => Promise<T>): Promise<T> {
-  const delaysMs = [0, 900, 1800];
+  // Render free instances can take well over 15s to wake; keep retrying through that window.
+  const delaysMs = [0, 2000, 5000, 10000, 20000];
   let lastError: unknown;
   for (const delayMs of delaysMs) {
     if (delayMs > 0) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
@@ -208,7 +209,7 @@ export function AccountRoot() {
       markBootReady();
       setPhase('unavailable');
       setFormError('Signing in is taking too long. Check your connection and try again.');
-    }, 15000);
+    }, 60000);
     try {
       await withBootRetries(async () => {
         const ready = await accountApi.ready();
