@@ -148,30 +148,32 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/wardrobe|what i own|clothes i have|capsule|already own/.test(text)) {
-      const capsule = personal?.capsulePieces ?? [];
       const wardrobe = personal?.wardrobePieces ?? [];
-      const owned = [...capsule, ...wardrobe];
-      if (!owned.length) {
+      const capsule = personal?.capsulePieces ?? [];
+      if (!wardrobe.length) {
+        const capsuleHint = capsule.length
+          ? ` Your capsule checklist still lists basics to build toward (for example ${capsule[0]}), but those are not treated as owned until they are in Wardrobe.`
+          : '';
         return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
           specialist: 'wardrobe',
           availability: 'ready',
           recommendationType: 'clarification',
-          responseText: 'Your wardrobe and capsule are connected, but I do not see any saved pieces yet. Add a few items in Wardrobe or Capsule, then ask again and I will build outfits from what you own.',
-          followUpQuestions: ['Want three shop-oriented outfit ideas meanwhile?', 'Which occasion should we plan for once you add pieces?'],
+          responseText: `Your wardrobe is connected, but I do not see any owned pieces listed yet.${capsuleHint} Add what you already bought in Wardrobe, then ask again and I will style from what you own.`,
+          followUpQuestions: ['Want three shop-oriented outfit ideas meanwhile?', 'Which occasion should we plan for once you add wardrobe pieces?'],
         }) };
       }
-      const pick = (index: number) => owned[index % owned.length];
+      const pick = (index: number) => wardrobe[index % wardrobe.length];
       const wardrobeOptions = [0, 1, 2].map((i) => {
         const anchor = pick(i);
         const second = pick(i + 1);
         const third = pick(i + 2);
         return {
           title: `Wardrobe mix ${i + 1}`,
-          whyItWorks: 'Built from pieces already in your wardrobe or capsule.',
+          whyItWorks: 'Built from pieces already in your wardrobe.',
           components: [
-            { name: `${anchor} (from your wardrobe/capsule)`, category: 'tops' as const, colour: null, notes: 'Owned piece.' },
-            { name: `${second} (from your wardrobe/capsule)`, category: 'bottoms' as const, colour: null, notes: 'Pair with the first owned piece.' },
-            { name: i === 2 && personal?.retailers?.length ? `Simple shoe from ${personal.retailers[0]}` : `${third} (from your wardrobe/capsule)`, category: 'shoes' as const, colour: null, notes: i === 2 ? 'Gap fill from a preferred shop if needed.' : 'Owned finishing piece when available.' },
+            { name: `${anchor} (from your wardrobe)`, category: 'tops' as const, colour: null, notes: 'Owned piece.' },
+            { name: `${second} (from your wardrobe)`, category: 'bottoms' as const, colour: null, notes: 'Pair with the first owned piece.' },
+            { name: i === 2 && personal?.retailers?.length ? `Simple shoe from ${personal.retailers[0]}` : `${third} (from your wardrobe)`, category: 'shoes' as const, colour: null, notes: i === 2 ? 'Gap fill from a preferred shop if needed.' : 'Owned finishing piece when available.' },
           ],
         };
       });
@@ -184,7 +186,7 @@ export class MockTextProvider implements TextProvider {
         outfitComponents: wardrobeOptions[0].components,
         outfitOptions: wardrobeOptions,
         suggestedColours: personal?.favouriteColours?.slice(0, 3) ?? [],
-        responseText: `Here are three outfits built from your wardrobe and capsule.${colourNote} Option 1 starts with ${pick(0)}. Option 2 leans on ${pick(1)}. Option 3 centres ${pick(2)}. Which mix feels right for today?`,
+        responseText: `Here are three outfits built from your wardrobe (what you already own).${colourNote} Option 1 starts with ${pick(0)}. Option 2 leans on ${pick(1)}. Option 3 centres ${pick(2)}. Capsule basics stay separate as pieces to build toward. Which mix feels right for today?`,
         followUpQuestions: ['Which option should we refine?', 'Want shoe or accessory ideas for that mix?'],
         shoppingSearchIntent: personal?.retailers?.length
           ? `wardrobe refresh finishing pieces ${personal.retailers.slice(0, 2).join(' ')}`

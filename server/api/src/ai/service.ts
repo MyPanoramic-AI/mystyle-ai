@@ -11,7 +11,7 @@ import { assertLiveAllowed } from './guards.js';
 import { MockTextProvider, type ProviderMessage, type ProviderUsage, type TextProvider } from './mockProvider.js';
 import { validateStylistReply, type StylistReply } from './schema.js';
 import { beautyUnavailable, routeSpecialist, shoppingUnavailable, tryOnUnavailable } from './specialists.js';
-import { listWardrobe } from '../domain/collections.js';
+import { wardrobeLabelsFor } from './wardrobeContext.js';
 import { readOwnedMedia, saveMedia } from '../media/store.js';
 import { requireExternalPhotoConsentForVision } from '../domain/silhouette.js';
 import { readProfilePhotoSlots } from '../domain/profilePhotos.js';
@@ -185,29 +185,6 @@ async function produce(
   }
 }
 
-function wardrobeLabelsFor(db: Sql, userId: string): { wardrobePieces: string[]; capsulePieces: string[] } {
-  try {
-    const items = listWardrobe(db, userId);
-    const wardrobePieces: string[] = [];
-    const capsulePieces: string[] = [];
-    for (const item of items.slice(0, 24)) {
-      const name = typeof item.name === 'string' ? item.name.trim() : '';
-      const category = typeof item.category === 'string' ? item.category.trim() : '';
-      const colour = typeof item.colour === 'string' ? item.colour.trim() : '';
-      if (!name) continue;
-      const label = [colour, name, category ? `(${category})` : ''].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-      if (item.isCapsule === true) capsulePieces.push(label);
-      else wardrobePieces.push(label);
-    }
-    return {
-      wardrobePieces: wardrobePieces.slice(0, 12),
-      capsulePieces: capsulePieces.slice(0, 12),
-    };
-  } catch {
-    return { wardrobePieces: [], capsulePieces: [] };
-  }
-}
-
 function ensureShopIntent(reply: StylistReply, context: StyleContext | null): StylistReply {
   if (reply.recommendationType !== 'style_suggestion') return reply;
   if (reply.shoppingSearchIntent && reply.shoppingSearchIntent.trim()) return reply;
@@ -244,7 +221,7 @@ function contextFor(db: Sql, userId: string): StyleContext | null {
   const labels = wardrobeLabelsFor(db, userId);
   const consent = getPreferences(db, userId).aiPersonalisationConsent === true;
   if (consent) return minimiseProfile(getProfile(db, userId), true, labels);
-  // Owned wardrobe/capsule pieces stay available even without marketing personalisation consent.
+  // Wardrobe (owned) and capsule checklist stay available even without marketing personalisation consent.
   if (labels.wardrobePieces.length || labels.capsulePieces.length) return emptyStyleContext(labels);
   return null;
 }

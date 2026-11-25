@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { Sql } from '../db.js';
 import { ApiError, logEvent } from '../errors.js';
 import { getPreferences, getProfile } from '../domain/profiles.js';
-import { listWardrobe } from '../domain/collections.js';
 import { minimiseProfile, resolvePersonaFromProfile } from './context.js';
+import { wardrobeLabelsFor } from './wardrobeContext.js';
 import { assertVoiceAllowed, remainingSecondsAvailable } from './voiceGuards.js';
 import {
   estimateVoiceSessionUsd,
@@ -162,28 +162,10 @@ export async function createVoiceSession(opts: {
   const profile = getProfile(opts.db, opts.userId) as Record<string, unknown>;
   const persona = resolvePersonaFromProfile(profile);
   const consent = getPreferences(opts.db, opts.userId).aiPersonalisationConsent === true;
-  let wardrobePieces: string[] = [];
-  let capsulePieces: string[] = [];
-  if (consent) {
-    try {
-      for (const item of listWardrobe(opts.db, opts.userId).slice(0, 24)) {
-        const name = typeof item.name === 'string' ? item.name.trim() : '';
-        if (!name) continue;
-        const colour = typeof item.colour === 'string' ? item.colour.trim() : '';
-        const label = [colour, name].filter(Boolean).join(' ');
-        if (item.isCapsule === true) capsulePieces.push(label);
-        else wardrobePieces.push(label);
-      }
-      wardrobePieces = wardrobePieces.slice(0, 12);
-      capsulePieces = capsulePieces.slice(0, 12);
-    } catch {
-      wardrobePieces = [];
-      capsulePieces = [];
-    }
-  }
+  const labels = wardrobeLabelsFor(opts.db, opts.userId);
   const styleContext = consent
-    ? minimiseProfile(profile, true, { wardrobePieces, capsulePieces })
-    : (wardrobePieces.length || capsulePieces.length)
+    ? minimiseProfile(profile, true, labels)
+    : (labels.wardrobePieces.length || labels.capsulePieces.length)
       ? {
           consent: false,
           styles: [],
@@ -192,8 +174,8 @@ export async function createVoiceSession(opts: {
           budgetTier: null,
           priorities: [],
           retailers: [],
-          wardrobePieces,
-          capsulePieces,
+          wardrobePieces: labels.wardrobePieces,
+          capsulePieces: labels.capsulePieces,
           stylingSilhouette: null,
           heightCm: null,
           weightKg: null,

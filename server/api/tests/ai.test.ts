@@ -58,8 +58,10 @@ test('the mock provider styles from connected wardrobe and capsule pieces', asyn
   assert.equal(reply?.availability, 'ready');
   assert.equal(reply?.recommendationType, 'style_suggestion');
   assert.equal(reply?.outfitOptions.length, 3);
-  assert.match(reply?.responseText ?? '', /wardrobe|capsule/i);
+  assert.match(reply?.responseText ?? '', /wardrobe/i);
+  assert.match(reply?.responseText ?? '', /own/i);
   assert.doesNotMatch(reply?.responseText ?? '', /not connected/i);
+  assert.doesNotMatch(reply?.responseText ?? '', /from your wardrobe and capsule/i);
 });
 
 test('the mock provider stays local and does not invent a shop listing', async () => {
