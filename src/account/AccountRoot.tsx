@@ -72,10 +72,40 @@ function messageFrom(error: unknown): string {
     if (error.code === 'forbidden_origin') {
       return 'This browser origin is not allowed for the account service. Open the official IStyleU site, or set API_ALLOWED_ORIGINS for your domain.';
     }
+    if (error.code === 'invalid_response' || error.status === 502 || error.status === 503 || error.status === 504) {
+      return 'The account service was briefly unavailable during a restart. Try again.';
+    }
     if (error.status === 0) return 'The account service could not be reached.';
     return error.message;
   }
   return 'The account service could not be reached.';
+}
+
+function isTransientBootError(error: unknown): boolean {
+  if (!(error instanceof AccountApiError)) return false;
+  if (error.status === 401) return false;
+  return error.code === 'invalid_response'
+    || error.code === 'network_error'
+    || error.code === 'network_timeout'
+    || error.code === 'unavailable'
+    || error.status === 502
+    || error.status === 503
+    || error.status === 504;
+}
+
+async function withBootRetries<T>(run: () => Promise<T>): Promise<T> {
+  const delaysMs = [0, 900, 1800];
+  let lastError: unknown;
+  for (const delayMs of delaysMs) {
+    if (delayMs > 0) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+    try {
+      return await run();
+    } catch (error) {
+      lastError = error;
+      if (!isTransientBootError(error)) throw error;
+    }
+  }
+  throw lastError;
 }
 
 function dismissKey(userId: string): string {
@@ -178,49 +208,51 @@ export function AccountRoot() {
       markBootReady();
       setPhase('unavailable');
       setFormError('Signing in is taking too long. Check your connection and try again.');
-    }, 8000);
+    }, 15000);
     try {
-      const ready = await accountApi.ready();
-      if (!ready.ok || ready.database !== 'up') throw new AccountApiError('unavailable', 'The account service is unavailable.', 503);
-      if (ready.persistence === 'persistent' || ready.persistence === 'ephemeral' || ready.persistence === 'local') {
-        setPersistence(ready.persistence);
-      }
+      await withBootRetries(async () => {
+        const ready = await accountApi.ready();
+        if (!ready.ok || ready.database !== 'up') throw new AccountApiError('unavailable', 'The account service is unavailable.', 503);
+        if (ready.persistence === 'persistent' || ready.persistence === 'ephemeral' || ready.persistence === 'local') {
+          setPersistence(ready.persistence);
+        }
 
-      const params = new URLSearchParams(window.location.search);
-      const action = params.get('action');
-      const token = params.get('token');
-      if (action === 'verify-email' && token) {
-        try {
-          await accountApi.confirmEmailVerification(token);
+        const params = new URLSearchParams(window.location.search);
+        const action = params.get('action');
+        const token = params.get('token');
+        if (action === 'verify-email' && token) {
+          try {
+            await accountApi.confirmEmailVerification(token);
+            clearSecurityParams();
+            setSecurityNotice('Your email address is verified.');
+            setEmailVerified(true);
+          } catch (error) {
+            clearSecurityParams();
+            setAuthBoot({ panel: 'verify', message: messageFrom(error) });
+            setSignedOutView('auth');
+            setPhase('signed-out');
+            markBootReady();
+            return;
+          }
+        } else if (action === 'reset-password' && token) {
           clearSecurityParams();
-          setSecurityNotice('Your email address is verified.');
-          setEmailVerified(true);
-        } catch (error) {
-          clearSecurityParams();
-          setAuthBoot({ panel: 'verify', message: messageFrom(error) });
+          setAuthBoot({ panel: 'reset', token });
+          setUserId(null);
+          setEmail(null);
+          setEmailVerified(false);
+          setProfile(emptyAccountProfile());
           setSignedOutView('auth');
           setPhase('signed-out');
           markBootReady();
           return;
         }
-      } else if (action === 'reset-password' && token) {
-        clearSecurityParams();
-        setAuthBoot({ panel: 'reset', token });
-        setUserId(null);
-        setEmail(null);
-        setEmailVerified(false);
-        setProfile(emptyAccountProfile());
-        setSignedOutView('auth');
-        setPhase('signed-out');
-        markBootReady();
-        return;
-      }
 
-      const session = await accountApi.session();
-      await loadSignedIn(session.userId, gen, {
-        userId: session.userId,
-        email: session.email,
-        emailVerified: session.emailVerified,
+        const session = await accountApi.session();
+        await loadSignedIn(session.userId, gen, {
+          userId: session.userId,
+          email: session.email,
+          emailVerified: session.emailVerified,
+        });
       });
     } catch (error) {
       if (gen !== generation.current) return;
