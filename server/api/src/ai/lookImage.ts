@@ -31,20 +31,43 @@ export function wantsLookVisualization(text: string, modelIntent: boolean): bool
 /** True when the brief is mainly adding/swapping one finishing piece rather than a whole new outfit. */
 export function isAdditiveLookEdit(text: string): boolean {
   const value = text.toLowerCase();
-  if (/\b(add|adds|adding|put on|swap in|swap out)\b/.test(value)) return true;
+  if (/\b(add|adds|adding|put on|put onto|swap in|swap out|finish with|finish(?:ed)? by|and then add)\b/.test(value)) return true;
+  if (/\b(?:with|wearing|in)\b.{0,20}\b(nude )?(pumps?|heels?|sandals?|flats?|loafers?|sneakers|boots?|bag|handbag|tote|hoops?|earrings?|necklace)\b/.test(value)) return true;
   if (/\bpair(?:ed)?\b.{0,24}\b(with|to)\b/.test(value)) return true;
   if (/\bchange (?:the )?(?:shoes?|footwear|heels?|pumps?|sandals?|bags?|handbag|jewell?ery|earrings?|necklace|belt|hat|jacket|blazer)\b/.test(value)) return true;
   if (/\bnude pumps?\b/.test(value)) return true;
-  if (/\bon (?:her|his|the) feet\b/.test(value)) return true;
+  if (/\bon (?:her|his|the|their) feet\b/.test(value)) return true;
   return false;
 }
 
 const LOOK_COMPOSITION_RULES = [
-  'Show a complete full-body fashion look on a person from head to toe — never a product close-up or isolated item.',
-  'If the request only adds or swaps one piece (shoes, bag, jewellery, jacket, hair, makeup), keep every other garment and the overall silhouette unchanged.',
-  'Place additions correctly: shoes on the feet, bag in hand or on the shoulder, jewellery on ears/neck/wrists, jacket worn on the body.',
-  'Never redesign the whole outfit into a single shoe, bag, or accessory. Never crop to only the added item.',
+  'OUTPUT REQUIREMENT: one complete full-body fashion photograph of a person standing head-to-toe in an outfit.',
+  'FORBIDDEN: product photography, shoe-only or bag-only close-ups, floating accessories, catalogue cutouts, or redesigning the whole look into a single item.',
+  'If the request only adds or swaps one piece (shoes, bag, jewellery, jacket, hair, makeup), keep every other garment, colour, and silhouette unchanged.',
+  'Place additions correctly on the person: shoes laced/worn on both feet, bag held or worn, jewellery on ears/neck/wrists, jacket worn on the body.',
 ].join(' ');
+
+/** Rewrite short “add X” briefs so image models cannot treat the item as the whole subject. */
+export function normalizeLookBrief(input: {
+  userText: string;
+  modelPrompt: string | null;
+  outfitContext?: string | null;
+  additive: boolean;
+}): string {
+  const raw = (input.modelPrompt || input.userText).trim().slice(0, 700);
+  const context = (input.outfitContext || '').trim().slice(0, 400);
+  if (!input.additive) {
+    return context ? `${raw} Base outfit to keep visible: ${context}` : raw;
+  }
+  const parts = [
+    'Show the SAME full-body outfitted person as before.',
+    'Keep the dress/top/bottom/outerwear exactly as they already appear.',
+    `Only apply this finishing change: ${raw}`,
+    'Example of correct result for shoes: the person still wears the same dress, now with the requested shoes clearly on their feet — not a photo of shoes alone.',
+  ];
+  if (context) parts.push(`Outfit that must remain visible: ${context}`);
+  return parts.join(' ').slice(0, 900);
+}
 
 export function buildLookVisualPrompt(input: {
   userText: string;
@@ -52,18 +75,26 @@ export function buildLookVisualPrompt(input: {
   hasReferencePhoto: boolean;
   /** Previous stylist look image is being edited (follow-up like “add nude pumps”). */
   hasPriorLook?: boolean;
+  /** Prior outfit title/pieces so additive edits stay faithful even without a strong model brief. */
+  outfitContext?: string | null;
 }): string {
-  const brief = (input.modelPrompt || input.userText).trim().slice(0, 700);
-  const additive = isAdditiveLookEdit(`${input.userText} ${input.modelPrompt ?? ''}`);
-  const additiveHint = additive
-    ? 'This is an additive edit: preserve the existing outfit and only apply the requested addition or swap.'
+  const combined = `${input.userText} ${input.modelPrompt ?? ''} ${input.outfitContext ?? ''}`;
+  const additive = isAdditiveLookEdit(combined) || Boolean(input.hasPriorLook && isAdditiveLookEdit(`${input.userText} ${input.modelPrompt ?? ''}`));
+  const brief = normalizeLookBrief({
+    userText: input.userText,
+    modelPrompt: input.modelPrompt,
+    outfitContext: input.outfitContext,
+    additive: additive || Boolean(input.hasPriorLook),
+  });
+  const additiveHint = additive || input.hasPriorLook
+    ? 'This is an additive edit of an existing look: preserve the existing outfit and only apply the requested addition or swap. Do not invent a new outfit concept.'
     : '';
 
   if (input.hasPriorLook) {
     return [
-      'Edit the previous fashion look visualization.',
+      'Edit the previous fashion look visualization image provided as the reference.',
       'Preserve the same person, pose, framing, garments, colours, and overall outfit unless the brief explicitly changes them.',
-      'Apply ONLY the requested addition or change from the styling request.',
+      'Apply ONLY the requested addition or change. The subject of the photo must remain the dressed person, never the added accessory alone.',
       LOOK_COMPOSITION_RULES,
       additiveHint,
       'Photorealistic editorial styling photo, natural lighting, South African fashion context.',
@@ -100,6 +131,11 @@ export async function generateLookImage(input: {
   prompt: string;
   referenceImages?: ProviderImagePart[];
   fetchImpl?: typeof fetch;
+  /**
+   * When true (default), failed image edits may fall back to text-only generation.
+   * Set false for additive follow-ups so “add nude pumps” cannot become a shoe product shot.
+   */
+  allowTextFallback?: boolean;
 }): Promise<LookImageResult> {
   const apiKey = input.config.apiKey;
   if (!input.config.lookImageAllowLive || input.config.provider !== 'openai' || !apiKey) {
@@ -199,12 +235,17 @@ export async function generateLookImage(input: {
       return await parsePayload(response);
     } catch (error) {
       // If reference edits fail (bad form, retired model quirks), fall back to text-only generation
-      // so voice look requests still return a picture.
+      // so first-look requests still return a picture. Skip that for additive edits of a prior look —
+      // text-only often turns “add nude pumps” into a product shot of shoes.
       const detail = error instanceof Error && 'detail' in error
         ? String((error as { detail?: string }).detail ?? '')
         : '';
       const code = error instanceof Error && 'code' in error ? String((error as { code?: string }).code) : '';
       if (code === 'provider_auth' || code === 'provider_rate_limit') throw error;
+      if (input.allowTextFallback === false) {
+        logEvent('look_image_edit_no_fallback', { code, detail: detail.slice(0, 160) }, 'warn');
+        throw error;
+      }
       logEvent('look_image_edit_fallback', { code, detail: detail.slice(0, 160) }, 'warn');
       return await generateWithoutRefs();
     }

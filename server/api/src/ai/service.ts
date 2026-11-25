@@ -16,7 +16,7 @@ import { readOwnedMedia, saveMedia } from '../media/store.js';
 import { requireExternalPhotoConsentForVision } from '../domain/silhouette.js';
 import { readProfilePhotoSlots } from '../domain/profilePhotos.js';
 import type { ProviderImagePart } from './mockProvider.js';
-import { buildLookVisualPrompt, generateLookImage, wantsLookVisualization } from './lookImage.js';
+import { buildLookVisualPrompt, generateLookImage, isAdditiveLookEdit, wantsLookVisualization } from './lookImage.js';
 
 export interface StylistRuntime {
   db: Sql;
@@ -258,26 +258,64 @@ function loadProfileReferenceImages(runtime: StylistRuntime, userId: string): Pr
   }
 }
 
+function outfitContextFromRecommendation(parsed: Record<string, unknown>, content?: string): string | null {
+  const bits: string[] = [];
+  const title = typeof parsed.outfitTitle === 'string' ? parsed.outfitTitle.trim() : '';
+  if (title) bits.push(title);
+  const prompt = typeof parsed.lookVisualPrompt === 'string' ? parsed.lookVisualPrompt.trim() : '';
+  if (prompt) bits.push(prompt);
+  const components = Array.isArray(parsed.outfitComponents) ? parsed.outfitComponents : [];
+  for (const piece of components.slice(0, 6)) {
+    if (piece && typeof piece === 'object' && typeof (piece as { name?: unknown }).name === 'string') {
+      const name = (piece as { name: string }).name.trim();
+      if (name) bits.push(name);
+    }
+  }
+  const options = Array.isArray(parsed.outfitOptions) ? parsed.outfitOptions : [];
+  for (const option of options.slice(0, 1)) {
+    if (option && typeof option === 'object') {
+      const optionTitle = typeof (option as { title?: unknown }).title === 'string' ? (option as { title: string }).title.trim() : '';
+      if (optionTitle) bits.push(optionTitle);
+      const optionPieces = Array.isArray((option as { pieces?: unknown }).pieces) ? (option as { pieces: unknown[] }).pieces : [];
+      for (const piece of optionPieces.slice(0, 4)) {
+        if (piece && typeof piece === 'object' && typeof (piece as { name?: unknown }).name === 'string') {
+          const name = (piece as { name: string }).name.trim();
+          if (name) bits.push(name);
+        }
+      }
+    }
+  }
+  if (!bits.length && content) bits.push(content.replace(/\s+/g, ' ').trim().slice(0, 220));
+  return bits.length ? bits.join('; ').slice(0, 400) : null;
+}
+
 /** Most recent generated look in this chat — used so follow-ups edit that image instead of inventing a new scene. */
-function loadLatestLookReference(runtime: StylistRuntime, userId: string, conversationId: string): ProviderImagePart | null {
+function loadLatestLookReference(
+  runtime: StylistRuntime,
+  userId: string,
+  conversationId: string,
+): { image: ProviderImagePart; outfitContext: string | null } | null {
   if (!runtime.mediaDir) return null;
   try {
     const rows = runtime.db.prepare(
-      `SELECT recommendation_json AS recommendationJson FROM ai_messages
+      `SELECT content, recommendation_json AS recommendationJson FROM ai_messages
        WHERE conversation_id = ? AND role = 'assistant' AND recommendation_json IS NOT NULL
        ORDER BY created_at DESC LIMIT 24`,
-    ).all(conversationId) as { recommendationJson: string }[];
+    ).all(conversationId) as { content: string; recommendationJson: string }[];
     for (const row of rows) {
-      let parsed: { generatedMediaId?: unknown };
+      let parsed: Record<string, unknown>;
       try {
-        parsed = JSON.parse(row.recommendationJson) as { generatedMediaId?: unknown };
+        parsed = JSON.parse(row.recommendationJson) as Record<string, unknown>;
       } catch {
         continue;
       }
       const mediaId = typeof parsed.generatedMediaId === 'string' ? parsed.generatedMediaId.trim() : '';
       if (!mediaId) continue;
       const ownedMedia = readOwnedMedia(runtime.db, runtime.mediaDir, userId, mediaId);
-      return { mimeType: ownedMedia.contentType, base64: ownedMedia.bytes.toString('base64') };
+      return {
+        image: { mimeType: ownedMedia.contentType, base64: ownedMedia.bytes.toString('base64') },
+        outfitContext: outfitContextFromRecommendation(parsed, row.content),
+      };
     }
     return null;
   } catch {
@@ -305,31 +343,39 @@ async function maybeAttachLookImage(
 
   let references: ProviderImagePart[] = [];
   let hasPriorLook = false;
+  let outfitContext: string | null = null;
   if (attachmentImages.length) {
     references = attachmentImages.slice(0, 2);
   } else {
     const priorLook = loadLatestLookReference(runtime, userId, conversationId);
     if (priorLook) {
-      references = [priorLook];
+      references = [priorLook.image];
       hasPriorLook = true;
+      outfitContext = priorLook.outfitContext;
     } else {
       references = loadProfileReferenceImages(runtime, userId);
     }
   }
+  if (!outfitContext) {
+    outfitContext = outfitContextFromRecommendation(reply as unknown as Record<string, unknown>);
+  }
 
   try {
     if (references.length) requireExternalPhotoConsentForVision(runtime.db, userId);
+    const additive = isAdditiveLookEdit(`${userText} ${reply.lookVisualPrompt ?? ''} ${outfitContext ?? ''}`);
     const prompt = buildLookVisualPrompt({
       userText,
       modelPrompt: reply.lookVisualPrompt,
       hasReferencePhoto: references.length > 0,
       hasPriorLook,
+      outfitContext,
     });
     const image = await generateLookImage({
       config: runtime.config,
       prompt,
       referenceImages: references,
       fetchImpl: runtime.fetchImpl,
+      allowTextFallback: !(hasPriorLook && additive),
     });
     const saved = saveMedia({
       db: runtime.db,
