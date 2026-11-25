@@ -94,18 +94,57 @@ export const STYLIST_ANSWER_LENGTH_OPTIONS: Array<{ id: StylistAnswerLengthId; l
   },
 ];
 
-export const STYLIST_AUDIO_VOICE_OPTIONS: Array<{ id: StylistAudioVoiceId; label: string; hint: string }> = [
-  { id: 'marin', label: 'Marin', hint: 'Warm, clear default for Talk to Aria' },
-  { id: 'coral', label: 'Coral', hint: 'Bright and friendly' },
-  { id: 'sage', label: 'Sage', hint: 'Calm and steady' },
-  { id: 'ballad', label: 'Ballad', hint: 'Soft and expressive' },
-  { id: 'alloy', label: 'Alloy', hint: 'Balanced and neutral' },
-  { id: 'ash', label: 'Ash', hint: 'Soft-spoken and natural' },
-  { id: 'echo', label: 'Echo', hint: 'Deeper and grounded' },
-  { id: 'shimmer', label: 'Shimmer', hint: 'Light and polished' },
-  { id: 'verse', label: 'Verse', hint: 'Clear narrative tone' },
-  { id: 'cedar', label: 'Cedar', hint: 'Rich and confident' },
+export type StylistAudioVoiceTone = 'feminine' | 'masculine' | 'neutral';
+
+export const STYLIST_AUDIO_VOICE_OPTIONS: Array<{
+  id: StylistAudioVoiceId;
+  label: string;
+  hint: string;
+  tone: StylistAudioVoiceTone;
+}> = [
+  { id: 'marin', label: 'Marin', hint: 'Warm, clear default for Talk to Aria', tone: 'feminine' },
+  { id: 'coral', label: 'Coral', hint: 'Bright and friendly', tone: 'feminine' },
+  { id: 'sage', label: 'Sage', hint: 'Calm and steady', tone: 'feminine' },
+  { id: 'ballad', label: 'Ballad', hint: 'Soft and expressive', tone: 'feminine' },
+  { id: 'shimmer', label: 'Shimmer', hint: 'Light and polished', tone: 'feminine' },
+  { id: 'cedar', label: 'Cedar', hint: 'Rich and confident', tone: 'masculine' },
+  { id: 'echo', label: 'Echo', hint: 'Deeper and grounded', tone: 'masculine' },
+  { id: 'ash', label: 'Ash', hint: 'Soft-spoken and natural', tone: 'masculine' },
+  { id: 'verse', label: 'Verse', hint: 'Clear narrative tone', tone: 'masculine' },
+  { id: 'alloy', label: 'Alloy', hint: 'Balanced and neutral', tone: 'neutral' },
 ];
+
+const DEFAULT_AUDIO_VOICE_BY_GENDER: Record<StylistGenderId, StylistAudioVoiceId> = {
+  woman: 'marin',
+  man: 'cedar',
+  'non-binary': 'alloy',
+  neutral: 'alloy',
+};
+
+/** Spoken voices offered for a stylist gender presentation. */
+export function stylistAudioVoicesForGender(gender: StylistGenderId) {
+  if (gender === 'woman') {
+    return STYLIST_AUDIO_VOICE_OPTIONS.filter((option) => option.tone === 'feminine');
+  }
+  if (gender === 'man') {
+    return STYLIST_AUDIO_VOICE_OPTIONS.filter((option) => option.tone === 'masculine');
+  }
+  return STYLIST_AUDIO_VOICE_OPTIONS;
+}
+
+export function defaultStylistAudioVoiceForGender(gender: StylistGenderId): StylistAudioVoiceId {
+  return DEFAULT_AUDIO_VOICE_BY_GENDER[gender] ?? DEFAULT_STYLIST_PERSONA.audioVoice;
+}
+
+/** Keep the current voice when still allowed; otherwise pick the gender default. */
+export function resolveAudioVoiceForGender(
+  gender: StylistGenderId,
+  audioVoice: StylistAudioVoiceId,
+): StylistAudioVoiceId {
+  const allowed = stylistAudioVoicesForGender(gender);
+  if (allowed.some((option) => option.id === audioVoice)) return audioVoice;
+  return defaultStylistAudioVoiceForGender(gender);
+}
 
 const GENDERS = new Set<StylistGenderId>(STYLIST_GENDER_OPTIONS.map((o) => o.id));
 const AGES = new Set<StylistAgeVibeId>(STYLIST_AGE_VIBE_OPTIONS.map((o) => o.id));
@@ -153,13 +192,14 @@ export function asStylistName(value: unknown): string {
 export function asStylistPersona(value: unknown): StylistPersona {
   const nested = (value ?? null) as Record<string, unknown> | null;
   if (!nested || typeof nested !== 'object') return { ...DEFAULT_STYLIST_PERSONA };
+  const gender = asStylistGender(nested.gender);
   return {
     name: asStylistName(nested.name),
-    gender: asStylistGender(nested.gender),
+    gender,
     ageVibe: asStylistAgeVibe(nested.ageVibe),
     voice: asStylistVoice(nested.voice),
     answerLength: asStylistAnswerLength(nested.answerLength),
-    audioVoice: asStylistAudioVoice(nested.audioVoice),
+    audioVoice: resolveAudioVoiceForGender(gender, asStylistAudioVoice(nested.audioVoice)),
   };
 }
 

@@ -9,10 +9,11 @@ import type { StylistAudioVoiceId, StylistPersona } from '../../types';
 import {
   STYLIST_AGE_VIBE_OPTIONS,
   STYLIST_ANSWER_LENGTH_OPTIONS,
-  STYLIST_AUDIO_VOICE_OPTIONS,
   STYLIST_GENDER_OPTIONS,
   STYLIST_NAME_PRESETS,
   STYLIST_VOICE_OPTIONS,
+  resolveAudioVoiceForGender,
+  stylistAudioVoicesForGender,
 } from '../../data/stylistPersona';
 import { AccountApiError, accountApi } from '../../services/accountApi';
 import { playVoicePreviewBlob, stopVoicePreview } from '../../services/playVoicePreview';
@@ -34,10 +35,26 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
   const gap = compact ? 'space-y-5' : 'space-y-6';
   const [previewing, setPreviewing] = useState<StylistAudioVoiceId | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const audioVoiceOptions = stylistAudioVoicesForGender(value.gender);
 
   useEffect(() => () => {
     stopVoicePreview();
   }, []);
+
+  useEffect(() => {
+    const nextVoice = resolveAudioVoiceForGender(value.gender, value.audioVoice);
+    if (nextVoice !== value.audioVoice) {
+      onChange({ ...value, audioVoice: nextVoice });
+    }
+  }, [value.gender]); // eslint-disable-line react-hooks/exhaustive-deps -- only re-check when presentation changes
+
+  const setGender = (gender: StylistPersona['gender']) => {
+    onChange({
+      ...value,
+      gender,
+      audioVoice: resolveAudioVoiceForGender(gender, value.audioVoice),
+    });
+  };
 
   const playPreview = async (voiceId: StylistAudioVoiceId) => {
     if (!allowVoicePreview) {
@@ -110,13 +127,42 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
         />
       </div>
 
+      <div>
+        <label className="block text-xs font-semibold text-[#242326] uppercase tracking-wider mb-1.5">
+          Gender presentation
+        </label>
+        <p className="text-[11px] text-[#5C585E] mb-2 leading-relaxed">
+          This also filters the spoken voices you can choose below.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {STYLIST_GENDER_OPTIONS.map((option) => {
+            const selected = value.gender === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setGender(option.id)}
+                className={`text-left rounded-xl border px-3 py-2.5 transition-all cursor-pointer ${
+                  selected
+                    ? 'border-[#9C6A61] bg-[#9C6A61]/8 ring-1 ring-[#9C6A61]/20'
+                    : 'border-[#242326]/10 bg-[#F6F2EC]/40 hover:border-[#242326]/25'
+                }`}
+              >
+                <span className="block text-xs font-semibold text-[#242326]">{option.label}</span>
+                <span className="block text-[11px] text-[#5C585E] mt-0.5 leading-snug">{option.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-[#9C6A61]/25 bg-[#9C6A61]/5 p-3.5 sm:p-4 space-y-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-[#9C6A61]">
             How they talk with you
           </p>
           <p className="text-[11px] text-[#5C585E] mt-1 leading-relaxed">
-            Choose a spoken voice you can listen to, then set tone and how long they answer in chat and Talk to Aria.
+            Choose a spoken voice that matches their presentation, then set tone and how long they answer.
           </p>
         </div>
 
@@ -125,10 +171,14 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
             Spoken voice
           </label>
           <p className="text-[11px] text-[#5C585E] mb-2 leading-relaxed">
-            Tap Listen to hear a short sample, then select the voice for Talk to Aria.
+            {value.gender === 'woman'
+              ? 'Women’s voices for this stylist. Tap Listen to hear a sample.'
+              : value.gender === 'man'
+                ? 'Men’s voices for this stylist. Tap Listen to hear a sample.'
+                : 'All voices are available for this presentation. Tap Listen to hear a sample.'}
           </p>
           <div className="space-y-2">
-            {STYLIST_AUDIO_VOICE_OPTIONS.map((option) => {
+            {audioVoiceOptions.map((option) => {
               const selected = value.audioVoice === option.id;
               const isPreviewing = previewing === option.id;
               return (
@@ -227,32 +277,6 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
               );
             })}
           </div>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-semibold text-[#242326] uppercase tracking-wider mb-1.5">
-          Gender presentation
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {STYLIST_GENDER_OPTIONS.map((option) => {
-            const selected = value.gender === option.id;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => onChange({ ...value, gender: option.id })}
-                className={`text-left rounded-xl border px-3 py-2.5 transition-all cursor-pointer ${
-                  selected
-                    ? 'border-[#9C6A61] bg-[#9C6A61]/8 ring-1 ring-[#9C6A61]/20'
-                    : 'border-[#242326]/10 bg-[#F6F2EC]/40 hover:border-[#242326]/25'
-                }`}
-              >
-                <span className="block text-xs font-semibold text-[#242326]">{option.label}</span>
-                <span className="block text-[11px] text-[#5C585E] mt-0.5 leading-snug">{option.hint}</span>
-              </button>
-            );
-          })}
         </div>
       </div>
 
