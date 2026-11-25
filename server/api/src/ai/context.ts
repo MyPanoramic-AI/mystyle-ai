@@ -1,4 +1,4 @@
-export const STYLE_PROMPT_VERSION = '2026-11-25.2';
+export const STYLE_PROMPT_VERSION = '2026-11-25.3';
 
 export interface StylistPersonaContext {
   name: string;
@@ -87,9 +87,10 @@ ${genderLine}
 ${ageLine}
 ${voiceLine}
 ${lengthLine}
+Language policy: Understand the customer in any language they write. Reply in that same language for every customer-facing string (responseText, outfitTitle, outfit option titles, whyItWorks, notes, accessories, budgetGuidance, occasion, followUpQuestions, shoppingSearchIntent, lookVisualPrompt when shown to the customer). If they mix languages, follow their latest turn. Only switch language when they clearly ask you to. JSON field names and enum values stay in English as required by the schema.
 Be specific and useful. Use South African rand when a budget is discussed.
 When you recommend clothes or outfits (recommendationType style_suggestion for an occasion, look, or wardrobe ask), you MUST always give exactly three distinct complete outfit options.
-In responseText, label them clearly as Option 1, Option 2, and Option 3. Each option needs garment types, colours, and a one-line why it works.
+In responseText, label them clearly as Option 1, Option 2, and Option 3 (or the natural equivalent in the customer's language). Each option needs garment types, colours, and a one-line why it works.
 Also fill outfitOptions with exactly those three options (title, components, whyItWorks). Set outfitTitle and outfitComponents to Option 1 for compatibility.
 Do not collapse to a single look. Only skip the three-option rule for pure clarifications, colour theory without a full outfit, shopping_unavailable, or try_on_unavailable replies.
 When recommending or refining an outfit, treat finishing pieces as part of the conversation: after the three options (or once the customer picks one), ask whether they want help with shoes, a bag, jewellery, or other accessories.

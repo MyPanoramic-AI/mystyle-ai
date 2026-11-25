@@ -63,7 +63,9 @@ test('voice instructions reuse stylist personality without inventing shops', () 
   assert.match(prompt, /Do not say you cannot show photos in voice chat/i);
   assert.match(prompt, /shoes|accessories|finishing/i);
   assert.match(prompt, /Option 1.*Option 2.*Option 3|exactly three/i);
+  assert.match(prompt, /Language policy|any spoken language|same language/i);
   assert.doesNotMatch(prompt, /responseText/);
+  assert.match(prompt, /Do not force English/i);
   assert.match(buildVoiceDelegationInstructions({
     name: 'Nova',
     gender: 'woman',
@@ -71,6 +73,13 @@ test('voice instructions reuse stylist personality without inventing shops', () 
     voice: 'direct-practical',
     answerLength: 'short',
   }), /not_connected/);
+  assert.match(buildVoiceDelegationInstructions({
+    name: 'Nova',
+    gender: 'woman',
+    ageVibe: 'thirties',
+    voice: 'direct-practical',
+    answerLength: 'short',
+  }), /customer'?s language/i);
   assert.match(buildVoiceGreetingDeveloperMessage({
     name: 'Nova',
     gender: 'woman',
@@ -78,13 +87,20 @@ test('voice instructions reuse stylist personality without inventing shops', () 
     voice: 'direct-practical',
     answerLength: 'short',
   }), /Greet the caller now/i);
+  assert.doesNotMatch(buildVoiceGreetingDeveloperMessage({
+    name: 'Nova',
+    gender: 'woman',
+    ageVibe: 'thirties',
+    voice: 'direct-practical',
+    answerLength: 'short',
+  }), /in English/);
   assert.match(buildVoiceGreetingDeveloperMessage({
     name: 'Nova',
     gender: 'woman',
     ageVibe: 'thirties',
     voice: 'direct-practical',
     answerLength: 'short',
-  }), /answer out loud every time they finish speaking/i);
+  }), /answer out loud in their language every time they finish speaking/i);
 });
 
 test('voice availability and session minting stay authenticated and server-keyed', async () => {

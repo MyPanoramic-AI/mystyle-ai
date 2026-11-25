@@ -460,8 +460,8 @@ export function useGptLiveVoice(options: UseGptLiveVoiceOptions) {
       const recognition = new Ctor();
       recognition.continuous = true;
       recognition.interimResults = true;
-      // en-US is the most reliable desktop Chrome dictionary; South African English still recognises well.
-      recognition.lang = 'en-US';
+      // Match the browser/OS language so dictation works beyond English; GPT-Live still hears audio natively.
+      recognition.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-ZA';
       recognitionWantedRef.current = true;
       recognition.onresult = (event) => {
         if (mutedRef.current) return;
