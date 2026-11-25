@@ -28,16 +28,32 @@ export function wantsLookVisualization(text: string, modelIntent: boolean): bool
   return /\b(generate|visuali[sz]e|show me|give me|send me|can you show|can you give|i want (to see|the picture|a picture|a photo|a look)|i just want the picture|show me what|create (an? )?(image|picture|look|photo)|render|picture of|photo of|image of|a picture|a photo|picture of me|photo of me|style my hair|change my hair|restyle( my hair)?|add accessories|with accessories|make me look|show (me )?how (it|this) (would|could) look|what (this|it|that|you) (would|are) look|what you are imagining)\b/.test(value);
 }
 
+const FINISHING_ITEM = String.raw`(?:nude )?pumps?|heels?|sandals?|slippers?|mules?|flats?|loafers?|sneakers|trainers|boots?|shoes?|footwear|bag|handbag|tote|clutch|hoops?|earrings?|necklace|bracelet|belt|hat|shawl|scarf|jacket|blazer|cardigan`;
+
 /** True when the brief is mainly adding/swapping one finishing piece rather than a whole new outfit. */
 export function isAdditiveLookEdit(text: string): boolean {
   const value = text.toLowerCase();
-  if (/\b(add|adds|adding|put on|put onto|swap in|swap out|finish with|finish(?:ed)? by|and then add)\b/.test(value)) return true;
-  if (/\b(?:with|wearing|in)\b.{0,20}\b(nude )?(pumps?|heels?|sandals?|flats?|loafers?|sneakers|boots?|bag|handbag|tote|hoops?|earrings?|necklace)\b/.test(value)) return true;
+  if (/\b(add|adds|adding|put on|put onto|swap in|swap out|finish with|finish(?:ed)? by|and then add)\b/.test(value)) {
+    // “add three outfits” is not a finishing edit; require a finishing item or footwear/accessory cue nearby.
+    if (new RegExp(String.raw`\b(?:${FINISHING_ITEM})\b`).test(value)) return true;
+    if (/\b(accessories|jewellery|jewelry|makeup|hair|waves|bun)\b/.test(value)) return true;
+  }
+  if (new RegExp(String.raw`\b(?:with|wearing|in)\b.{0,28}\b(?:${FINISHING_ITEM})\b`).test(value)) return true;
   if (/\bpair(?:ed)?\b.{0,24}\b(with|to)\b/.test(value)) return true;
-  if (/\bchange (?:the )?(?:shoes?|footwear|heels?|pumps?|sandals?|bags?|handbag|jewell?ery|earrings?|necklace|belt|hat|jacket|blazer)\b/.test(value)) return true;
+  if (new RegExp(String.raw`\bchange (?:the )?(?:${FINISHING_ITEM})\b`).test(value)) return true;
   if (/\bnude pumps?\b/.test(value)) return true;
   if (/\bon (?:her|his|the|their) feet\b/.test(value)) return true;
   return false;
+}
+
+/** Generate/edit a look when the customer asks for a picture, or when they finish an existing look (e.g. “add red slippers”). */
+export function shouldAttachLookImage(input: {
+  userText: string;
+  modelIntent: boolean;
+  hasPriorLook: boolean;
+}): boolean {
+  if (wantsLookVisualization(input.userText, input.modelIntent)) return true;
+  return input.hasPriorLook && isAdditiveLookEdit(input.userText);
 }
 
 const LOOK_COMPOSITION_RULES = [

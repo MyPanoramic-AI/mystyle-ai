@@ -16,6 +16,7 @@ import {
   buildLookVisualPrompt,
   generateLookImage,
   isAdditiveLookEdit,
+  shouldAttachLookImage,
   wantsLookVisualization,
 } from './lookImage.js';
 import type { ProviderImagePart } from './mockProvider.js';
@@ -148,8 +149,9 @@ function loadLatestLookReference(
   }
 }
 
-/** Broader voice phrasing for “show me the look”. */
-export function voiceWantsLookVisualization(text: string): boolean {
+/** Broader voice phrasing for “show me the look”, including finishing an on-screen outfit. */
+export function voiceWantsLookVisualization(text: string, hasPriorLook = false): boolean {
+  if (shouldAttachLookImage({ userText: text, modelIntent: false, hasPriorLook })) return true;
   if (wantsLookVisualization(text, false)) return true;
   const value = text.toLowerCase();
   return /\b(give me (a |the )?(picture|photo|image|look)|i just want the picture|what you are imagining|picture of|photo of|image of|see (the|this|that) look|visual of)\b/.test(value);

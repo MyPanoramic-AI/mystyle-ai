@@ -1,19 +1,40 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildLookVisualPrompt, isAdditiveLookEdit, normalizeLookBrief, wantsLookVisualization } from '../src/ai/lookImage.js';
+import { buildLookVisualPrompt, isAdditiveLookEdit, normalizeLookBrief, shouldAttachLookImage, wantsLookVisualization } from '../src/ai/lookImage.js';
 
 test('wantsLookVisualization detects hair and accessory requests', () => {
   assert.equal(wantsLookVisualization('Can you style my hair and add accessories?', false), true);
   assert.equal(wantsLookVisualization('Show me how this would look', false), true);
   assert.equal(wantsLookVisualization('What colours suit me?', false), false);
   assert.equal(wantsLookVisualization('Just advice please', true), true);
+  assert.equal(wantsLookVisualization('add red slippers please', false), false);
 });
 
 test('isAdditiveLookEdit detects shoe and accessory additions', () => {
   assert.equal(isAdditiveLookEdit('Add a nude pump shoe to the outfit'), true);
+  assert.equal(isAdditiveLookEdit('add red slippers please'), true);
   assert.equal(isAdditiveLookEdit('Can you pair it with gold hoops?'), true);
   assert.equal(isAdditiveLookEdit('Finish with nude pumps'), true);
   assert.equal(isAdditiveLookEdit('Show me a romantic picnic look in a floral midi'), false);
+  assert.equal(isAdditiveLookEdit('add three more outfit ideas'), false);
+});
+
+test('shouldAttachLookImage regenerates when finishing a prior look', () => {
+  assert.equal(shouldAttachLookImage({
+    userText: 'add red slippers please',
+    modelIntent: false,
+    hasPriorLook: true,
+  }), true);
+  assert.equal(shouldAttachLookImage({
+    userText: 'add red slippers please',
+    modelIntent: false,
+    hasPriorLook: false,
+  }), false);
+  assert.equal(shouldAttachLookImage({
+    userText: 'What colours suit me?',
+    modelIntent: false,
+    hasPriorLook: true,
+  }), false);
 });
 
 test('normalizeLookBrief forces full-body framing for additive shoe edits', () => {

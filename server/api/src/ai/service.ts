@@ -16,7 +16,7 @@ import { readOwnedMedia, saveMedia } from '../media/store.js';
 import { requireExternalPhotoConsentForVision } from '../domain/silhouette.js';
 import { readProfilePhotoSlots } from '../domain/profilePhotos.js';
 import type { ProviderImagePart } from './mockProvider.js';
-import { buildLookVisualPrompt, generateLookImage, isAdditiveLookEdit, wantsLookVisualization } from './lookImage.js';
+import { buildLookVisualPrompt, generateLookImage, isAdditiveLookEdit, shouldAttachLookImage } from './lookImage.js';
 
 export interface StylistRuntime {
   db: Sql;
@@ -331,15 +331,10 @@ async function maybeAttachLookImage(
   reply: StylistReply,
   attachmentImages: ProviderImagePart[],
 ): Promise<StylistReply> {
-  if (!wantsLookVisualization(userText, reply.lookVisualIntent)) return reply;
   if (!runtime.config.lookImageAllowLive || runtime.config.provider !== 'openai' || !runtime.config.apiKey) {
     return reply;
   }
   if (!runtime.mediaDir || runtime.mediaMaxBytes == null || runtime.retentionMs == null) return reply;
-
-  const lookCost = runtime.config.lookImageUsd;
-  if (spent(runtime.db) + lookCost > runtime.config.maxBudgetUsd) return reply;
-  if (spent(runtime.db, userId) + lookCost > runtime.config.maxUserBudgetUsd) return reply;
 
   let references: ProviderImagePart[] = [];
   let hasPriorLook = false;
@@ -356,6 +351,19 @@ async function maybeAttachLookImage(
       references = loadProfileReferenceImages(runtime, userId);
     }
   }
+
+  if (!shouldAttachLookImage({
+    userText,
+    modelIntent: reply.lookVisualIntent,
+    hasPriorLook,
+  })) {
+    return reply;
+  }
+
+  const lookCost = runtime.config.lookImageUsd;
+  if (spent(runtime.db) + lookCost > runtime.config.maxBudgetUsd) return reply;
+  if (spent(runtime.db, userId) + lookCost > runtime.config.maxUserBudgetUsd) return reply;
+
   if (!outfitContext) {
     outfitContext = outfitContextFromRecommendation(reply as unknown as Record<string, unknown>);
   }
@@ -363,19 +371,25 @@ async function maybeAttachLookImage(
   try {
     if (references.length) requireExternalPhotoConsentForVision(runtime.db, userId);
     const additive = isAdditiveLookEdit(`${userText} ${reply.lookVisualPrompt ?? ''} ${outfitContext ?? ''}`);
+    const modelPrompt = reply.lookVisualPrompt
+      || (additive
+        ? `Keep the same full-body outfit already shown. Only change: ${userText.trim()}. Place any shoes on both feet.`
+        : null);
     const prompt = buildLookVisualPrompt({
       userText,
-      modelPrompt: reply.lookVisualPrompt,
+      modelPrompt,
       hasReferencePhoto: references.length > 0,
       hasPriorLook,
       outfitContext,
     });
+    // Prefer editing the prior look. If edits fail, allow a text regenerate only when we
+    // still have outfit context so “add red slippers” cannot become a shoe product shot.
     const image = await generateLookImage({
       config: runtime.config,
       prompt,
       referenceImages: references,
       fetchImpl: runtime.fetchImpl,
-      allowTextFallback: !(hasPriorLook && additive),
+      allowTextFallback: !(hasPriorLook && additive && !outfitContext),
     });
     const saved = saveMedia({
       db: runtime.db,
