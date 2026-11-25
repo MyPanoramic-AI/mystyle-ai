@@ -264,7 +264,11 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       if (turn.role === 'user') {
         recentUserVoiceRef.current = [...recentUserVoiceRef.current.slice(-4), turn.text.trim()].filter(Boolean);
         const combinedUser = recentUserVoiceRef.current.join(' ');
-        if (voiceWantsLookVisualization(turn.text) || voiceWantsLookVisualization(combinedUser)) {
+        const hasPriorLook = messagesRef.current.some((message) => Boolean(message.lookImageUrl));
+        if (
+          voiceWantsLookVisualization(turn.text, hasPriorLook)
+          || voiceWantsLookVisualization(combinedUser, hasPriorLook)
+        ) {
           void requestVoiceLookVisual(buildVoiceLookPrompt(combinedUser || turn.text));
         }
       } else if (turn.role === 'assistant' && voiceAssistantPromisedLook(turn.text)) {
