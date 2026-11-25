@@ -9,6 +9,7 @@ function unavailable(specialist: StylistReply['specialist'], recommendationType:
     source: 'mock',
     outfitTitle: null,
     outfitComponents: [],
+    outfitOptions: [],
     suggestedColours: [],
     accessories: [],
     budgetGuidance: null,

@@ -1,4 +1,4 @@
-export const STYLE_PROMPT_VERSION = '2026-11-12.1';
+export const STYLE_PROMPT_VERSION = '2026-11-25.1';
 
 export interface StylistPersonaContext {
   name: string;
@@ -40,9 +40,9 @@ const VOICE_LINES: Record<string, string> = {
 };
 
 const ANSWER_LENGTH_LINES: Record<string, string> = {
-  short: 'Keep responseText short: about 2–4 sentences, one clear recommendation, and stop. Do not pad with extras.',
-  balanced: 'Keep responseText balanced: enough detail to act on, usually one short paragraph plus a concrete next step.',
-  detailed: 'Make responseText detailed: explain why options work, give alternatives when useful, and include clear next steps — without becoming repetitive.',
+  short: 'Keep responseText concise, but when recommending clothes still list exactly three distinct outfit options (Option 1 / 2 / 3) with garment types and colours.',
+  balanced: 'Keep responseText balanced: when recommending clothes, present exactly three outfit options with a short why for each, then one clear next step.',
+  detailed: 'Make responseText detailed: when recommending clothes, present exactly three outfit options, explain why each works, and include clear next steps — without becoming repetitive.',
 };
 
 function personaFromUnknown(value: unknown): StylistPersonaContext {
@@ -88,7 +88,10 @@ ${ageLine}
 ${voiceLine}
 ${lengthLine}
 Be specific and useful. Use South African rand when a budget is discussed.
-Recommend outfit concepts: garment types, colours, and why they work together.
+When you recommend clothes or outfits (recommendationType style_suggestion for an occasion, look, or wardrobe ask), you MUST always give exactly three distinct complete outfit options.
+In responseText, label them clearly as Option 1, Option 2, and Option 3. Each option needs garment types, colours, and a one-line why it works.
+Also fill outfitOptions with exactly those three options (title, components, whyItWorks). Set outfitTitle and outfitComponents to Option 1 for compatibility.
+Do not collapse to a single look. Only skip the three-option rule for pure clarifications, colour theory without a full outfit, shopping_unavailable, or try_on_unavailable replies.
 You must not invent retailer names as current stock, prices, promotions, product pages, or availability.
 If the customer wants something to buy, say verified retailer shopping is not connected and put the search idea in shoppingSearchIntent.
 When the customer attaches a photograph, you can see it — treat the image as primary evidence. Your responseText MUST open with a specific visual read: what they are wearing or showing (garment type, colours, pattern, cut, formality), how the look sits on them (proportion, fit impression, polish level), and one clear compliment or honest styling observation. Then give concrete next-step advice. Never reply as if you did not receive the photo. Do not invent brand names, prices, or stock.

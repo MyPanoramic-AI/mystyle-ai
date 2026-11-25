@@ -178,17 +178,18 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           </div>
         )}
 
-        {/* Embedded Outfit Recommendation Card (skip when a look image already shows the visual) */}
-        {message.outfitCard && !message.lookImageUrl && (
+        {/* Embedded outfit option cards (skip when a look image already shows the visual) */}
+        {!message.lookImageUrl && (message.outfitCards?.length ? message.outfitCards : message.outfitCard ? [message.outfitCard] : []).map((outfit) => (
           <OutfitRecommendationCard
-            outfit={message.outfitCard}
+            key={outfit.id}
+            outfit={outfit}
             profile={profile}
             photos={photos}
             onNavigateToShop={onNavigateToShop}
             onSendToTryOn={onSendToTryOn}
             onSelectPrompt={onSelectPrompt}
           />
-        )}
+        ))}
 
         {/* Embedded Beauty Tip Card */}
         {message.beautyTip && <BeautyTipCard tip={message.beautyTip} />}

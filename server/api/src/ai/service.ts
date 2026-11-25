@@ -114,6 +114,7 @@ function safeFallback(): StylistReply {
     source: 'mock',
     outfitTitle: null,
     outfitComponents: [],
+    outfitOptions: [],
     suggestedColours: [],
     accessories: [],
     budgetGuidance: null,

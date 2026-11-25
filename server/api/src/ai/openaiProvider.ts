@@ -23,6 +23,32 @@ const SCHEMA = {
         required: ['name', 'category', 'colour', 'notes'],
       },
     },
+    outfitOptions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          title: { type: 'string' },
+          whyItWorks: { type: ['string', 'null'] },
+          components: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string' },
+                category: { type: 'string', enum: ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'bags', 'accessories'] },
+                colour: { type: ['string', 'null'] },
+                notes: { type: ['string', 'null'] },
+              },
+              required: ['name', 'category', 'colour', 'notes'],
+            },
+          },
+        },
+        required: ['title', 'whyItWorks', 'components'],
+      },
+    },
     suggestedColours: { type: 'array', items: { type: 'string' } },
     accessories: { type: 'array', items: { type: 'string' } },
     budgetGuidance: { type: ['string', 'null'] },
@@ -34,7 +60,7 @@ const SCHEMA = {
     lookVisualIntent: { type: 'boolean' },
     lookVisualPrompt: { type: ['string', 'null'] },
   },
-  required: ['responseText', 'recommendationType', 'specialist', 'availability', 'outfitTitle', 'outfitComponents', 'suggestedColours', 'accessories', 'budgetGuidance', 'occasion', 'followUpQuestions', 'shoppingSearchIntent', 'tryOnIntent', 'savedLookIntent', 'lookVisualIntent', 'lookVisualPrompt'],
+  required: ['responseText', 'recommendationType', 'specialist', 'availability', 'outfitTitle', 'outfitComponents', 'outfitOptions', 'suggestedColours', 'accessories', 'budgetGuidance', 'occasion', 'followUpQuestions', 'shoppingSearchIntent', 'tryOnIntent', 'savedLookIntent', 'lookVisualIntent', 'lookVisualPrompt'],
 };
 
 const RATE_LIMIT_ATTEMPTS = 3;

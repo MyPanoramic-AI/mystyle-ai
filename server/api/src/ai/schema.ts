@@ -9,6 +9,12 @@ export interface OutfitComponent {
   notes: string | null;
 }
 
+export interface OutfitOption {
+  title: string;
+  components: OutfitComponent[];
+  whyItWorks: string | null;
+}
+
 export interface StylistReply {
   responseText: string;
   recommendationType: RecommendationType;
@@ -17,6 +23,8 @@ export interface StylistReply {
   source: 'mock' | 'live';
   outfitTitle: string | null;
   outfitComponents: OutfitComponent[];
+  /** Exactly three complete outfit options when recommending clothes. */
+  outfitOptions: OutfitOption[];
   suggestedColours: string[];
   accessories: string[];
   budgetGuidance: string | null;
@@ -49,18 +57,10 @@ function textList(value: unknown, maxItems: number, maxLen: number): string[] {
   return value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, maxItems).map((item) => item.slice(0, maxLen));
 }
 
-export function validateStylistReply(value: unknown, source: 'mock' | 'live'): StylistReply | null {
-  if (!value || typeof value !== 'object') return null;
-  const raw = value as Record<string, unknown>;
-  const responseText = text(raw.responseText, 2000);
-  const recommendationType = raw.recommendationType;
-  const specialist = raw.specialist;
-  if (!responseText || typeof recommendationType !== 'string' || !TYPES.has(recommendationType as RecommendationType)) return null;
-  if (typeof specialist !== 'string' || !SPECIALISTS.has(specialist as SpecialistId)) return null;
-  if (/price|url|stock|retailer|sku|https?:\/\//i.test(JSON.stringify(raw.outfitComponents ?? ''))) return null;
-  const components = Array.isArray(raw.outfitComponents) ? raw.outfitComponents : [];
+function parseComponents(value: unknown, maxItems = 6): OutfitComponent[] {
+  if (!Array.isArray(value)) return [];
   const outfitComponents: OutfitComponent[] = [];
-  for (const item of components.slice(0, 6)) {
+  for (const item of value.slice(0, maxItems)) {
     if (!item || typeof item !== 'object') continue;
     const piece = item as Record<string, unknown>;
     const name = text(piece.name, 80);
@@ -73,14 +73,57 @@ export function validateStylistReply(value: unknown, source: 'mock' | 'live'): S
       notes: text(piece.notes, 160),
     });
   }
+  return outfitComponents;
+}
+
+function parseOutfitOptions(value: unknown): OutfitOption[] {
+  if (!Array.isArray(value)) return [];
+  const options: OutfitOption[] = [];
+  for (const item of value.slice(0, 3)) {
+    if (!item || typeof item !== 'object') continue;
+    const option = item as Record<string, unknown>;
+    const title = text(option.title, 80);
+    const components = parseComponents(option.components, 6);
+    if (!title || !components.length) continue;
+    options.push({
+      title,
+      components,
+      whyItWorks: text(option.whyItWorks, 220),
+    });
+  }
+  return options;
+}
+
+export function validateStylistReply(value: unknown, source: 'mock' | 'live'): StylistReply | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const responseText = text(raw.responseText, 3500);
+  const recommendationType = raw.recommendationType;
+  const specialist = raw.specialist;
+  if (!responseText || typeof recommendationType !== 'string' || !TYPES.has(recommendationType as RecommendationType)) return null;
+  if (typeof specialist !== 'string' || !SPECIALISTS.has(specialist as SpecialistId)) return null;
+  const componentsBlob = JSON.stringify({
+    outfitComponents: raw.outfitComponents ?? '',
+    outfitOptions: raw.outfitOptions ?? '',
+  });
+  if (/price|url|stock|retailer|sku|https?:\/\//i.test(componentsBlob)) return null;
+  const outfitOptions = parseOutfitOptions(raw.outfitOptions);
+  let outfitComponents = parseComponents(raw.outfitComponents);
+  let outfitTitle = text(raw.outfitTitle, 80);
+  // Prefer structured options; keep primary fields aligned with option 1 for older clients.
+  if (outfitOptions.length) {
+    if (!outfitTitle) outfitTitle = outfitOptions[0].title;
+    if (!outfitComponents.length) outfitComponents = outfitOptions[0].components;
+  }
   return {
     responseText,
     recommendationType: recommendationType as RecommendationType,
     specialist: specialist as SpecialistId,
     availability: raw.availability === 'not_connected' ? 'not_connected' : 'ready',
     source,
-    outfitTitle: text(raw.outfitTitle, 80),
+    outfitTitle,
     outfitComponents,
+    outfitOptions,
     suggestedColours: textList(raw.suggestedColours, 6, 40),
     accessories: textList(raw.accessories, 4, 60),
     budgetGuidance: text(raw.budgetGuidance, 200),

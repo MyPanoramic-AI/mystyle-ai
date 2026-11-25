@@ -45,6 +45,7 @@ function reply(partial: Partial<StylistReply> & Pick<StylistReply, 'responseText
     source: 'mock',
     outfitTitle: null,
     outfitComponents: [],
+    outfitOptions: [],
     suggestedColours: [],
     accessories: [],
     budgetGuidance: null,
@@ -89,16 +90,43 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (hasImage) {
+      const photoOptions = [
+        {
+          title: 'Hero piece, polished-casual',
+          whyItWorks: 'Keeps your uploaded garment central with soft structure.',
+          components: [
+            { name: 'Observed garment as hero', category: 'tops' as const, colour: null, notes: 'Keep the attached piece central.' },
+            { name: 'Neutral tailored bottom', category: 'bottoms' as const, colour: 'stone', notes: 'Balances colour without competing.' },
+            { name: 'Single metallic accent', category: 'accessories' as const, colour: 'gold', notes: 'One finish so the look stays intentional.' },
+          ],
+        },
+        {
+          title: 'Hero piece, sharper office edit',
+          whyItWorks: 'Adds a blazer layer for meetings without losing the photo item.',
+          components: [
+            { name: 'Observed garment as hero', category: 'tops' as const, colour: null, notes: 'Still the focal point.' },
+            { name: 'Straight navy trouser', category: 'bottoms' as const, colour: 'navy', notes: 'Clean line under the uploaded piece.' },
+            { name: 'Unstructured blazer', category: 'outerwear' as const, colour: 'ivory', notes: 'Optional polish for work.' },
+          ],
+        },
+        {
+          title: 'Hero piece, weekend ease',
+          whyItWorks: 'Relaxes proportion for daytime while keeping the photo item.',
+          components: [
+            { name: 'Observed garment as hero', category: 'tops' as const, colour: null, notes: 'Wear as-is from the photo.' },
+            { name: 'Soft wide-leg or denim', category: 'bottoms' as const, colour: 'stone', notes: 'More movement for weekend.' },
+            { name: 'Simple flat or trainer', category: 'shoes' as const, colour: 'white', notes: 'Keeps the finish casual.' },
+          ],
+        },
+      ];
       return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
-        responseText: `Looking at your photo: the piece reads clean and wearable, with a balanced proportion through the frame.${colourNote}${avoidNote} The overall look feels polished-casual — soft structure rather than stiff formality. Keep this item as the hero, add one refined neutral bottom, and finish with a single metallic accent so the outfit stays intentional. Tell me the occasion if you want a tighter edit.`,
-        outfitTitle: 'Photo-led styling edit',
-        outfitComponents: [
-          { name: 'Observed garment as hero', category: 'tops', colour: null, notes: 'Keep the attached piece central; refine with proportion and accessories.' },
-          { name: 'Neutral tailored bottom', category: 'bottoms', colour: 'stone', notes: 'Balances colour and keeps the focus on the uploaded piece.' },
-        ],
+        responseText: `Looking at your photo: the piece reads clean and wearable.${colourNote}${avoidNote} Option 1 keeps it polished-casual with a neutral bottom and one metallic accent. Option 2 sharpens it with navy trousers and a soft blazer. Option 3 eases it for weekend with wider bottoms and a simple flat. Which direction fits the occasion?`,
+        outfitTitle: photoOptions[0].title,
+        outfitComponents: photoOptions[0].components,
+        outfitOptions: photoOptions,
         suggestedColours: ['stone', 'ivory', 'navy'],
-        followUpQuestions: ['What occasion are you dressing for?', 'Do you want this more casual or more polished?'],
+        followUpQuestions: ['What occasion are you dressing for?', 'Which of the three options feels closest?'],
       }) };
     }
     if (/try[- ]?on|photograph|photo of me/.test(text)) {
@@ -129,33 +157,86 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/wedding/.test(text)) {
+      const weddingOptions = [
+        {
+          title: 'Garden midi guest',
+          whyItWorks: 'Breathable and guest-appropriate without matching the couple.',
+          components: [
+            { name: 'Midi dress in breathable fabric', category: 'dresses' as const, colour: 'champagne', notes: 'Choose a cut you already find comfortable.' },
+            { name: 'Low or mid heel, or polished flat', category: 'shoes' as const, colour: 'neutral', notes: 'Skip a stiletto if you prefer comfort.' },
+            { name: 'Fine gold earrings', category: 'accessories' as const, colour: 'soft gold', notes: 'One delicate finish.' },
+          ],
+        },
+        {
+          title: 'Tailored suit guest',
+          whyItWorks: 'Polished for evening or cooler venues.',
+          components: [
+            { name: 'Tailored suit in light fabric', category: 'outerwear' as const, colour: 'sage', notes: 'Soft structure, not black-tie stiff.' },
+            { name: 'Simple shell or blouse', category: 'tops' as const, colour: 'ivory', notes: 'Keeps the suit from feeling heavy.' },
+            { name: 'Polished flat or low block', category: 'shoes' as const, colour: 'neutral', notes: 'Comfortable for standing.' },
+          ],
+        },
+        {
+          title: 'Separated elegant guest',
+          whyItWorks: 'Mix-and-match pieces that still read formal enough.',
+          components: [
+            { name: 'Fluid blouse or wrap top', category: 'tops' as const, colour: 'champagne', notes: 'Soft drape for photos.' },
+            { name: 'Wide or midi skirt', category: 'bottoms' as const, colour: 'sage', notes: 'Movement without a full gown.' },
+            { name: 'Strappy flat or low heel', category: 'shoes' as const, colour: 'neutral', notes: 'Light finish for a garden setting.' },
+          ],
+        },
+      ];
       return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
         occasion: 'Wedding',
-        outfitTitle: 'Garden wedding guest',
+        outfitTitle: weddingOptions[0].title,
         suggestedColours: ['champagne', 'sage', 'soft gold'],
-        outfitComponents: [
-          { name: 'Midi dress or tailored suit in a breathable fabric', category: 'dresses', colour: 'champagne', notes: 'Choose the cut you already find comfortable.' },
-          { name: 'Low or mid heel, or a polished flat', category: 'shoes', colour: 'neutral', notes: 'Skip a stiletto if you prefer comfort.' },
-        ],
+        outfitComponents: weddingOptions[0].components,
+        outfitOptions: weddingOptions,
         accessories: ['fine gold earrings'],
-        responseText: `For a wedding, a breathable midi or a tailored suit in champagne or sage reads guest-appropriate without trying to match the couple.${colourNote}${avoidNote}`,
+        responseText: `For a wedding, here are three guest looks.${colourNote}${avoidNote} Option 1: a champagne midi with a polished flat. Option 2: a sage tailored suit with an ivory shell. Option 3: champagne top with a sage midi skirt. Which direction feels right?`,
         followUpQuestions: asked(request.messages, 'daytime') ? [] : ['Is the wedding daytime or evening?'],
         budgetGuidance: personal?.budgetTier ? `Your saved budget band is ${personal.budgetTier}. This is a concept, not a price.` : null,
       }) };
     }
     if (/work|professional|smart-casual|office/.test(text)) {
+      const workOptions = [
+        {
+          title: 'Easy smart-casual',
+          whyItWorks: 'Professional without feeling formal.',
+          components: [
+            { name: 'Relaxed tailored trouser or dark jean', category: 'bottoms' as const, colour: 'navy', notes: 'Straight leg keeps it polished.' },
+            { name: 'Knit polo or silk-touch shirt', category: 'tops' as const, colour: 'ivory', notes: 'Skip a stiff dress shirt if you want comfort.' },
+            { name: 'Unstructured blazer', category: 'outerwear' as const, colour: 'stone', notes: 'Optional if the office is warm.' },
+          ],
+        },
+        {
+          title: 'Monochrome polish',
+          whyItWorks: 'Clean lines read intentional in meetings.',
+          components: [
+            { name: 'Soft ivory knit', category: 'tops' as const, colour: 'ivory', notes: 'Quiet focal point.' },
+            { name: 'Stone wide or straight trouser', category: 'bottoms' as const, colour: 'stone', notes: 'Same family as the top.' },
+            { name: 'Leather loafer', category: 'shoes' as const, colour: 'navy', notes: 'Grounds the neutrals.' },
+          ],
+        },
+        {
+          title: 'Dress-and-layer desk look',
+          whyItWorks: 'One piece base with a blazer for air-con offices.',
+          components: [
+            { name: 'Simple midi or shirt dress', category: 'dresses' as const, colour: 'navy', notes: 'Desk-to-dinner friendly.' },
+            { name: 'Light cardigan or blazer', category: 'outerwear' as const, colour: 'ivory', notes: 'Layer when rooms run cold.' },
+            { name: 'Low block or loafer', category: 'shoes' as const, colour: 'stone', notes: 'Comfort for a full day.' },
+          ],
+        },
+      ];
       return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
         occasion: 'Work',
-        outfitTitle: 'Easy smart-casual',
+        outfitTitle: workOptions[0].title,
         suggestedColours: ['navy', 'ivory', 'stone'],
-        outfitComponents: [
-          { name: 'Relaxed tailored trouser or dark jean', category: 'bottoms', colour: 'navy', notes: 'A straight leg keeps it polished.' },
-          { name: 'Knit polo or silk-touch shirt', category: 'tops', colour: 'ivory', notes: 'Skip a stiff dress shirt if you want comfort.' },
-          { name: 'Unstructured blazer', category: 'outerwear', colour: 'stone', notes: 'Optional if the office is warm.' },
-        ],
-        responseText: `A navy bottom with an ivory top and a soft blazer looks professional without feeling formal.${colourNote}${avoidNote}`,
+        outfitComponents: workOptions[0].components,
+        outfitOptions: workOptions,
+        responseText: `Here are three work looks.${colourNote}${avoidNote} Option 1: navy bottom, ivory knit, soft blazer. Option 2: ivory and stone monochrome with a loafer. Option 3: navy dress with a light layer. Which feels closest to your day?`,
       }) };
     }
     if (/navy/.test(text)) {
@@ -166,16 +247,43 @@ export class MockTextProvider implements TextProvider {
       }) };
     }
     if (/birthday|summer|party/.test(text)) {
+      const partyOptions = [
+        {
+          title: 'Daytime linen birthday',
+          whyItWorks: 'Light fabric stays comfortable and still looks dressed.',
+          components: [
+            { name: 'Linen shirt or blouse', category: 'tops' as const, colour: 'white', notes: 'Short sleeves if the day is hot.' },
+            { name: 'Tailored short or flowing trouser', category: 'bottoms' as const, colour: 'sand', notes: 'Leave room to move.' },
+            { name: 'Simple sandal', category: 'shoes' as const, colour: 'sand', notes: 'Easy for outdoor heat.' },
+          ],
+        },
+        {
+          title: 'Soft coral sundress',
+          whyItWorks: 'One piece for heat with an easy party colour.',
+          components: [
+            { name: 'Light sundress or midi', category: 'dresses' as const, colour: 'coral', notes: 'Breathable day fabric.' },
+            { name: 'Minimal flat or sandal', category: 'shoes' as const, colour: 'white', notes: 'Keeps the look airy.' },
+            { name: 'Small crossbody or clutch', category: 'bags' as const, colour: 'sand', notes: 'Hands-free for mingling.' },
+          ],
+        },
+        {
+          title: 'White top, movement bottom',
+          whyItWorks: 'Separates that photograph cleanly at a garden party.',
+          components: [
+            { name: 'Crisp white blouse', category: 'tops' as const, colour: 'white', notes: 'Fresh under sun.' },
+            { name: 'Flowing sand skirt or trouser', category: 'bottoms' as const, colour: 'sand', notes: 'Movement for dancing.' },
+            { name: 'Gold or shell earring', category: 'accessories' as const, colour: 'gold', notes: 'One bright accent.' },
+          ],
+        },
+      ];
       return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         recommendationType: 'style_suggestion',
         occasion: 'Summer party',
-        outfitTitle: 'Daytime birthday',
+        outfitTitle: partyOptions[0].title,
         suggestedColours: ['sand', 'coral', 'white'],
-        outfitComponents: [
-          { name: 'Linen shirt or blouse', category: 'tops', colour: 'white', notes: 'Short sleeves if the day is hot.' },
-          { name: 'Tailored short or flowing trouser', category: 'bottoms', colour: 'sand', notes: 'Leave room to move.' },
-        ],
-        responseText: 'For a summer birthday, linen and a light colour stay comfortable and still look dressed.',
+        outfitComponents: partyOptions[0].components,
+        outfitOptions: partyOptions,
+        responseText: 'For a summer birthday, here are three options. Option 1: white linen top with sand bottoms. Option 2: a soft coral sundress. Option 3: white blouse with a flowing sand skirt. Which vibe fits the party?',
       }) };
     }
     if (/r\s?1[,.]?500|budget|rands?/.test(text)) {

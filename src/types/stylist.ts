@@ -63,6 +63,8 @@ export interface ChatMessage {
   timestamp: string;
   text: string;
   outfitCard?: StylistOutfitRecommendation;
+  /** Up to three complete outfit options from the stylist. */
+  outfitCards?: StylistOutfitRecommendation[];
   beautyTip?: StylistBeautyTip;
   quickActions?: StylistQuickAction[];
   userAttachmentUrl?: string;

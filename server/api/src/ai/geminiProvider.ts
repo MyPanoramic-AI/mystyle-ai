@@ -54,6 +54,7 @@ export function buildGeminiRequest(
             specialist: { type: 'STRING' },
             outfitTitle: { type: 'STRING' },
             outfitComponents: { type: 'ARRAY', items: { type: 'OBJECT' } },
+            outfitOptions: { type: 'ARRAY', items: { type: 'OBJECT' } },
             suggestedColours: { type: 'ARRAY', items: { type: 'STRING' } },
             followUpQuestions: { type: 'ARRAY', items: { type: 'STRING' } },
             shoppingSearchIntent: { type: 'STRING' },
