@@ -41,10 +41,6 @@ export function beautyUnavailable(): StylistReply {
   return unavailable('beauty', 'clarification', 'Beauty guidance for hair, makeup, and nails is not connected yet. I can still help with clothing colours and outfit concepts.');
 }
 
-export function wardrobeUnavailable(): StylistReply {
-  return unavailable('wardrobe', 'clarification', 'Your saved wardrobe is not connected, so I will not guess which clothes you already own.');
-}
-
 export function routeSpecialist(text: string): 'style' | 'shopping' | 'try_on' | 'beauty' | 'wardrobe' {
   const value = text.toLowerCase();
   if (/\b(try-on|try on|virtual try)\b/.test(value)) return 'try_on';
@@ -52,6 +48,6 @@ export function routeSpecialist(text: string): 'style' | 'shopping' | 'try_on' |
   const lookVisual = /\b(generate|visuali[sz]e|show me|create an? image|style my hair|change my hair|restyle|add accessories|with accessories|make me look|show (me )?how (it|this) (would|could) look)\b/.test(value);
   if (!lookVisual && /\b(makeup|hairstyle|nail polish|nails|beauty studio)\b/.test(value)) return 'beauty';
   if (/\b(buy|purchase|in stock|product link|add to cart|shop this)\b/.test(value) || /\bretailers?\b/.test(value)) return 'shopping';
-  if (/\b(my wardrobe|clothes i own|already own)\b/.test(value)) return 'wardrobe';
+  if (/\b(my wardrobe|saved wardrobe|clothes i (own|have)|already own|from my (wardrobe|capsule)|my capsule|what i own)\b/.test(value)) return 'wardrobe';
   return 'style';
 }

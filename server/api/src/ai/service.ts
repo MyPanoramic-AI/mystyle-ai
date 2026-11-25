@@ -10,7 +10,7 @@ import { OpenAiTextProvider } from './openaiProvider.js';
 import { assertLiveAllowed } from './guards.js';
 import { MockTextProvider, type ProviderMessage, type ProviderUsage, type TextProvider } from './mockProvider.js';
 import { validateStylistReply, type StylistReply } from './schema.js';
-import { beautyUnavailable, routeSpecialist, shoppingUnavailable, tryOnUnavailable, wardrobeUnavailable } from './specialists.js';
+import { beautyUnavailable, routeSpecialist, shoppingUnavailable, tryOnUnavailable } from './specialists.js';
 import { listWardrobe } from '../domain/collections.js';
 import { readOwnedMedia, saveMedia } from '../media/store.js';
 import { requireExternalPhotoConsentForVision } from '../domain/silhouette.js';
@@ -143,7 +143,7 @@ async function produce(
   if (specialist === 'shopping') return { reply: shoppingUnavailable(text), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
   if (specialist === 'try_on') return { reply: tryOnUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
   if (specialist === 'beauty') return { reply: beautyUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
-  if (specialist === 'wardrobe') return { reply: wardrobeUnavailable(), draft: { status: 'succeeded', provider: 'none', model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, costUsd: 0, costStatus: 'zero' } };
+  // Wardrobe and capsule are connected via StyleContext piece labels — do not short-circuit.
   const provider = providerFor(runtime.config, runtime.fetchImpl ?? fetch);
   if (isLive(runtime.config.provider)) assertLiveAllowed(runtime.config, spent(runtime.db), spent(runtime.db, userId), liveAttempts(runtime.db));
   try {
@@ -222,10 +222,31 @@ function ensureShopIntent(reply: StylistReply, context: StyleContext | null): St
   return { ...reply, shoppingSearchIntent: intent };
 }
 
+function emptyStyleContext(labels: { wardrobePieces: string[]; capsulePieces: string[] }): StyleContext {
+  return {
+    consent: false,
+    styles: [],
+    favouriteColours: [],
+    avoidColours: [],
+    budgetTier: null,
+    priorities: [],
+    retailers: [],
+    wardrobePieces: labels.wardrobePieces,
+    capsulePieces: labels.capsulePieces,
+    stylingSilhouette: null,
+    heightCm: null,
+    weightKg: null,
+    sizeLabels: { tops: null, bottoms: null, dress: null, shoe: null },
+  };
+}
+
 function contextFor(db: Sql, userId: string): StyleContext | null {
+  const labels = wardrobeLabelsFor(db, userId);
   const consent = getPreferences(db, userId).aiPersonalisationConsent === true;
-  if (!consent) return null;
-  return minimiseProfile(getProfile(db, userId), true, wardrobeLabelsFor(db, userId));
+  if (consent) return minimiseProfile(getProfile(db, userId), true, labels);
+  // Owned wardrobe/capsule pieces stay available even without marketing personalisation consent.
+  if (labels.wardrobePieces.length || labels.capsulePieces.length) return emptyStyleContext(labels);
+  return null;
 }
 
 export function stylistAvailability(config: AiConfig): Record<string, unknown> {
@@ -239,7 +260,7 @@ export function stylistAvailability(config: AiConfig): Record<string, unknown> {
     shopping: 'not_connected',
     tryOn: 'not_connected',
     beauty: 'not_connected',
-    wardrobe: 'not_connected',
+    wardrobe: 'ready',
     lookImage: lookImageReady ? 'ready' : 'not_connected',
   };
 }

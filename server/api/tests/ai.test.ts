@@ -23,12 +23,43 @@ async function session(base: string, email: string) {
   return created;
 }
 
-test('the coordinator routes fashion requests and leaves other specialists unconnected', () => {
+test('the coordinator routes fashion requests and leaves shopping, try-on, and beauty unconnected', () => {
   assert.equal(routeSpecialist('What should I wear to a wedding?'), 'style');
   assert.equal(routeSpecialist('Buy me a blazer and send the product link'), 'shopping');
   assert.equal(routeSpecialist('Please generate a virtual try-on photograph'), 'try_on');
   assert.equal(routeSpecialist('What makeup should I wear?'), 'beauty');
   assert.equal(routeSpecialist('Use the clothes I own'), 'wardrobe');
+});
+
+test('the mock provider styles from connected wardrobe and capsule pieces', async () => {
+  const provider = new MockTextProvider();
+  const completed = await provider.complete({
+    system: 'test',
+    messages: [{ role: 'user', text: 'Use my wardrobe and tell me what I already own.' }],
+    context: {
+      consent: true,
+      styles: ['classic'],
+      favouriteColours: ['navy'],
+      avoidColours: [],
+      budgetTier: null,
+      priorities: [],
+      retailers: ['Woolworths'],
+      wardrobePieces: ['navy blazer (outerwear)', 'ivory knit (tops)'],
+      capsulePieces: ['stone trousers (bottoms)'],
+      stylingSilhouette: null,
+      heightCm: null,
+      weightKg: null,
+      sizeLabels: { tops: null, bottoms: null, dress: null, shoe: null },
+    },
+  });
+  const reply = validateStylistReply(completed.reply, 'mock');
+  assert.ok(reply);
+  assert.equal(reply?.specialist, 'wardrobe');
+  assert.equal(reply?.availability, 'ready');
+  assert.equal(reply?.recommendationType, 'style_suggestion');
+  assert.equal(reply?.outfitOptions.length, 3);
+  assert.match(reply?.responseText ?? '', /wardrobe|capsule/i);
+  assert.doesNotMatch(reply?.responseText ?? '', /not connected/i);
 });
 
 test('the mock provider stays local and does not invent a shop listing', async () => {

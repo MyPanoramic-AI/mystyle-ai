@@ -83,7 +83,7 @@ export function voiceAvailability(config: VoiceConfig = loadVoiceConfig()): Reco
     shopping: 'not_connected',
     tryOn: 'not_connected',
     beauty: 'not_connected',
-    wardrobe: 'not_connected',
+    wardrobe: 'ready',
   };
 }
 
@@ -183,7 +183,23 @@ export async function createVoiceSession(opts: {
   }
   const styleContext = consent
     ? minimiseProfile(profile, true, { wardrobePieces, capsulePieces })
-    : null;
+    : (wardrobePieces.length || capsulePieces.length)
+      ? {
+          consent: false,
+          styles: [],
+          favouriteColours: [],
+          avoidColours: [],
+          budgetTier: null,
+          priorities: [],
+          retailers: [],
+          wardrobePieces,
+          capsulePieces,
+          stylingSilhouette: null,
+          heightCm: null,
+          weightKg: null,
+          sizeLabels: { tops: null, bottoms: null, dress: null, shoe: null },
+        }
+      : null;
   const instructions = buildVoiceLiveInstructions(persona, styleContext);
   const profileAudio = typeof profile.stylistAudioVoice === 'string' ? profile.stylistAudioVoice : null;
   const audioVoice = (opts.audioVoice && (GPT_LIVE_AUDIO_VOICES as readonly string[]).includes(opts.audioVoice))

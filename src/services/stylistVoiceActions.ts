@@ -1,7 +1,8 @@
 /**
  * Typed application actions the live stylist may request.
  * Only actions backed by real MyStyle services should ever succeed.
- * Shopping / wardrobe / try-on remain not_connected until wired.
+ * Shopping / try-on UI actions remain not_connected until wired.
+ * Wardrobe piece lists are already passed to the stylist via preference context.
  */
 
 export type StylistVoiceActionType =

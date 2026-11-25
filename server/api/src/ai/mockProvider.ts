@@ -147,13 +147,48 @@ export class MockTextProvider implements TextProvider {
         responseText: 'Verified retailer shopping is not connected. I have not searched a shop, and I do not have a live price or stock result.',
       }) };
     }
-    if (/wardrobe|what i own|clothes i have/.test(text)) {
+    if (/wardrobe|what i own|clothes i have|capsule|already own/.test(text)) {
+      const capsule = personal?.capsulePieces ?? [];
+      const wardrobe = personal?.wardrobePieces ?? [];
+      const owned = [...capsule, ...wardrobe];
+      if (!owned.length) {
+        return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
+          specialist: 'wardrobe',
+          availability: 'ready',
+          recommendationType: 'clarification',
+          responseText: 'Your wardrobe and capsule are connected, but I do not see any saved pieces yet. Add a few items in Wardrobe or Capsule, then ask again and I will build outfits from what you own.',
+          followUpQuestions: ['Want three shop-oriented outfit ideas meanwhile?', 'Which occasion should we plan for once you add pieces?'],
+        }) };
+      }
+      const pick = (index: number) => owned[index % owned.length];
+      const wardrobeOptions = [0, 1, 2].map((i) => {
+        const anchor = pick(i);
+        const second = pick(i + 1);
+        const third = pick(i + 2);
+        return {
+          title: `Wardrobe mix ${i + 1}`,
+          whyItWorks: 'Built from pieces already in your wardrobe or capsule.',
+          components: [
+            { name: `${anchor} (from your wardrobe/capsule)`, category: 'tops' as const, colour: null, notes: 'Owned piece.' },
+            { name: `${second} (from your wardrobe/capsule)`, category: 'bottoms' as const, colour: null, notes: 'Pair with the first owned piece.' },
+            { name: i === 2 && personal?.retailers?.length ? `Simple shoe from ${personal.retailers[0]}` : `${third} (from your wardrobe/capsule)`, category: 'shoes' as const, colour: null, notes: i === 2 ? 'Gap fill from a preferred shop if needed.' : 'Owned finishing piece when available.' },
+          ],
+        };
+      });
       return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
         specialist: 'wardrobe',
-        availability: 'not_connected',
-        recommendationType: 'clarification',
-        responseText: 'Your saved wardrobe is not connected to the stylist yet, so I will not pretend to know the clothes you own.',
-        followUpQuestions: asked(request.messages, 'occasion') ? [] : ['Which occasion should I plan for?'],
+        availability: 'ready',
+        recommendationType: 'style_suggestion',
+        occasion: 'From your wardrobe',
+        outfitTitle: wardrobeOptions[0].title,
+        outfitComponents: wardrobeOptions[0].components,
+        outfitOptions: wardrobeOptions,
+        suggestedColours: personal?.favouriteColours?.slice(0, 3) ?? [],
+        responseText: `Here are three outfits built from your wardrobe and capsule.${colourNote} Option 1 starts with ${pick(0)}. Option 2 leans on ${pick(1)}. Option 3 centres ${pick(2)}. Which mix feels right for today?`,
+        followUpQuestions: ['Which option should we refine?', 'Want shoe or accessory ideas for that mix?'],
+        shoppingSearchIntent: personal?.retailers?.length
+          ? `wardrobe refresh finishing pieces ${personal.retailers.slice(0, 2).join(' ')}`
+          : 'wardrobe finishing shoes accessories',
       }) };
     }
     if (/wedding/.test(text)) {

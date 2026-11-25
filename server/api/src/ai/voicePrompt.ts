@@ -28,13 +28,14 @@ export function buildVoiceLiveInstructions(
   const personality = PERSONALITY_LINES[persona.voice] ?? PERSONALITY_LINES['warm-encouraging'];
   const answerLength = ANSWER_LENGTH_LINES[persona.answerLength] ?? ANSWER_LENGTH_LINES.balanced;
   const profileBits: string[] = [];
+  const ownedBits: string[] = [];
+  if (profileContext?.capsulePieces?.length) ownedBits.push(`Capsule pieces: ${profileContext.capsulePieces.slice(0, 8).join('; ')}.`);
+  if (profileContext?.wardrobePieces?.length) ownedBits.push(`Wardrobe pieces: ${profileContext.wardrobePieces.slice(0, 8).join('; ')}.`);
   if (profileContext?.consent) {
     if (profileContext.styles.length) profileBits.push(`Preferred styles: ${profileContext.styles.slice(0, 4).join(', ')}.`);
     if (profileContext.favouriteColours.length) profileBits.push(`Favourite colours: ${profileContext.favouriteColours.slice(0, 4).join(', ')}.`);
     if (profileContext.budgetTier) profileBits.push(`Budget tier note: ${profileContext.budgetTier}.`);
     if (profileContext.retailers.length) profileBits.push(`Favourite shops: ${profileContext.retailers.slice(0, 4).join(', ')}.`);
-    if (profileContext.capsulePieces?.length) profileBits.push(`Capsule pieces: ${profileContext.capsulePieces.slice(0, 4).join('; ')}.`);
-    if (profileContext.wardrobePieces?.length) profileBits.push(`Wardrobe pieces: ${profileContext.wardrobePieces.slice(0, 4).join('; ')}.`);
     if (profileContext.stylingSilhouette) profileBits.push(`Silhouette preference: ${profileContext.stylingSilhouette}.`);
   }
 
@@ -58,18 +59,21 @@ export function buildVoiceLiveInstructions(
     'Interruption policy: Stop speaking when the customer interrupts. Listen, then respond to what they said.',
     'Delegation policy:',
     'Backend tools:',
-    '- None connected over voice yet (shopping lookup, wardrobe inventory, beauty studio control, and virtual try-on are not_connected).',
+    '- Wardrobe and capsule piece lists are connected via preference context when listed below.',
+    '- Live shopping checkout, beauty studio control, and virtual try-on remain not_connected.',
     'Do not delegate when:',
-    '- The customer greets you, asks for fashion advice, outfit ideas, colour help, occasion styling, or wants to chat about style.',
-    '- You can answer from conversation context or general fashion knowledge.',
+    '- The customer greets you, asks for fashion advice, outfit ideas, colour help, occasion styling, wardrobe outfits, or wants to chat about style.',
+    '- You can answer from conversation context, listed wardrobe/capsule pieces, or general fashion knowledge.',
     'When the customer asks to see a look, picture, or visualization, describe the outfit clearly and invite them to watch the look appear on screen. The IStyleU app can generate a look visualization during this voice call.',
     'Do not say you cannot show photos in voice chat. Say you are putting a look on their screen, then keep talking about the outfit.',
-    'When a request needs live shopping checkout, wardrobe inventory lookup, beauty studio execution, or Fitting Room (virtual try-on) engineering, say honestly that those features are not connected for voice yet, then still give useful spoken styling advice and suggest the Shop, Wardrobe, Beauty, or Fitting Room tabs.',
+    'When a request needs live shopping checkout, beauty studio execution, or Fitting Room (virtual try-on) engineering, say honestly that those features are not connected for voice yet, then still give useful spoken styling advice and suggest the Shop, Beauty, or Fitting Room tabs.',
+    'Never say the wardrobe or capsule is not connected. If owned pieces are listed, build outfits from them first and say which pieces are from wardrobe or capsule. If none are listed, say their wardrobe looks empty and invite them to add pieces.',
     'Never criticise a customer\'s body or appearance.',
     'Use South African rand when budgets are discussed.',
-    'When suggesting outfits, prefer the customer\'s favourite retailers when those are in preference context, and mention wardrobe or capsule pieces when those are listed. Invite them to tap Shop now in the app for preferred-shop listings.',
+    'When suggesting outfits, prefer wardrobe and capsule pieces when listed, then favourite retailers for gap pieces. Invite them to tap Shop now in the app for preferred-shop listings.',
     'Do not invent live retailer stock, prices, product links, or try-on photographs.',
-    profileBits.length ? `Customer preference context (consent granted): ${profileBits.join(' ')}` : 'No personalised preference context is available for this session.',
+    ownedBits.length ? `Owned wardrobe and capsule (connected): ${ownedBits.join(' ')}` : 'No wardrobe or capsule pieces are listed for this session yet.',
+    profileBits.length ? `Customer preference context (consent granted): ${profileBits.join(' ')}` : 'No extra personalised preference context is available for this session.',
   ].join('\n');
 }
 
@@ -95,7 +99,8 @@ export function buildVoiceDelegationInstructions(personaInput?: StylistPersonaCo
     'Return concise, grounded fashion guidance suitable for the voice assistant to speak aloud in the customer\'s language.',
     'When the customer is building an outfit, include finishing-piece ideas (shoes, bag, accessories) and suggest the voice assistant ask what extras they want.',
     'Do not invent retailer availability, prices, product URLs, or try-on results.',
-    'Shopping, wardrobe inventory, beauty execution, and virtual try-on remain not_connected — say so if asked.',
+    'Wardrobe and capsule piece lists are connected when provided. Shopping checkout, beauty execution, and virtual try-on remain not_connected — say so if asked.',
+    'Prefer styling from listed wardrobe and capsule pieces before suggesting new buys.',
     'Never criticise body or appearance. Prefer actionable style advice.',
   ].join(' ');
 }
