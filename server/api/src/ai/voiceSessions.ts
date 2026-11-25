@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Sql } from '../db.js';
 import { ApiError, logEvent } from '../errors.js';
 import { getPreferences, getProfile } from '../domain/profiles.js';
+import { listWardrobe } from '../domain/collections.js';
 import { minimiseProfile, resolvePersonaFromProfile } from './context.js';
 import { assertVoiceAllowed, remainingSecondsAvailable } from './voiceGuards.js';
 import {
@@ -161,7 +162,28 @@ export async function createVoiceSession(opts: {
   const profile = getProfile(opts.db, opts.userId) as Record<string, unknown>;
   const persona = resolvePersonaFromProfile(profile);
   const consent = getPreferences(opts.db, opts.userId).aiPersonalisationConsent === true;
-  const styleContext = consent ? minimiseProfile(profile, true) : null;
+  let wardrobePieces: string[] = [];
+  let capsulePieces: string[] = [];
+  if (consent) {
+    try {
+      for (const item of listWardrobe(opts.db, opts.userId).slice(0, 24)) {
+        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        if (!name) continue;
+        const colour = typeof item.colour === 'string' ? item.colour.trim() : '';
+        const label = [colour, name].filter(Boolean).join(' ');
+        if (item.isCapsule === true) capsulePieces.push(label);
+        else wardrobePieces.push(label);
+      }
+      wardrobePieces = wardrobePieces.slice(0, 12);
+      capsulePieces = capsulePieces.slice(0, 12);
+    } catch {
+      wardrobePieces = [];
+      capsulePieces = [];
+    }
+  }
+  const styleContext = consent
+    ? minimiseProfile(profile, true, { wardrobePieces, capsulePieces })
+    : null;
   const instructions = buildVoiceLiveInstructions(persona, styleContext);
   const profileAudio = typeof profile.stylistAudioVoice === 'string' ? profile.stylistAudioVoice : null;
   const audioVoice = (opts.audioVoice && (GPT_LIVE_AUDIO_VOICES as readonly string[]).includes(opts.audioVoice))

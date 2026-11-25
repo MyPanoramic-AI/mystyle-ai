@@ -15,9 +15,11 @@ import { UserProfile, NavigationTab } from '../../types';
 import { ShopPreloadedContext } from '../pages/ShopPlaceholder';
 import {
   SHOP_PRODUCTS,
+  SA_RETAILERS,
   POPULAR_SEARCH_PRESETS,
   filterAndSortProducts,
 } from '../../data/shopData';
+import type { SouthAfricanRetailer } from '../../types/shop';
 import { savedProductsService } from '../../services/savedProductsService';
 import { CategoryCardsCarousel } from './CategoryCardsCarousel';
 import { ShopTheLookBanner } from './ShopTheLookBanner';
@@ -121,6 +123,16 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
       if (preloadedContext.focusProductId) {
         const focused = SHOP_PRODUCTS.find((product) => product.id === preloadedContext.focusProductId);
         if (focused) setSelectedProduct(focused);
+      }
+      if (preloadedContext.preferredRetailers?.length) {
+        const matchedRetailers = SA_RETAILERS.filter((name) => preloadedContext.preferredRetailers!.some((preferred) => {
+          const left = preferred.toLowerCase();
+          const right = name.toLowerCase();
+          return left.includes(right) || right.includes(left);
+        })) as SouthAfricanRetailer[];
+        if (matchedRetailers.length) {
+          setFilters((prev) => ({ ...prev, retailers: matchedRetailers }));
+        }
       }
     }
   }, [preloadedContext]);

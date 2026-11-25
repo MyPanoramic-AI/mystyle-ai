@@ -14,6 +14,7 @@ interface OutfitRecommendationCardProps {
   profile?: UserProfile;
   photos?: TemporaryPhotos;
   onNavigateToShop: () => void;
+  onShopNow?: (outfit: StylistOutfitRecommendation) => void;
   onSendToTryOn?: (garment: PreloadedGarment) => void;
   onSelectPrompt?: (prompt: string) => void;
 }
@@ -34,6 +35,7 @@ function garmentFromOutfit(outfit: StylistOutfitRecommendation): PreloadedGarmen
 export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> = ({
   outfit,
   onNavigateToShop,
+  onShopNow,
   onSendToTryOn,
 }) => {
   const [isSaved, setIsSaved] = useState(false);
@@ -184,20 +186,15 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
             </button>
           )}
 
-          {outfit.conceptOnly ? (
-            <span className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Shopping is not connected</span>
-            </span>
-          ) : (
-            <button
-              onClick={onNavigateToShop}
-              className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#242326] hover:bg-black text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Shop The Look</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => (onShopNow ? onShopNow(outfit) : onNavigateToShop())}
+            className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#242326] hover:bg-black text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            data-testid="stylist-shop-now"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Shop now</span>
+          </button>
 
           <button
             onClick={handleToggleSave}

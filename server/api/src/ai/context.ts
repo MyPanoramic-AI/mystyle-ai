@@ -1,4 +1,4 @@
-export const STYLE_PROMPT_VERSION = '2026-11-25.3';
+export const STYLE_PROMPT_VERSION = '2026-11-25.4';
 
 export interface StylistPersonaContext {
   name: string;
@@ -96,8 +96,10 @@ Do not collapse to a single look. Only skip the three-option rule for pure clari
 When recommending or refining an outfit, treat finishing pieces as part of the conversation: after the three options (or once the customer picks one), ask whether they want help with shoes, a bag, jewellery, or other accessories.
 If the customer asks for shoes, accessories, a bag, or similar extras for the look you are discussing, give two or three concrete finishing suggestions that match that outfit, fill accessories and/or outfitComponents accordingly, and put a short follow-up in followUpQuestions (for example asking if they also want a bag or jewellery).
 Stay with the same outfit when they add extras — build on what they already chose instead of restarting.
-You must not invent retailer names as current stock, prices, promotions, product pages, or availability.
-If the customer wants something to buy, say verified retailer shopping is not connected and put the search idea in shoppingSearchIntent.
+When recommending outfits, prefer pieces that fit the customer's favourite retailers when those are listed in the saved preferences. If wardrobe or capsule pieces are listed, you may reuse or pair with those owned pieces instead of only suggesting new buys — say clearly when a piece is from their wardrobe/capsule.
+For every style_suggestion with outfit options, always fill shoppingSearchIntent with a short shop search phrase for the look (garment types + colours + preferred retailer names when known). The app shows a Shop now button for each option.
+You must not invent live stock, prices, promotions, product pages, or availability. You may name preferred retailers as shopping destinations to search, not as confirmed listings.
+If verified live checkout is unavailable, still give the outfit options and shoppingSearchIntent so the customer can tap Shop now.
 When the customer attaches a photograph, you can see it — treat the image as primary evidence. Your responseText MUST open with a specific visual read: what they are wearing or showing (garment type, colours, pattern, cut, formality), how the look sits on them (proportion, fit impression, polish level), and one clear compliment or honest styling observation. Then give concrete next-step advice. Never reply as if you did not receive the photo. Do not invent brand names, prices, or stock.
 If the customer asks you to visualize a change (restyle hair, add accessories, show a finished look), set lookVisualIntent to true and put a short concrete image brief in lookVisualPrompt. The server may generate a look visualization image afterward. Do not claim a virtual try-on engine ran.
 Virtual try-on (FASHN) is not connected. Do not claim a try-on photograph was created.
@@ -118,6 +120,9 @@ export interface StyleContext {
   budgetTier: string | null;
   priorities: string[];
   retailers: string[];
+  /** Short owned wardrobe / capsule labels the stylist may reuse. */
+  wardrobePieces: string[];
+  capsulePieces: string[];
   stylingSilhouette: string | null;
   heightCm: number | null;
   weightKg: number | null;
@@ -129,13 +134,25 @@ export interface StyleContext {
   };
 }
 
-export function minimiseProfile(profile: Record<string, unknown>, consent: boolean): StyleContext | null {
+export function minimiseProfile(
+  profile: Record<string, unknown>,
+  consent: boolean,
+  extras?: { wardrobePieces?: string[]; capsulePieces?: string[] },
+): StyleContext | null {
   if (!consent) return null;
   const sizes = (profile.sizes ?? {}) as Record<string, unknown>;
   const measurements = (profile.measurements ?? null) as Record<string, unknown> | null;
   const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
   const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').slice(0, 12) : []);
   const whole = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null);
+  const wardrobePieces = (extras?.wardrobePieces ?? [])
+    .filter((item) => typeof item === 'string' && item.trim())
+    .map((item) => item.trim().slice(0, 80))
+    .slice(0, 12);
+  const capsulePieces = (extras?.capsulePieces ?? [])
+    .filter((item) => typeof item === 'string' && item.trim())
+    .map((item) => item.trim().slice(0, 80))
+    .slice(0, 12);
   return {
     consent: true,
     styles: list(profile.styles),
@@ -144,6 +161,8 @@ export function minimiseProfile(profile: Record<string, unknown>, consent: boole
     budgetTier: text(profile.budgetTier),
     priorities: list(profile.shoppingPriorities),
     retailers: list(profile.favouriteRetailers),
+    wardrobePieces,
+    capsulePieces,
     stylingSilhouette: text(profile.bodyShapeLabel) ?? text(profile.bodyShape),
     heightCm: whole(measurements?.heightCm),
     weightKg: whole(measurements?.weightKg),

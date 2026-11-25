@@ -36,8 +36,10 @@ import { Button } from '../common/Button';
 import { Phone, Sparkles } from 'lucide-react';
 import { AccountApiError, accountApi, type StylistServerMessage } from '../../services/accountApi';
 import { toChatMessage } from '../../services/stylistView';
+import { shopContextFromOutfit } from '../../services/stylistShopMatch';
 import { fileToBase64 } from '../../services/profilePhotosClient';
 import type { PreloadedGarment } from '../../types/shop';
+import type { StylistOutfitRecommendation } from '../../types/stylist';
 import { resolveStylistPersona } from '../../data/stylistPersona';
 import type { ShopPreloadedContext } from '../pages/ShopPlaceholder';
 import { useGptLiveVoice, type GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
@@ -342,7 +344,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       if (cancelled) return;
       setConversationId(restored.id);
       if (restored.messages.length) {
-        const mapped = restored.messages.map((message) => toChatMessage(message));
+        const mapped = restored.messages.map((message) => toChatMessage(message, { profile }));
         setMessages(mapped);
         rememberGarmentFromMessages(mapped);
       }
@@ -395,7 +397,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     const idempotencyKey = `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     const withGarmentFollowUps = mediaIds.length > 0 || Boolean(garmentContext);
     void connection!.send(id, typed, idempotencyKey, mediaIds).then((message) => {
-      setMessages((prev) => [...prev, toChatMessage(message, { includeGarmentFollowUps: withGarmentFollowUps })]);
+      setMessages((prev) => [...prev, toChatMessage(message, { includeGarmentFollowUps: withGarmentFollowUps, profile })]);
       setIsTyping(false);
       if (mediaIds.length) {
         setServiceNotice(null);
@@ -621,6 +623,15 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     handleUserSend(definition.prompt);
   };
 
+  const handleShopNow = (outfit: StylistOutfitRecommendation) => {
+    const context = shopContextFromOutfit(outfit, profile);
+    if (onShopForGarment) {
+      onShopForGarment(context);
+      return;
+    }
+    onNavigate('shop');
+  };
+
   const handleSelectAction = (action: StylistQuickAction) => {
     if (action.followUpId) {
       openGarmentFollowUp(action.followUpId);
@@ -659,7 +670,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     void connection.open(id).then((opened) => {
       setConversationId(opened.id);
       const mapped = opened.messages.length
-        ? opened.messages.map((message) => toChatMessage(message))
+        ? opened.messages.map((message) => toChatMessage(message, { profile }))
         : getInitialConversation(profile, undefined);
       setMessages(mapped);
       rememberGarmentFromMessages(mapped);
@@ -681,7 +692,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         const next = await connection.restore();
         setConversationId(next.id);
         const mapped = next.messages.length
-          ? next.messages.map((message) => toChatMessage(message))
+          ? next.messages.map((message) => toChatMessage(message, { profile }))
           : getInitialConversation(profile, undefined);
         setMessages(mapped);
         rememberGarmentFromMessages(mapped);
@@ -793,6 +804,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
             profile={profile}
             photos={photos}
             onNavigateToShop={() => onNavigate('shop')}
+            onShopNow={handleShopNow}
             onSendToTryOn={onSendToTryOn}
             onSelectPrompt={handleSelectPrompt}
             onSelectAction={handleSelectAction}

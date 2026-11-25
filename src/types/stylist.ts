@@ -10,6 +10,8 @@ export interface OutfitPieceItem {
   category: 'tops' | 'bottoms' | 'dress' | 'shoes' | 'outerwear' | 'accessories';
   retailerUrl?: string;
   inStock?: boolean;
+  /** Matched demonstration catalogue product for Shop now. */
+  productId?: string;
 }
 
 export interface StylistOutfitRecommendation {

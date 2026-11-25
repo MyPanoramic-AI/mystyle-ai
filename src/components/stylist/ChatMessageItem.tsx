@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { ChatMessage, StylistQuickAction, TemporaryPhotos, UserProfile } from '../../types';
+import type { StylistOutfitRecommendation } from '../../types/stylist';
 import { PreloadedGarment } from '../../types/shop';
 import { OutfitRecommendationCard } from './OutfitRecommendationCard';
 import { BeautyTipCard } from './BeautyTipCard';
@@ -16,6 +17,7 @@ interface ChatMessageItemProps {
   profile: UserProfile;
   photos: TemporaryPhotos;
   onNavigateToShop: () => void;
+  onShopNow?: (outfit: StylistOutfitRecommendation) => void;
   onSendToTryOn?: (garment: PreloadedGarment) => void;
   onSelectPrompt: (prompt: string) => void;
   onSelectAction?: (action: StylistQuickAction) => void;
@@ -26,6 +28,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   profile,
   photos,
   onNavigateToShop,
+  onShopNow,
   onSendToTryOn,
   onSelectPrompt,
   onSelectAction,
@@ -186,6 +189,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             profile={profile}
             photos={photos}
             onNavigateToShop={onNavigateToShop}
+            onShopNow={onShopNow}
             onSendToTryOn={onSendToTryOn}
             onSelectPrompt={onSelectPrompt}
           />

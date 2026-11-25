@@ -32,6 +32,9 @@ export function buildVoiceLiveInstructions(
     if (profileContext.styles.length) profileBits.push(`Preferred styles: ${profileContext.styles.slice(0, 4).join(', ')}.`);
     if (profileContext.favouriteColours.length) profileBits.push(`Favourite colours: ${profileContext.favouriteColours.slice(0, 4).join(', ')}.`);
     if (profileContext.budgetTier) profileBits.push(`Budget tier note: ${profileContext.budgetTier}.`);
+    if (profileContext.retailers.length) profileBits.push(`Favourite shops: ${profileContext.retailers.slice(0, 4).join(', ')}.`);
+    if (profileContext.capsulePieces?.length) profileBits.push(`Capsule pieces: ${profileContext.capsulePieces.slice(0, 4).join('; ')}.`);
+    if (profileContext.wardrobePieces?.length) profileBits.push(`Wardrobe pieces: ${profileContext.wardrobePieces.slice(0, 4).join('; ')}.`);
     if (profileContext.stylingSilhouette) profileBits.push(`Silhouette preference: ${profileContext.stylingSilhouette}.`);
   }
 
@@ -64,7 +67,8 @@ export function buildVoiceLiveInstructions(
     'When a request needs live shopping checkout, wardrobe inventory lookup, beauty studio execution, or Fitting Room (virtual try-on) engineering, say honestly that those features are not connected for voice yet, then still give useful spoken styling advice and suggest the Shop, Wardrobe, Beauty, or Fitting Room tabs.',
     'Never criticise a customer\'s body or appearance.',
     'Use South African rand when budgets are discussed.',
-    'Do not invent retailer stock, prices, product links, or try-on photographs.',
+    'When suggesting outfits, prefer the customer\'s favourite retailers when those are in preference context, and mention wardrobe or capsule pieces when those are listed. Invite them to tap Shop now in the app for preferred-shop listings.',
+    'Do not invent live retailer stock, prices, product links, or try-on photographs.',
     profileBits.length ? `Customer preference context (consent granted): ${profileBits.join(' ')}` : 'No personalised preference context is available for this session.',
   ].join('\n');
 }

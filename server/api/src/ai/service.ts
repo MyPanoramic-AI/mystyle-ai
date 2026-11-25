@@ -11,6 +11,7 @@ import { assertLiveAllowed } from './guards.js';
 import { MockTextProvider, type ProviderMessage, type ProviderUsage, type TextProvider } from './mockProvider.js';
 import { validateStylistReply, type StylistReply } from './schema.js';
 import { beautyUnavailable, routeSpecialist, shoppingUnavailable, tryOnUnavailable, wardrobeUnavailable } from './specialists.js';
+import { listWardrobe } from '../domain/collections.js';
 import { readOwnedMedia, saveMedia } from '../media/store.js';
 import { requireExternalPhotoConsentForVision } from '../domain/silhouette.js';
 import { readProfilePhotoSlots } from '../domain/profilePhotos.js';
@@ -161,11 +162,12 @@ async function produce(
     if (!validated) {
       return { reply: safeFallback(), draft: { status: 'failed', provider: provider.id, model: completed.model, usage: completed.usage, costUsd: null, costStatus: 'unpriced' } };
     }
+    const withShop = ensureShopIntent(validated, context);
     if (isLive(runtime.config.provider)) {
       const priced = liveCost(runtime.config, completed.usage);
-      return { reply: validated, draft: { status: 'succeeded', provider: provider.id, model: completed.model, usage: completed.usage, durationMs: completed.durationMs, ...priced } };
+      return { reply: withShop, draft: { status: 'succeeded', provider: provider.id, model: completed.model, usage: completed.usage, durationMs: completed.durationMs, ...priced } };
     }
-    return { reply: { ...validated, source: 'mock' }, draft: { status: 'succeeded', provider: 'mock', model: null, usage: completed.usage, costUsd: 0, costStatus: 'zero' } };
+    return { reply: { ...withShop, source: 'mock' }, draft: { status: 'succeeded', provider: 'mock', model: null, usage: completed.usage, costUsd: 0, costStatus: 'zero' } };
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.code === 'ai_unpriced') {
@@ -183,10 +185,47 @@ async function produce(
   }
 }
 
+function wardrobeLabelsFor(db: Sql, userId: string): { wardrobePieces: string[]; capsulePieces: string[] } {
+  try {
+    const items = listWardrobe(db, userId);
+    const wardrobePieces: string[] = [];
+    const capsulePieces: string[] = [];
+    for (const item of items.slice(0, 24)) {
+      const name = typeof item.name === 'string' ? item.name.trim() : '';
+      const category = typeof item.category === 'string' ? item.category.trim() : '';
+      const colour = typeof item.colour === 'string' ? item.colour.trim() : '';
+      if (!name) continue;
+      const label = [colour, name, category ? `(${category})` : ''].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      if (item.isCapsule === true) capsulePieces.push(label);
+      else wardrobePieces.push(label);
+    }
+    return {
+      wardrobePieces: wardrobePieces.slice(0, 12),
+      capsulePieces: capsulePieces.slice(0, 12),
+    };
+  } catch {
+    return { wardrobePieces: [], capsulePieces: [] };
+  }
+}
+
+function ensureShopIntent(reply: StylistReply, context: StyleContext | null): StylistReply {
+  if (reply.recommendationType !== 'style_suggestion') return reply;
+  if (reply.shoppingSearchIntent && reply.shoppingSearchIntent.trim()) return reply;
+  const bits: string[] = [];
+  if (reply.outfitTitle) bits.push(reply.outfitTitle);
+  else if (reply.outfitOptions[0]?.title) bits.push(reply.outfitOptions[0].title);
+  if (reply.occasion) bits.push(reply.occasion);
+  for (const piece of reply.outfitComponents.slice(0, 3)) bits.push(piece.name);
+  if (context?.retailers?.length) bits.push(context.retailers.slice(0, 3).join(' '));
+  const intent = bits.join(' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (!intent) return reply;
+  return { ...reply, shoppingSearchIntent: intent };
+}
+
 function contextFor(db: Sql, userId: string): StyleContext | null {
   const consent = getPreferences(db, userId).aiPersonalisationConsent === true;
   if (!consent) return null;
-  return minimiseProfile(getProfile(db, userId), true);
+  return minimiseProfile(getProfile(db, userId), true, wardrobeLabelsFor(db, userId));
 }
 
 export function stylistAvailability(config: AiConfig): Record<string, unknown> {

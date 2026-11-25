@@ -198,6 +198,9 @@ export class MockTextProvider implements TextProvider {
         followUpQuestions: asked(request.messages, 'daytime')
           ? ['Want different shoe or jewellery options for that guest look?']
           : ['Is the wedding daytime or evening?', 'Want shoe or accessory ideas next?'],
+        shoppingSearchIntent: personal?.retailers?.length
+          ? `wedding guest champagne sage ${personal.retailers.slice(0, 2).join(' ')}`
+          : 'wedding guest champagne midi dress sage suit',
         budgetGuidance: personal?.budgetTier ? `Your saved budget band is ${personal.budgetTier}. This is a concept, not a price.` : null,
       }) };
     }
@@ -238,8 +241,11 @@ export class MockTextProvider implements TextProvider {
         suggestedColours: ['navy', 'ivory', 'stone'],
         outfitComponents: workOptions[0].components,
         outfitOptions: workOptions,
-        responseText: `Here are three work looks.${colourNote}${avoidNote} Option 1: navy bottom, ivory knit, soft blazer. Option 2: ivory and stone monochrome with a loafer. Option 3: navy dress with a light layer. Which feels closest to your day? I can add shoe or accessory ideas once you pick one.`,
+        responseText: `Here are three work looks.${colourNote}${avoidNote} Option 1: navy bottom, ivory knit, soft blazer. Option 2: ivory and stone monochrome with a loafer. Option 3: navy dress with a light layer. Which feels closest to your day? I can add shoe or accessory ideas once you pick one.${personal?.retailers?.length ? ` Tap Shop now to browse ${personal.retailers.slice(0, 2).join(' and ')}.` : ' Tap Shop now to browse matching listings.'}`,
         followUpQuestions: ['Which option feels closest?', 'Want shoe or accessory ideas for that look?'],
+        shoppingSearchIntent: personal?.retailers?.length
+          ? `smart casual work navy ivory ${personal.retailers.slice(0, 2).join(' ')}`
+          : 'smart casual work navy ivory blazer',
       }) };
     }
     if (/navy/.test(text)) {

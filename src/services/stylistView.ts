@@ -1,6 +1,7 @@
-import type { ChatMessage, StylistOutfitRecommendation, StylistQuickAction } from '../types';
+import type { ChatMessage, StylistOutfitRecommendation, StylistQuickAction, UserProfile } from '../types';
 import type { StylistServerMessage } from './accountApi';
 import { garmentFollowUpActions } from '../data/garmentFollowUps';
+import { enrichOutfitWithShopMatches } from './stylistShopMatch';
 import workOfficeImg from '../assets/images/fashion_work_office_1791978399975.jpg';
 import weddingGuestImg from '../assets/images/fashion_wedding_guest_1791978399342.jpg';
 import weekendCasualImg from '../assets/images/fashion_weekend_casual_1791978401075.jpg';
@@ -84,9 +85,13 @@ function buildConceptCard(input: {
   };
 }
 
-export function conceptCards(message: StylistServerMessage): StylistOutfitRecommendation[] {
+export function conceptCards(
+  message: StylistServerMessage,
+  profile?: UserProfile | null,
+): StylistOutfitRecommendation[] {
   const recommendation = message.recommendation;
-  if (!recommendation || recommendation.availability === 'not_connected') return [];
+  if (!recommendation) return [];
+  // Keep outfit cards for style suggestions even when a specialist notes shopping is not live-verified.
   const generatedMediaId = typeof recommendation.generatedMediaId === 'string' && recommendation.generatedMediaId.trim()
     ? recommendation.generatedMediaId.trim()
     : null;
@@ -119,7 +124,7 @@ export function conceptCards(message: StylistServerMessage): StylistOutfitRecomm
       generatedMediaId: null,
       aesthetic: `Option ${index + 1}`,
     });
-    if (card) fromOptions.push(card);
+    if (card) fromOptions.push(enrichOutfitWithShopMatches(card, profile));
   }
   if (fromOptions.length) return fromOptions;
 
@@ -135,11 +140,14 @@ export function conceptCards(message: StylistServerMessage): StylistOutfitRecomm
     accessories,
     generatedMediaId,
   });
-  return single ? [single] : [];
+  return single ? [enrichOutfitWithShopMatches(single, profile)] : [];
 }
 
-export function conceptCard(message: StylistServerMessage): StylistOutfitRecommendation | undefined {
-  return conceptCards(message)[0];
+export function conceptCard(
+  message: StylistServerMessage,
+  profile?: UserProfile | null,
+): StylistOutfitRecommendation | undefined {
+  return conceptCards(message, profile)[0];
 }
 
 export function followUps(message: StylistServerMessage, options?: { includeGarmentFollowUps?: boolean }): StylistQuickAction[] {
@@ -158,7 +166,7 @@ export function followUps(message: StylistServerMessage, options?: { includeGarm
 
 export function toChatMessage(
   message: StylistServerMessage,
-  options?: { includeGarmentFollowUps?: boolean },
+  options?: { includeGarmentFollowUps?: boolean; profile?: UserProfile | null },
 ): ChatMessage {
   const attachmentIds = Array.isArray(message.attachmentMediaIds) ? message.attachmentMediaIds : [];
   const userAttachments = message.role === 'user'
@@ -167,7 +175,7 @@ export function toChatMessage(
       url: `/api/media/${id}`,
     }))
     : undefined;
-  const cards = message.role === 'assistant' ? conceptCards(message) : [];
+  const cards = message.role === 'assistant' ? conceptCards(message, options?.profile) : [];
   return {
     id: message.id,
     sender: message.role === 'assistant' ? 'stylist' : 'user',
