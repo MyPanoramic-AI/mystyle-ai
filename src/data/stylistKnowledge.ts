@@ -436,14 +436,13 @@ export function getInitialConversation(
     ];
   }
 
-  // Case 2: Standard entry from tab bar
+  // Case 2: Standard / new-chat entry — greeting only, no leftover outfit card.
   return [
     {
-      id: 'msg-welcome-standard',
+      id: `msg-welcome-standard-${Date.now()}`,
       sender: 'stylist',
       timestamp: 'Just now',
       text: `Good day, ${firstName}! I'm ${stylistName}, your IStyleU personal fashion stylist.\n\nI'm calibrated to your style DNA: **${profile.styles.slice(0, 2).join(' & ') || 'Classic Elegance'}**, your preferred palette of **${profile.colours.favoriteColors.slice(0, 3).join(', ') || 'Warm neutrals'}**, and top SA retailers like Woolworths and Superbalist.\n\nWhat occasion or outfit challenge can we create together today?`,
-      outfitCard: OUTFIT_CATALOG.workOffice,
       quickActions: STARTER_SUGGESTIONS.slice(0, 4),
     },
   ];

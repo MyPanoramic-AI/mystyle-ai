@@ -163,6 +163,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const recentUserVoiceRef = useRef<string[]>([]);
   const conversationIdRef = useRef<string | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
+  /** Bumps when the user starts a new chat so a late restore cannot overwrite it. */
+  const chatSessionEpochRef = useRef(0);
   const voiceAnnounceRef = useRef<(title: string) => void>(() => undefined);
 
   const stylistName = resolveStylistPersona(profile).name;
@@ -447,8 +449,14 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         setServerReady(true);
         return;
       }
+      const restoreEpoch = chatSessionEpochRef.current;
       const restored = await connection.restore();
       if (cancelled) return;
+      // User may have already pressed New Chat while restore was in flight.
+      if (restoreEpoch !== chatSessionEpochRef.current) {
+        setServerReady(true);
+        return;
+      }
       setConversationId(restored.id);
       if (restored.messages.length) {
         const mapped = restored.messages.map((message) => toChatMessage(message, {
@@ -642,19 +650,27 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       return;
     }
 
-    if (!conversationId || !serverReady) {
+    if (!serverReady) {
       setIsTyping(false);
       setServiceNotice(serviceNotice ?? 'The stylist is not ready for a saved conversation.');
       return;
     }
 
-    if (!attachment) {
-      sendServerText(conversationId, typed);
-      return;
-    }
-
     void (async () => {
       try {
+        let activeConversationId = conversationId || conversationIdRef.current;
+        if (!activeConversationId) {
+          const fresh = await connection.startFresh();
+          activeConversationId = fresh.id;
+          setConversationId(fresh.id);
+          conversationIdRef.current = fresh.id;
+        }
+
+        if (!attachment) {
+          sendServerText(activeConversationId, typed);
+          return;
+        }
+
         let file = attachment.file;
         if (!file && attachment.url.startsWith('blob:')) {
           const blob = await fetch(attachment.url).then((response) => response.blob());
@@ -694,14 +710,14 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           url: `/api/media/${uploaded.id}`,
         });
         setServiceNotice(`${stylistName} can see your photo and will style from it.`);
-        sendServerText(conversationId, typed, [uploaded.id]);
+        sendServerText(activeConversationId, typed, [uploaded.id]);
       } catch (error: unknown) {
         const detail = error instanceof AccountApiError
           ? error.message
           : 'That photograph could not be uploaded to the stylist.';
-        if (typed) {
+        if (typed && (conversationId || conversationIdRef.current)) {
           setServiceNotice(`${detail} Your message was still sent without the photo.`);
-          sendServerText(conversationId, typed);
+          sendServerText((conversationId || conversationIdRef.current)!, typed);
           return;
         }
         setIsTyping(false);
@@ -862,50 +878,48 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
 
   const handleStartFreshChat = () => {
     if (newChatBusy) return;
-    const resetLocal = () => {
-      setMessages(getInitialConversation(profile, undefined));
-      setConversationId(null);
-      setGarmentContext(null);
-      setActiveShopOutfit(null);
-      setActiveLookImageUrl(null);
-      setVoiceOutfitCards([]);
-      setVoiceLookVisual(null);
-      setInputPrefill('');
-      setIsTyping(false);
-      onClearState();
-      setIsResetConfirmOpen(false);
-      setLibraryOpen(false);
+    const epoch = chatSessionEpochRef.current + 1;
+    chatSessionEpochRef.current = epoch;
+
+    // Clear the thread immediately so New Chat never looks like a no-op.
+    const welcome = getInitialConversation(profile, undefined);
+    setMessages(welcome);
+    setConversationId(null);
+    setGarmentContext(null);
+    setActiveShopOutfit(null);
+    setActiveLookImageUrl(null);
+    setVoiceOutfitCards([]);
+    setVoiceLookVisual(null);
+    setVoiceLookError(null);
+    setVoiceLookLoading(false);
+    setCardLookBusy(false);
+    setInputPrefill('');
+    setIsTyping(false);
+    setLibraryOpen(false);
+    setIsResetConfirmOpen(false);
+    onClearState();
+    window.setTimeout(() => scrollToBottom(false), 40);
+
+    if (!connection || localDemo) {
       setNewChatBusy(false);
       setServiceNotice('Started a new chat.');
-      window.setTimeout(() => scrollToBottom(false), 40);
-    };
-    if (!connection || localDemo) {
-      resetLocal();
       return;
     }
+
     setNewChatBusy(true);
     setServiceNotice('Starting a new chat…');
     void connection.startFresh().then((fresh) => {
+      if (chatSessionEpochRef.current !== epoch) return;
       setConversationId(fresh.id);
-      setMessages(getInitialConversation(profile, undefined));
-      setGarmentContext(null);
-      setActiveShopOutfit(null);
-      setActiveLookImageUrl(null);
-      setVoiceOutfitCards([]);
-      setVoiceLookVisual(null);
-      setInputPrefill('');
-      setIsTyping(false);
       setServiceNotice('Started a new chat. Earlier conversations stay in your library.');
-      onClearState();
-      setIsResetConfirmOpen(false);
-      setLibraryOpen(false);
       setNewChatBusy(false);
-      window.setTimeout(() => scrollToBottom(false), 40);
       void refreshLibrary();
     }).catch((error: unknown) => {
+      if (chatSessionEpochRef.current !== epoch) return;
       setNewChatBusy(false);
-      setServiceNotice(error instanceof AccountApiError ? error.message : 'A new chat could not be started.');
-      setIsResetConfirmOpen(false);
+      setServiceNotice(error instanceof AccountApiError
+        ? `${error.message} You can still type here — messages will save once the new chat connects.`
+        : 'A new chat could not be started on the server. You can still type here.');
     });
   };
 
