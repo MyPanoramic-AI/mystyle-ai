@@ -182,13 +182,13 @@ export async function createVoiceSession(opts: {
           sizeLabels: { tops: null, bottoms: null, dress: null, shoe: null },
         }
       : null;
-  const instructions = buildVoiceLiveInstructions(persona, styleContext);
   const profileAudio = typeof profile.stylistAudioVoice === 'string' ? profile.stylistAudioVoice : null;
   const audioVoice = (opts.audioVoice && (GPT_LIVE_AUDIO_VOICES as readonly string[]).includes(opts.audioVoice))
     ? opts.audioVoice
     : (profileAudio && (GPT_LIVE_AUDIO_VOICES as readonly string[]).includes(profileAudio)
       ? profileAudio
       : config.audioVoice);
+  const instructions = buildVoiceLiveInstructions(persona, styleContext, audioVoice);
 
   const maxSeconds = remainingSecondsAvailable(config, dailySecondsUsed);
 

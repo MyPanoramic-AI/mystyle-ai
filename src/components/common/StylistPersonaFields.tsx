@@ -70,6 +70,7 @@ export const StylistPersonaFields: React.FC<StylistPersonaFieldsProps> = ({
         stylistName: value.name,
       });
       await playVoicePreviewBlob(blob, {
+        voice: voiceId,
         onEnded: () => setPreviewing((current) => (current === voiceId ? null : current)),
         onError: (message) => {
           setPreviewError(message || 'Could not play that voice sample.');

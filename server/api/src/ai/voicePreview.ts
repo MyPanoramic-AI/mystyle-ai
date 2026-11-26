@@ -9,15 +9,42 @@ const PREVIEW_MODEL = 'gpt-4o-mini-tts';
 const PREVIEW_TEXT = "Hi, I'm your personal stylist. Let's find a look you'll love.";
 const previewCache = new Map<string, { bytes: Buffer; contentType: string; createdAt: number }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+/** Bump when preview delivery instructions change so soft-voice samples regenerate. */
+const PREVIEW_CACHE_VERSION = 'v3-projection';
 
-/** Softer TTS voices need a stronger delivery cue so Listen samples stay clear. */
-const SOFT_VOICES = new Set(['coral', 'sage', 'ballad', 'shimmer', 'ash']);
+/**
+ * Voices that tend to render quieter than Cedar/Marin in TTS/Live.
+ * Boost delivery cues + client playback gain for these.
+ */
+export const SOFT_VOICES = new Set([
+  'coral',
+  'sage',
+  'echo',
+  'ash',
+  'verse',
+  'ballad',
+  'shimmer',
+  'alloy',
+]);
+
+export function previewPlaybackGain(voice: string): number {
+  return SOFT_VOICES.has(voice.trim().toLowerCase()) ? 2.15 : 1.45;
+}
 
 function previewInstructions(voice: string): string {
   if (SOFT_VOICES.has(voice)) {
-    return 'Speak as a personal fashion stylist with warm confidence and clear projection. Keep energy present and easy to hear — not whispery, muted, or far away. Natural pace, friendly, and articulate.';
+    return [
+      'Speak as a personal fashion stylist with warm confidence and strong clear projection.',
+      'Match the loudness and presence of a confident studio mic read — not whispery, muted, breathy, or far away.',
+      'Keep energy forward and easy to hear on laptop speakers. Natural pace, friendly, and articulate.',
+      'Enunciate crisply with full voice, as if greeting a client across a styling desk.',
+    ].join(' ');
   }
   return 'Speak warmly, clearly, and with natural presence as a personal fashion stylist.';
+}
+
+function cacheKey(voice: string): string {
+  return `${PREVIEW_CACHE_VERSION}:${voice}`;
 }
 
 export function isGptLiveAudioVoice(value: string): value is GptLiveAudioVoice {
@@ -35,7 +62,8 @@ export async function createVoicePreview(opts: {
     throw new ApiError('bad_request', 'That spoken voice is not available.', 400);
   }
 
-  const cached = previewCache.get(voice);
+  const key = cacheKey(voice);
+  const cached = previewCache.get(key);
   if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) {
     return { bytes: cached.bytes, contentType: cached.contentType, voice, cached: true };
   }
@@ -84,7 +112,7 @@ export async function createVoicePreview(opts: {
       throw new ApiError('voice_preview_failed', 'The voice preview came back empty.', 502);
     }
     const contentType = response.headers.get('content-type') || 'audio/mpeg';
-    previewCache.set(voice, { bytes, contentType, createdAt: Date.now() });
+    previewCache.set(key, { bytes, contentType, createdAt: Date.now() });
     return { bytes, contentType, voice, cached: false };
   } catch (error) {
     if (error instanceof ApiError) throw error;

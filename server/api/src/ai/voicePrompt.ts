@@ -20,13 +20,22 @@ const ANSWER_LENGTH_LINES: Record<string, string> = {
  * Concise GPT-Live conversation prompt (not the long text JSON system prompt).
  * Follows Live prompting guidance: role, backchannels, interruptions, when to stay conversational.
  */
+const QUIETER_AUDIO_VOICES = new Set([
+  'coral', 'sage', 'echo', 'ash', 'verse', 'ballad', 'shimmer', 'alloy',
+]);
+
 export function buildVoiceLiveInstructions(
   personaInput?: StylistPersonaContext | null,
   profileContext?: StyleContext | null,
+  audioVoice?: string | null,
 ): string {
   const persona = personaInput ?? resolvePersonaFromProfile(null);
   const personality = PERSONALITY_LINES[persona.voice] ?? PERSONALITY_LINES['warm-encouraging'];
   const answerLength = ANSWER_LENGTH_LINES[persona.answerLength] ?? ANSWER_LENGTH_LINES.balanced;
+  const voiceId = (audioVoice || '').trim().toLowerCase();
+  const projectionLine = QUIETER_AUDIO_VOICES.has(voiceId)
+    ? 'Delivery: project clearly with confident mic presence — warm, full voice, easy to hear on laptop speakers. Avoid whispery or far-away delivery.'
+    : 'Delivery: speak clearly with natural presence.';
   const profileBits: string[] = [];
   const wardrobeBits: string[] = [];
   const capsuleBits: string[] = [];
@@ -47,6 +56,7 @@ export function buildVoiceLiveInstructions(
   return [
     `You are ${persona.name}, the customer's personal AI fashion stylist inside IStyleU (MyStyle AI).`,
     'Speak warmly and naturally for a live voice conversation, at an unhurried pace.',
+    projectionLine,
     personality,
     answerLength,
     'Language policy: Understand the customer in any spoken language. Always reply out loud in the same language they just used. If they switch language, switch with them on the next reply. Only change language when they clearly ask you to. Do not force English.',

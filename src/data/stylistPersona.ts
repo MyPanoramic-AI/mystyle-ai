@@ -107,9 +107,9 @@ export const STYLIST_AUDIO_VOICE_OPTIONS: Array<{
   { id: 'sage', label: 'Sage', hint: 'Soft, calm, and steady', tone: 'feminine' },
   { id: 'cedar', label: 'Cedar', hint: 'Rich and confident', tone: 'masculine' },
   { id: 'echo', label: 'Echo', hint: 'Deeper and grounded', tone: 'masculine' },
-  { id: 'ash', label: 'Ash', hint: 'Soft-spoken and natural', tone: 'masculine' },
+  { id: 'ash', label: 'Ash', hint: 'Warm and natural', tone: 'masculine' },
   { id: 'verse', label: 'Verse', hint: 'Clear narrative tone', tone: 'masculine' },
-  { id: 'ballad', label: 'Ballad', hint: 'Soft and expressive', tone: 'masculine' },
+  { id: 'ballad', label: 'Ballad', hint: 'Expressive and present', tone: 'masculine' },
   { id: 'shimmer', label: 'Shimmer', hint: 'Light and polished', tone: 'masculine' },
   { id: 'alloy', label: 'Alloy', hint: 'Balanced and neutral', tone: 'neutral' },
 ];

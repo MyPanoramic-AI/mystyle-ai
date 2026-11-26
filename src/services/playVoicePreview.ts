@@ -18,9 +18,20 @@ function getContext(): AudioContext {
   return sharedContext;
 }
 
+/** Voices that tend quieter than Cedar/Marin — keep in sync with server SOFT_VOICES. */
+const SOFT_PREVIEW_VOICES = new Set([
+  'coral', 'sage', 'echo', 'ash', 'verse', 'ballad', 'shimmer', 'alloy',
+]);
+
+function playbackGainForVoice(voice?: string | null): number {
+  const id = (voice || '').trim().toLowerCase();
+  if (id && SOFT_PREVIEW_VOICES.has(id)) return 2.15;
+  return 1.45;
+}
+
 export async function playVoicePreviewBlob(
   blob: Blob,
-  opts?: { onEnded?: () => void; onError?: (message: string) => void },
+  opts?: { onEnded?: () => void; onError?: (message: string) => void; voice?: string | null },
 ): Promise<void> {
   active?.stop();
   active = null;
@@ -31,20 +42,22 @@ export async function playVoicePreviewBlob(
     await context.resume();
   }
 
+  const gainValue = playbackGainForVoice(opts?.voice);
+
   let buffer: AudioBuffer;
   try {
     buffer = await context.decodeAudioData(bytes.slice(0));
   } catch {
     // Fallback for environments that accept HTMLAudioElement but not this decode path.
-    await playWithHtmlAudio(blob, opts);
+    await playWithHtmlAudio(blob, { ...opts, volume: Math.min(1, gainValue / 2.15) });
     return;
   }
 
   const source = context.createBufferSource();
   source.buffer = buffer;
-  // Soft TTS voices (Coral, Sage, etc.) benefit from a modest gain so Listen is easy to hear.
+  // Soft TTS voices need extra gain so Listen matches Cedar/Marin presence.
   const gain = context.createGain();
-  gain.gain.value = 1.45;
+  gain.gain.value = gainValue;
   source.connect(gain);
   gain.connect(context.destination);
   let stopped = false;
@@ -80,7 +93,7 @@ export async function playVoicePreviewBlob(
 
 async function playWithHtmlAudio(
   blob: Blob,
-  opts?: { onEnded?: () => void; onError?: (message: string) => void },
+  opts?: { onEnded?: () => void; onError?: (message: string) => void; volume?: number },
 ): Promise<void> {
   const typed = blob.type?.startsWith('audio/')
     ? blob
@@ -88,7 +101,7 @@ async function playWithHtmlAudio(
   const url = URL.createObjectURL(typed);
   const audio = new Audio(url);
   audio.preload = 'auto';
-  audio.volume = 1;
+  audio.volume = Math.min(1, Math.max(0.6, opts?.volume ?? 1));
   const stop = () => {
     audio.pause();
     audio.removeAttribute('src');
