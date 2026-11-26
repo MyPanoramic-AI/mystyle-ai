@@ -202,12 +202,13 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
         {/* Generated look visualization (hair, accessories, styled finish) */}
         {isStylist && message.lookImageUrl && (
-          <div className="rounded-2xl overflow-hidden border border-[#242326]/10 shadow-xs bg-white max-w-sm">
-            <div className="aspect-3/4 bg-[#242326]/5 relative">
+          <div className="rounded-2xl overflow-hidden border border-[#242326]/10 shadow-xs bg-white max-w-md">
+            <div className="aspect-3/4 bg-[#FAF7F2] relative flex items-center justify-center">
               <ImageWithFallback
                 src={message.lookImageUrl}
                 alt="Generated look"
-                className="w-full h-full object-cover"
+                className="w-full h-full"
+                imageClassName="object-contain object-center"
                 fallbackTitle="Generated look"
               />
               <div className="absolute top-2 right-2">

@@ -90,6 +90,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   const latestAssistant = [...visibleTurns].reverse().find((t) => t.role === 'assistant');
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [imageRevealed, setImageRevealed] = useState(false);
+  const [lookExpanded, setLookExpanded] = useState(false);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -97,10 +98,20 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
 
   useEffect(() => {
     setImageRevealed(false);
+    setLookExpanded(false);
     if (!lookVisual?.imageUrl) return;
     const timer = window.setTimeout(() => setImageRevealed(true), 40);
     return () => window.clearTimeout(timer);
   }, [lookVisual?.imageUrl]);
+
+  useEffect(() => {
+    if (!lookExpanded) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLookExpanded(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lookExpanded]);
 
   const liveHint = speaking
     ? `${stylistName} is answering…`
@@ -185,7 +196,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
         </button>
       </header>
 
-      {/* Main stage content */}
+      {/* Main stage content — look gets the tall column so full-body images are not clipped */}
       <div className="relative z-10 flex-1 min-h-0 flex flex-col lg:flex-row gap-4 px-4 sm:px-6 pb-2">
         <div className="flex-1 min-h-0 flex flex-col">
           {!hasLook && !lookVisualLoading && (
@@ -237,16 +248,26 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
                   />
                 )}
               </div>
-              <div className="relative flex-1 min-h-[40vh] rounded-2xl border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setLookExpanded(true)}
+                className="relative flex-1 min-h-[48vh] sm:min-h-[56vh] rounded-2xl border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center p-2 sm:p-3 cursor-zoom-in"
+                aria-label="View full look"
+                title="Tap to view full picture"
+              >
                 <ImageWithFallback
                   src={lookVisual!.imageUrl}
                   alt={lookVisual?.title || 'Look visualization'}
-                  className={`max-h-full max-w-full h-full w-auto object-contain transition-all duration-700 ease-out ${
+                  className={`max-h-full max-w-full h-full w-auto transition-all duration-700 ease-out ${
                     imageRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]'
                   }`}
+                  imageClassName="object-contain object-center"
                   fallbackTitle={lookVisual?.title || 'Look'}
                 />
-              </div>
+                <span className="absolute bottom-2 right-2 rounded-full bg-black/55 border border-white/15 px-2.5 py-1 text-[10px] font-semibold text-white/90">
+                  Full picture
+                </span>
+              </button>
               {latestAssistant?.text && (
                 <p className="mt-3 max-w-3xl text-sm text-white/90 leading-relaxed line-clamp-3 drop-shadow">
                   <span className="font-semibold text-[#E5CDBE]">{stylistName}: </span>
@@ -266,8 +287,10 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
           )}
         </div>
 
-        {/* Transcript rail */}
-        <aside className="lg:w-[22rem] shrink-0 max-h-[32vh] lg:max-h-none lg:h-full rounded-2xl border border-white/12 bg-black/40 backdrop-blur-md overflow-hidden flex flex-col">
+        {/* Transcript rail — shrink on mobile when a look is on screen so the full outfit stays visible */}
+        <aside className={`lg:w-[22rem] shrink-0 lg:max-h-none lg:h-full rounded-2xl border border-white/12 bg-black/40 backdrop-blur-md overflow-hidden flex flex-col ${
+          hasLook ? 'max-h-[18vh] lg:max-h-none' : 'max-h-[32vh]'
+        }`}>
           <div className="px-3 py-2 border-b border-white/10 text-[11px] font-semibold uppercase tracking-wider text-white/60">
             Transcript ({visibleTurns.length})
           </div>
@@ -295,6 +318,35 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
           </div>
         </aside>
       </div>
+
+      {lookExpanded && lookVisual?.imageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/92 flex flex-col"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full look picture"
+        >
+          <div className="flex items-center justify-between gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
+            <p className="text-sm font-semibold text-white truncate">
+              {lookVisual.title || `${stylistName}'s look`}
+            </p>
+            <button
+              type="button"
+              onClick={() => setLookExpanded(false)}
+              className="shrink-0 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              Close
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 flex items-center justify-center px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <img
+              src={lookVisual.imageUrl}
+              alt={lookVisual.title || 'Full look visualization'}
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Bottom controls */}
       <footer className="relative z-10 px-4 sm:px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">

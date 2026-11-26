@@ -210,8 +210,9 @@ export async function createVoiceLookVisual(opts: {
 
   const persona = resolvePersonaFromProfile(getProfile(opts.db, opts.userId) as Record<string, unknown>);
   const additive = isAdditiveLookEdit(promptText) || hasPriorLook;
+  const voiceFraming = 'Voice request: show the COMPLETE full-length person head-to-toe in one frame — face, outfit, and shoes visible together. Do not crop to a close-up.';
   const imagePrompt = buildLookVisualPrompt({
-    userText: promptText,
+    userText: `${promptText}. ${voiceFraming}`,
     modelPrompt: promptText,
     hasReferencePhoto: references.length > 0,
     hasPriorLook,

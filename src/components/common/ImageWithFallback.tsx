@@ -43,6 +43,10 @@ export const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({
     );
   }
 
+  // Prefer an explicit object-* fit from callers (e.g. object-contain for full-body looks).
+  const hasExplicitFit = /\bobject-(?:contain|cover|fill|none|scale-down)\b/.test(imageClassName);
+  const fitClass = hasExplicitFit ? '' : 'object-cover';
+
   return (
     <div className={`relative overflow-hidden w-full h-full ${aspectRatioClass} ${className}`}>
       {/* Skeleton / Ambient background while loading */}
@@ -56,7 +60,7 @@ export const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({
         loading="lazy"
         onLoad={() => setIsLoaded(true)}
         onError={() => setHasError(true)}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${
+        className={`w-full h-full ${fitClass} transition-opacity duration-300 ${
           isLoaded ? 'opacity-100' : 'opacity-0'
         } ${imageClassName}`}
         {...props}
