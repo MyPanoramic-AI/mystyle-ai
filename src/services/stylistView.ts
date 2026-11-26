@@ -3,6 +3,7 @@ import type { WardrobeItem } from '../types/wardrobe';
 import type { StylistServerMessage } from './accountApi';
 import { garmentFollowUpActions } from '../data/garmentFollowUps';
 import { enrichOutfitWithShopMatches, isWardrobeLabeledPiece } from './stylistShopMatch';
+import { spokenTextHasOutfitOptions, voiceOutfitCardsFromText } from '../utils/voiceOutfitCards';
 import workOfficeImg from '../assets/images/fashion_work_office_1791978399975.jpg';
 import weddingGuestImg from '../assets/images/fashion_wedding_guest_1791978399342.jpg';
 import weekendCasualImg from '../assets/images/fashion_weekend_casual_1791978401075.jpg';
@@ -133,6 +134,18 @@ export function conceptCards(
     if (card) fromOptions.push(enrichOutfitWithShopMatches(card, profile, wardrobeItems));
   }
   if (fromOptions.length) return fromOptions;
+
+  // Type/Talk fallback: if the model wrote Option 1/2/3 in responseText but left outfitOptions empty,
+  // still materialize garment-preview cards from the spoken/typed option text.
+  if (spokenTextHasOutfitOptions(message.content)) {
+    const parsed = voiceOutfitCardsFromText(message.content, {
+      idPrefix: `${message.id}-parsed`,
+      profile,
+      wardrobeItems,
+      occasion: occasion || 'Outfit options',
+    });
+    if (parsed.length) return parsed;
+  }
 
   const components = Array.isArray(recommendation.outfitComponents) ? recommendation.outfitComponents : [];
   if (!components.length && typeof recommendation.outfitTitle !== 'string' && !generatedMediaId) return [];

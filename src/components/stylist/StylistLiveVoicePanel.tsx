@@ -6,9 +6,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Mic, MicOff, PhoneOff, Radio, Volume2, Sparkles, ImageIcon, Loader2 } from 'lucide-react';
 import type { GptLiveStatus, GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
+import type { StylistOutfitRecommendation } from '../../types/stylist';
+import type { TemporaryPhotos, UserProfile } from '../../types';
+import type { PreloadedGarment } from '../../types/shop';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 import { ShareToFriendButton } from '../common/ShareToFriendButton';
 import { imageSharePayload } from '../../services/shareToFriend';
+import { OutfitRecommendationCard } from './OutfitRecommendationCard';
 
 export interface VoiceLookVisual {
   imageUrl: string;
@@ -31,6 +35,12 @@ interface StylistLiveVoicePanelProps {
   lookVisual?: VoiceLookVisual | null;
   lookVisualLoading?: boolean;
   lookVisualError?: string | null;
+  outfitCards?: StylistOutfitRecommendation[];
+  profile?: UserProfile;
+  photos?: TemporaryPhotos;
+  onShopNow?: (outfit: StylistOutfitRecommendation) => void;
+  onSendToTryOn?: (garment: PreloadedGarment) => void;
+  onNavigateToShop?: () => void;
   onMuteToggle: () => void;
   onPlayAudio: () => void;
   onEnd: () => void;
@@ -79,6 +89,12 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   lookVisual = null,
   lookVisualLoading = false,
   lookVisualError = null,
+  outfitCards = [],
+  profile,
+  photos,
+  onShopNow,
+  onSendToTryOn,
+  onNavigateToShop,
   onMuteToggle,
   onPlayAudio,
   onEnd,
@@ -121,14 +137,17 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
         ? 'Hearing you… pause when you finish and she will reply.'
         : micSilent
           ? 'Desktop mic looks silent. Allow microphone for this site and prefer headphones.'
-          : lookVisualLoading
+            : lookVisualLoading
             ? `${stylistName} is putting a look on your screen…`
-            : 'Ask her to show a look — pictures appear here while you talk.';
+            : hasOutfitCards
+              ? 'Garment previews for her options are on screen.'
+              : 'Ask for outfit options — garment previews appear here while you talk.';
 
   const bars = useMemo(() => Array.from({ length: 9 }, (_, i) => i), []);
   const micActivity = muted ? 0 : Math.min(1, micLevel * 8);
 
   const hasLook = Boolean(lookVisual?.imageUrl);
+  const hasOutfitCards = outfitCards.length > 0;
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-[#1A1819] text-white animate-in fade-in duration-300">
@@ -199,15 +218,36 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
       {/* Main stage content — look gets the tall column so full-body images are not clipped */}
       <div className="relative z-10 flex-1 min-h-0 flex flex-col lg:flex-row gap-4 px-4 sm:px-6 pb-2">
         <div className="flex-1 min-h-0 flex flex-col">
-          {!hasLook && !lookVisualLoading && (
+          {!hasLook && !hasOutfitCards && !lookVisualLoading && (
             <div className="mb-4 max-w-xl animate-in fade-in slide-in-from-bottom-2 duration-500">
               <p className="text-[11px] uppercase tracking-[0.18em] text-[#E5CDBE]/80 mb-2 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
                 Live styling
               </p>
               <p className="font-serif text-2xl sm:text-3xl text-white leading-snug">
-                Talk naturally. Ask {stylistName} to show a look and it appears here.
+                Talk naturally. Ask {stylistName} for outfit options — garment previews appear here.
               </p>
+            </div>
+          )}
+
+          {hasOutfitCards && (
+            <div className="mb-3 flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 animate-in fade-in duration-500">
+              <p className="inline-flex items-center gap-1.5 rounded-full bg-black/45 backdrop-blur-md border border-white/15 px-3 py-1.5 text-[11px] font-semibold text-white">
+                <Sparkles className="w-3.5 h-3.5 text-[#B49361]" />
+                Garment previews for her options
+              </p>
+              {outfitCards.map((outfit) => (
+                <div key={outfit.id} className="rounded-2xl overflow-hidden">
+                  <OutfitRecommendationCard
+                    outfit={outfit}
+                    profile={profile}
+                    photos={photos}
+                    onNavigateToShop={onNavigateToShop || (() => undefined)}
+                    onShopNow={onShopNow}
+                    onSendToTryOn={onSendToTryOn}
+                  />
+                </div>
+              ))}
             </div>
           )}
 
@@ -289,7 +329,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
 
         {/* Transcript rail — shrink on mobile when a look is on screen so the full outfit stays visible */}
         <aside className={`lg:w-[22rem] shrink-0 lg:max-h-none lg:h-full rounded-2xl border border-white/12 bg-black/40 backdrop-blur-md overflow-hidden flex flex-col ${
-          hasLook ? 'max-h-[18vh] lg:max-h-none' : 'max-h-[32vh]'
+          hasLook || hasOutfitCards ? 'max-h-[18vh] lg:max-h-none' : 'max-h-[32vh]'
         }`}>
           <div className="px-3 py-2 border-b border-white/10 text-[11px] font-semibold uppercase tracking-wider text-white/60">
             Transcript ({visibleTurns.length})

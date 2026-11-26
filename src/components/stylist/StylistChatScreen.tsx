@@ -47,6 +47,7 @@ import { resolveStylistPersona } from '../../data/stylistPersona';
 import type { ShopPreloadedContext } from '../pages/ShopPlaceholder';
 import { useGptLiveVoice, type GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
 import { voiceAssistantPromisedLook, voiceWantsLookVisualization } from '../../utils/voiceVisualIntent';
+import { spokenTextHasOutfitOptions, voiceOutfitCardsFromText } from '../../utils/voiceOutfitCards';
 import type { VoiceLookVisual } from './StylistLiveVoicePanel';
 
 const STYLING_WAIT_LINES = [
@@ -143,6 +144,12 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [voiceLookVisual, setVoiceLookVisual] = useState<VoiceLookVisual | null>(null);
   const [voiceLookLoading, setVoiceLookLoading] = useState(false);
   const [voiceLookError, setVoiceLookError] = useState<string | null>(null);
+  const [voiceOutfitCards, setVoiceOutfitCards] = useState<StylistOutfitRecommendation[]>([]);
+  const [lens, setLens] = useState<StylistFilterLens>({
+    occasion: state.occasionTitle || 'Everyday Versatile',
+    formality: 'Smart-Casual',
+    budgetTier: profile.shopping.itemBudget || '300-600',
+  });
   const pendingVoiceTranscripts = useRef<GptLiveTranscriptTurn[]>([]);
   const voiceVisualInFlightRef = useRef(false);
   const voiceVisualDoneForPromptRef = useRef<string | null>(null);
@@ -276,10 +283,38 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         ) {
           void requestVoiceLookVisual(buildVoiceLookPrompt(combinedUser || turn.text));
         }
-      } else if (turn.role === 'assistant' && voiceAssistantPromisedLook(turn.text)) {
-        // Aria promised a look on screen — generate even if the user's ask was fragmented.
-        const seed = recentUserVoiceRef.current.slice(-3).join(' ') || turn.text;
-        void requestVoiceLookVisual(buildVoiceLookPrompt(seed));
+      } else if (turn.role === 'assistant') {
+        if (spokenTextHasOutfitOptions(turn.text)) {
+          const cards = voiceOutfitCardsFromText(turn.text, {
+            idPrefix: `voice-${turn.id}`,
+            profile,
+            wardrobeItems: wardrobeItemsRef.current,
+            occasion: lens.occasion || 'Outfit options',
+          });
+          if (cards.length) {
+            setVoiceOutfitCards(cards);
+            setMessages((prev) => {
+              const already = prev.some((message) => message.id === `voice-cards-${turn.id}`);
+              if (already) return prev;
+              return [
+                ...prev,
+                {
+                  id: `voice-cards-${turn.id}`,
+                  sender: 'stylist',
+                  text: 'Here are garment previews for the options we just discussed.',
+                  timestamp: new Date().toISOString(),
+                  outfitCards: cards,
+                  outfitCard: cards[0],
+                },
+              ];
+            });
+          }
+        }
+        if (voiceAssistantPromisedLook(turn.text)) {
+          // Aria promised a look on screen — generate even if the user's ask was fragmented.
+          const seed = recentUserVoiceRef.current.slice(-3).join(' ') || turn.text;
+          void requestVoiceLookVisual(buildVoiceLookPrompt(seed));
+        }
       }
     },
     onError: (message) => setServiceNotice(message),
@@ -288,11 +323,6 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   voiceAnnounceRef.current = voice.announceOnScreenLook;
   conversationIdRef.current = conversationId;
   messagesRef.current = messages;
-  const [lens, setLens] = useState<StylistFilterLens>({
-    occasion: state.occasionTitle || 'Everyday Versatile',
-    formality: 'Smart-Casual',
-    budgetTier: profile.shopping.itemBudget || '300-600',
-  });
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const lastStateTimestampRef = useRef<number | undefined>(state.timestamp);
@@ -908,6 +938,33 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           lookVisual={voiceLookVisual}
           lookVisualLoading={voiceLookLoading}
           lookVisualError={voiceLookError}
+          outfitCards={voiceOutfitCards}
+          profile={profile}
+          photos={photos}
+          onShopNow={(outfit) => {
+            handleShopNow(outfit);
+            void voice.endConversation().then(() => {
+              setVoiceMode(false);
+              setVoiceLookLoading(false);
+              setVoiceLookError(null);
+            });
+          }}
+          onSendToTryOn={(garment) => {
+            onSendToTryOn?.(garment);
+            void voice.endConversation().then(() => {
+              setVoiceMode(false);
+              setVoiceLookLoading(false);
+              setVoiceLookError(null);
+            });
+          }}
+          onNavigateToShop={() => {
+            onNavigate('shop');
+            void voice.endConversation().then(() => {
+              setVoiceMode(false);
+              setVoiceLookLoading(false);
+              setVoiceLookError(null);
+            });
+          }}
           onMuteToggle={voice.toggleMute}
           onPlayAudio={() => {
             void voice.playAssistantAudio();
@@ -974,6 +1031,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
                     setVoiceLookVisual(null);
                     setVoiceLookError(null);
                     setVoiceLookLoading(false);
+                    setVoiceOutfitCards([]);
                     voiceVisualDoneForPromptRef.current = null;
                     recentUserVoiceRef.current = [];
                     setServiceNotice(null);

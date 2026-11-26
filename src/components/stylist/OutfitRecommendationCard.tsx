@@ -148,8 +148,17 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
                 key={i}
                 className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[#F6F2EC]/60 border border-[#242326]/5 text-xs"
               >
+                <div className="w-12 h-14 sm:w-14 sm:h-16 rounded-lg overflow-hidden bg-white border border-[#242326]/8 shrink-0">
+                  <ImageWithFallback
+                    src={piece.imageUrl || outfit.imageUrl}
+                    alt={piece.name}
+                    className="w-full h-full"
+                    imageClassName="object-cover object-center"
+                    fallbackTitle={piece.category}
+                  />
+                </div>
                 <div className="pr-1 min-w-0 flex-1">
-                  <p className="font-medium text-[#242326] leading-tight line-clamp-1">
+                  <p className="font-medium text-[#242326] leading-tight line-clamp-2">
                     {piece.name}
                   </p>
                   <p className="text-[11px] text-[#5C585E] mt-0.5">

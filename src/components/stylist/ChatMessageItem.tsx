@@ -244,8 +244,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           </div>
         )}
 
-        {/* Embedded outfit option cards (skip when a look image already shows the visual) */}
-        {!message.lookImageUrl && (message.outfitCards?.length ? message.outfitCards : message.outfitCard ? [message.outfitCard] : []).map((outfit) => (
+        {/* Outfit option cards with garment previews — keep even when a look image is present */}
+        {(message.outfitCards?.length ? message.outfitCards : message.outfitCard ? [message.outfitCard] : []).map((outfit) => (
           <OutfitRecommendationCard
             key={outfit.id}
             outfit={outfit}
