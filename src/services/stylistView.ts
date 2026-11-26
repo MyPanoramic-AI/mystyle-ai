@@ -1,7 +1,8 @@
 import type { ChatMessage, StylistOutfitRecommendation, StylistQuickAction, UserProfile } from '../types';
+import type { WardrobeItem } from '../types/wardrobe';
 import type { StylistServerMessage } from './accountApi';
 import { garmentFollowUpActions } from '../data/garmentFollowUps';
-import { enrichOutfitWithShopMatches } from './stylistShopMatch';
+import { enrichOutfitWithShopMatches, isWardrobeLabeledPiece } from './stylistShopMatch';
 import workOfficeImg from '../assets/images/fashion_work_office_1791978399975.jpg';
 import weddingGuestImg from '../assets/images/fashion_wedding_guest_1791978399342.jpg';
 import weekendCasualImg from '../assets/images/fashion_weekend_casual_1791978401075.jpg';
@@ -41,11 +42,15 @@ function category(value: unknown): StylistOutfitRecommendation['pieces'][number]
 function piecesFromComponents(components: unknown[]): StylistOutfitRecommendation['pieces'] {
   return components.slice(0, 6).map((item) => {
     const piece = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+    const name = typeof piece.name === 'string' ? piece.name : 'Garment concept';
+    const notes = typeof piece.notes === 'string' ? piece.notes : null;
+    const owned = piece.owned === true || isWardrobeLabeledPiece({ name, notes });
     return {
-      name: typeof piece.name === 'string' ? piece.name : 'Garment concept',
-      retailer: 'Style suggestion',
+      name,
+      retailer: owned ? 'Your wardrobe' : 'Style suggestion',
       priceZar: 0,
       category: category(piece.category),
+      owned,
     };
   });
 }
@@ -88,6 +93,7 @@ function buildConceptCard(input: {
 export function conceptCards(
   message: StylistServerMessage,
   profile?: UserProfile | null,
+  wardrobeItems?: WardrobeItem[] | null,
 ): StylistOutfitRecommendation[] {
   const recommendation = message.recommendation;
   if (!recommendation) return [];
@@ -124,7 +130,7 @@ export function conceptCards(
       generatedMediaId: null,
       aesthetic: `Option ${index + 1}`,
     });
-    if (card) fromOptions.push(enrichOutfitWithShopMatches(card, profile));
+    if (card) fromOptions.push(enrichOutfitWithShopMatches(card, profile, wardrobeItems));
   }
   if (fromOptions.length) return fromOptions;
 
@@ -140,14 +146,15 @@ export function conceptCards(
     accessories,
     generatedMediaId,
   });
-  return single ? [enrichOutfitWithShopMatches(single, profile)] : [];
+  return single ? [enrichOutfitWithShopMatches(single, profile, wardrobeItems)] : [];
 }
 
 export function conceptCard(
   message: StylistServerMessage,
   profile?: UserProfile | null,
+  wardrobeItems?: WardrobeItem[] | null,
 ): StylistOutfitRecommendation | undefined {
-  return conceptCards(message, profile)[0];
+  return conceptCards(message, profile, wardrobeItems)[0];
 }
 
 export function followUps(message: StylistServerMessage, options?: { includeGarmentFollowUps?: boolean }): StylistQuickAction[] {
@@ -166,7 +173,11 @@ export function followUps(message: StylistServerMessage, options?: { includeGarm
 
 export function toChatMessage(
   message: StylistServerMessage,
-  options?: { includeGarmentFollowUps?: boolean; profile?: UserProfile | null },
+  options?: {
+    includeGarmentFollowUps?: boolean;
+    profile?: UserProfile | null;
+    wardrobeItems?: WardrobeItem[] | null;
+  },
 ): ChatMessage {
   const attachmentIds = Array.isArray(message.attachmentMediaIds) ? message.attachmentMediaIds : [];
   const userAttachments = message.role === 'user'
@@ -175,7 +186,9 @@ export function toChatMessage(
       url: `/api/media/${id}`,
     }))
     : undefined;
-  const cards = message.role === 'assistant' ? conceptCards(message, options?.profile) : [];
+  const cards = message.role === 'assistant'
+    ? conceptCards(message, options?.profile, options?.wardrobeItems)
+    : [];
   return {
     id: message.id,
     sender: message.role === 'assistant' ? 'stylist' : 'user',

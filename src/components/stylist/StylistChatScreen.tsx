@@ -40,6 +40,9 @@ import { shopContextFromOutfit } from '../../services/stylistShopMatch';
 import { fileToBase64 } from '../../services/profilePhotosClient';
 import type { PreloadedGarment } from '../../types/shop';
 import type { StylistOutfitRecommendation } from '../../types/stylist';
+import type { WardrobeItem } from '../../types/wardrobe';
+import { getWardrobeItems } from '../../services/wardrobeService';
+import { itemFromRecord } from '../../services/wardrobeAccount';
 import { resolveStylistPersona } from '../../data/stylistPersona';
 import type { ShopPreloadedContext } from '../pages/ShopPlaceholder';
 import { useGptLiveVoice, type GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
@@ -117,6 +120,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     getInitialConversation(profile, state)
   );
+  const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
+  const wardrobeItemsRef = useRef<WardrobeItem[]>([]);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [waitLineIndex, setWaitLineIndex] = useState(0);
   const [isLensModalOpen, setIsLensModalOpen] = useState<boolean>(false);
@@ -325,6 +330,35 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   }, [isTyping]);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadWardrobe = async () => {
+      try {
+        if (connection) {
+          const listed = await accountApi.wardrobeItems();
+          if (cancelled) return;
+          const items = listed.items.map(itemFromRecord);
+          wardrobeItemsRef.current = items;
+          setWardrobeItems(items);
+          return;
+        }
+        const local = getWardrobeItems();
+        if (cancelled) return;
+        wardrobeItemsRef.current = local;
+        setWardrobeItems(local);
+      } catch {
+        if (cancelled) return;
+        const local = getWardrobeItems();
+        wardrobeItemsRef.current = local;
+        setWardrobeItems(local);
+      }
+    };
+    void loadWardrobe();
+    return () => {
+      cancelled = true;
+    };
+  }, [connection]);
+
+  useEffect(() => {
     if (!connection) return;
     let cancelled = false;
     const openForLook = Boolean(state.lookConsultation?.pieces.length);
@@ -348,7 +382,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       if (cancelled) return;
       setConversationId(restored.id);
       if (restored.messages.length) {
-        const mapped = restored.messages.map((message) => toChatMessage(message, { profile }));
+        const mapped = restored.messages.map((message) => toChatMessage(message, {
+          profile,
+          wardrobeItems: wardrobeItemsRef.current,
+        }));
         setMessages(mapped);
         rememberGarmentFromMessages(mapped);
       }
@@ -401,7 +438,11 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     const idempotencyKey = `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     const withGarmentFollowUps = mediaIds.length > 0 || Boolean(garmentContext);
     void connection!.send(id, typed, idempotencyKey, mediaIds).then((message) => {
-      setMessages((prev) => [...prev, toChatMessage(message, { includeGarmentFollowUps: withGarmentFollowUps, profile })]);
+      setMessages((prev) => [...prev, toChatMessage(message, {
+        includeGarmentFollowUps: withGarmentFollowUps,
+        profile,
+        wardrobeItems: wardrobeItemsRef.current,
+      })]);
       setIsTyping(false);
       if (mediaIds.length) {
         setServiceNotice(null);
@@ -628,7 +669,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   };
 
   const handleShopNow = (outfit: StylistOutfitRecommendation) => {
-    const context = shopContextFromOutfit(outfit, profile);
+    const context = shopContextFromOutfit(outfit, profile, wardrobeItemsRef.current);
     if (onShopForGarment) {
       onShopForGarment(context);
       return;
@@ -674,7 +715,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     void connection.open(id).then((opened) => {
       setConversationId(opened.id);
       const mapped = opened.messages.length
-        ? opened.messages.map((message) => toChatMessage(message, { profile }))
+        ? opened.messages.map((message) => toChatMessage(message, {
+          profile,
+          wardrobeItems: wardrobeItemsRef.current,
+        }))
         : getInitialConversation(profile, undefined);
       setMessages(mapped);
       rememberGarmentFromMessages(mapped);
@@ -696,7 +740,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         const next = await connection.restore();
         setConversationId(next.id);
         const mapped = next.messages.length
-          ? next.messages.map((message) => toChatMessage(message, { profile }))
+          ? next.messages.map((message) => toChatMessage(message, {
+            profile,
+            wardrobeItems: wardrobeItemsRef.current,
+          }))
           : getInitialConversation(profile, undefined);
         setMessages(mapped);
         rememberGarmentFromMessages(mapped);

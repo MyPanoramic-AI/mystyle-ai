@@ -12,6 +12,11 @@ export interface OutfitPieceItem {
   inStock?: boolean;
   /** Matched demonstration catalogue product for Shop now. */
   productId?: string;
+  /** True when this piece is already in the customer's wardrobe. */
+  owned?: boolean;
+  wardrobeItemId?: string;
+  /** Prefer wardrobe/product image over the card hero when set. */
+  imageUrl?: string;
 }
 
 export interface StylistOutfitRecommendation {
@@ -27,6 +32,8 @@ export interface StylistOutfitRecommendation {
   matchScore?: number;
   totalEstimatedZar: number;
   conceptOnly?: boolean;
+  /** Count of pieces resolved as owned wardrobe items. */
+  ownedPieceCount?: number;
 }
 
 export interface StylistBeautyTip {

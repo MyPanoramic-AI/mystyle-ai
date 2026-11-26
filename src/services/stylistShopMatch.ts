@@ -1,13 +1,20 @@
 /**
  * Match stylist outfit concepts to demonstration catalogue listings,
  * preferring the customer's favourite retailers when set.
+ * Owned wardrobe pieces keep their names/images and are never sold as shop demos.
  */
 
 import type { UserProfile } from '../types';
 import type { OutfitPieceItem, StylistOutfitRecommendation } from '../types/stylist';
 import type { Product } from '../types/shop';
+import type { WardrobeItem } from '../types/wardrobe';
 import { SHOP_PRODUCTS, rankProductsForProfile } from '../data/shopData';
 import type { ShopPreloadedContext } from '../components/pages/ShopPlaceholder';
+
+const STOP = new Set([
+  'the', 'and', 'with', 'from', 'your', 'wardrobe', 'already', 'owned', 'own',
+  'piece', 'item', 'look', 'option', 'soft', 'fine', 'gauge',
+]);
 
 function categoryToShop(category: OutfitPieceItem['category']): string[] {
   if (category === 'dress') return ['Dresses'];
@@ -19,25 +26,55 @@ function categoryToShop(category: OutfitPieceItem['category']): string[] {
   return [];
 }
 
+function wardrobeCategoryToPiece(category: WardrobeItem['category']): OutfitPieceItem['category'] {
+  if (category === 'dresses') return 'dress';
+  if (category === 'bags') return 'accessories';
+  if (category === 'tops' || category === 'bottoms' || category === 'outerwear' || category === 'shoes' || category === 'accessories') {
+    return category;
+  }
+  return 'tops';
+}
+
 function tokens(value: string): string[] {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter((part) => part.length > 2);
+    .filter((part) => part.length > 2 && !STOP.has(part));
 }
 
-function scoreProductForPiece(product: Product, piece: OutfitPieceItem, preferredRetailers: string[]): number {
+function tokenOverlapScore(left: string, right: string): number {
+  const a = tokens(left);
+  const b = new Set(tokens(right));
+  let score = 0;
+  for (const token of a) {
+    if (b.has(token)) score += 3;
+  }
+  return score;
+}
+
+export function isWardrobeLabeledPiece(piece: { name: string; notes?: string | null; owned?: boolean }): boolean {
+  if (piece.owned === true) return true;
+  const blob = `${piece.name} ${piece.notes ?? ''}`.toLowerCase();
+  return /\bfrom (your )?wardrobe\b|\balready own(?:ed)?\b|\bin (?:your )?wardrobe\b|\bowned piece\b/.test(blob);
+}
+
+export function displayPieceName(name: string): string {
+  return name
+    .replace(/\s*\((?:from (?:your )?wardrobe|already owned|owned)\)\s*/gi, ' ')
+    .replace(/\s*[-–—]\s*(?:from (?:your )?wardrobe|already owned)\s*/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function scoreProductForPiece(product: Product, piece: OutfitPieceItem, preferredRetailers: string[]): { score: number; nameHits: number } {
   let score = 0;
   const shopCats = categoryToShop(piece.category);
-  if (shopCats.includes(product.category)) score += 8;
-  const pieceTokens = tokens(piece.name);
-  const haystack = `${product.name} ${product.shortDescription} ${product.colour}`.toLowerCase();
-  for (const token of pieceTokens) {
-    if (haystack.includes(token)) score += 3;
-  }
-  if (piece.category === 'shoes' && /heel|loafer|sandal|sneaker|flat|boot/.test(piece.name.toLowerCase())) {
-    if (haystack.includes('heel') || haystack.includes('loafer') || haystack.includes('sandal') || haystack.includes('sneaker')) {
+  if (shopCats.includes(product.category)) score += 4;
+  const nameHits = tokenOverlapScore(piece.name, `${product.name} ${product.shortDescription} ${product.colour}`);
+  score += nameHits;
+  if (piece.category === 'shoes' && /heel|loafer|sandal|sneaker|flat|boot|slipper|pump/.test(piece.name.toLowerCase())) {
+    if (/heel|loafer|sandal|sneaker|flat|boot|slipper|pump/.test(`${product.name} ${product.shortDescription}`.toLowerCase())) {
       score += 2;
     }
   }
@@ -47,36 +84,102 @@ function scoreProductForPiece(product: Product, piece: OutfitPieceItem, preferre
       const right = product.retailer.toLowerCase();
       return left.includes(right) || right.includes(left);
     });
-    if (preferred) score += 10;
+    if (preferred) score += 6;
     else score -= 2;
   }
-  return score;
+  return { score, nameHits };
 }
 
 export function matchShopProductForPiece(
   piece: OutfitPieceItem,
   profile?: UserProfile | null,
 ): Product | null {
+  if (piece.owned || isWardrobeLabeledPiece(piece)) return null;
   const preferred = profile?.shopping?.favoriteRetailers ?? [];
   let best: Product | null = null;
   let bestScore = 0;
+  let bestNameHits = 0;
   for (const product of SHOP_PRODUCTS) {
-    const score = scoreProductForPiece(product, piece, preferred);
+    const { score, nameHits } = scoreProductForPiece(product, piece, preferred);
     if (score > bestScore) {
       best = product;
       bestScore = score;
+      bestNameHits = nameHits;
     }
   }
-  return bestScore >= 8 ? best : null;
+  // Require real name overlap — category alone must never rename a wardrobe gown into an unrelated midi dress.
+  if (bestNameHits < 3 || bestScore < 10) return null;
+  return best;
+}
+
+export function matchWardrobeItemForPiece(
+  piece: { name: string; category: OutfitPieceItem['category']; notes?: string | null; owned?: boolean },
+  wardrobeItems: WardrobeItem[] | null | undefined,
+): WardrobeItem | null {
+  if (!wardrobeItems?.length) return null;
+  const labeled = isWardrobeLabeledPiece(piece);
+  const cleanName = displayPieceName(piece.name);
+  let best: WardrobeItem | null = null;
+  let bestScore = 0;
+  for (const item of wardrobeItems) {
+    let score = tokenOverlapScore(cleanName, `${item.name} ${item.color} ${item.subcategory}`);
+    if (wardrobeCategoryToPiece(item.category) === piece.category) score += 2;
+    if (labeled) score += 1;
+    if (score > bestScore) {
+      best = item;
+      bestScore = score;
+    }
+  }
+  if (!best) return null;
+  if (labeled && bestScore >= 3) return best;
+  if (bestScore >= 6) return best;
+  return null;
+}
+
+function heroImageFor(
+  pieces: OutfitPieceItem[],
+  fallback: string,
+): string {
+  const ownedHero = pieces.find((piece) => piece.owned && piece.imageUrl)
+    || pieces.find((piece) => piece.owned && piece.imageUrl && (piece.category === 'dress' || piece.category === 'tops' || piece.category === 'outerwear'));
+  if (ownedHero?.imageUrl) return ownedHero.imageUrl;
+  const shopHero = pieces.find((piece) => piece.productId && piece.imageUrl);
+  if (shopHero?.imageUrl && !pieces.some((piece) => piece.owned)) return shopHero.imageUrl;
+  return fallback;
 }
 
 export function enrichOutfitWithShopMatches(
   outfit: StylistOutfitRecommendation,
   profile?: UserProfile | null,
+  wardrobeItems?: WardrobeItem[] | null,
 ): StylistOutfitRecommendation {
   const pieces = outfit.pieces.map((piece) => {
+    const wardrobeHit = matchWardrobeItemForPiece(piece, wardrobeItems);
+    if (wardrobeHit || isWardrobeLabeledPiece(piece)) {
+      return {
+        ...piece,
+        name: displayPieceName(wardrobeHit?.name || piece.name),
+        retailer: wardrobeHit?.brand?.trim() || 'Your wardrobe',
+        priceZar: 0,
+        inStock: undefined,
+        productId: undefined,
+        owned: true,
+        wardrobeItemId: wardrobeHit?.id,
+        imageUrl: wardrobeHit?.imageUrl || piece.imageUrl,
+      } satisfies OutfitPieceItem;
+    }
+
     const match = matchShopProductForPiece(piece, profile);
-    if (!match) return piece;
+    if (!match) {
+      return {
+        ...piece,
+        name: displayPieceName(piece.name),
+        retailer: piece.retailer || 'Style suggestion',
+        priceZar: 0,
+        productId: undefined,
+        owned: false,
+      } satisfies OutfitPieceItem;
+    }
     return {
       ...piece,
       name: match.name,
@@ -84,34 +187,40 @@ export function enrichOutfitWithShopMatches(
       priceZar: match.demoPriceZar,
       inStock: match.offers?.some((offer) => offer.inStock) ?? true,
       productId: match.id,
-    };
+      owned: false,
+      imageUrl: match.imageUrl,
+    } satisfies OutfitPieceItem;
   });
-  const matched = pieces.filter((piece) => Boolean((piece as OutfitPieceItem & { productId?: string }).productId));
-  const totalEstimatedZar = pieces.reduce((sum, piece) => sum + (piece.priceZar || 0), 0);
+
+  const shopPieces = pieces.filter((piece) => Boolean(piece.productId) && !piece.owned);
+  const ownedCount = pieces.filter((piece) => piece.owned).length;
+  const totalEstimatedZar = shopPieces.reduce((sum, piece) => sum + (piece.priceZar || 0), 0);
+  const conceptOnly = shopPieces.length === 0;
+
   return {
     ...outfit,
     pieces,
     totalEstimatedZar,
-    conceptOnly: matched.length === 0,
-    imageUrl: matched[0]
-      ? (SHOP_PRODUCTS.find((product) => product.id === (matched[0] as OutfitPieceItem & { productId?: string }).productId)?.imageUrl || outfit.imageUrl)
-      : outfit.imageUrl,
+    conceptOnly,
+    ownedPieceCount: ownedCount,
+    imageUrl: heroImageFor(pieces, outfit.imageUrl),
   };
 }
 
 export function shopContextFromOutfit(
   outfit: StylistOutfitRecommendation,
   profile?: UserProfile | null,
+  wardrobeItems?: WardrobeItem[] | null,
 ): ShopPreloadedContext {
-  const enriched = enrichOutfitWithShopMatches(outfit, profile);
-  const focus = enriched.pieces.find((piece) => (piece as OutfitPieceItem & { productId?: string }).productId) as
-    | (OutfitPieceItem & { productId?: string })
-    | undefined;
+  const enriched = enrichOutfitWithShopMatches(outfit, profile, wardrobeItems);
+  const focus = enriched.pieces.find((piece) => piece.productId && !piece.owned);
   const preferred = profile?.shopping?.favoriteRetailers?.filter(Boolean) ?? [];
+  const gapPieces = enriched.pieces.filter((piece) => !piece.owned);
   return {
     outfitTitle: enriched.title,
     category: enriched.occasion || enriched.pieces[0]?.category || 'tops',
-    pieces: enriched.pieces.map((piece) => {
+    pieces: (gapPieces.length ? gapPieces : enriched.pieces).map((piece) => {
+      if (piece.owned) return `${piece.name} · In your wardrobe`;
       const label = piece.retailer && piece.retailer !== 'Style suggestion'
         ? `${piece.name} · ${piece.retailer}`
         : piece.name;
@@ -128,15 +237,14 @@ export function suggestedShopProductsForLook(
   profile?: UserProfile | null,
   limit = 6,
 ): Product[] {
-  const query = [outfit.title, outfit.occasion, ...outfit.pieces.map((piece) => piece.name)].join(' ');
+  const gapNames = outfit.pieces.filter((piece) => !piece.owned).map((piece) => piece.name);
+  const query = [outfit.title, outfit.occasion, ...(gapNames.length ? gapNames : outfit.pieces.map((piece) => piece.name))].join(' ');
   const ranked = rankProductsForProfile(SHOP_PRODUCTS, profile ?? undefined, Math.max(limit * 3, 12));
   const preferred = profile?.shopping?.favoriteRetailers ?? [];
   const scored = ranked.map((product) => {
     let score = 0;
-    const haystack = `${product.name} ${product.category} ${product.styleCategory}`.toLowerCase();
-    for (const token of tokens(query)) {
-      if (haystack.includes(token)) score += 2;
-    }
+    const haystack = `${product.name} ${product.category} ${product.styleCategory}`;
+    score += tokenOverlapScore(query, haystack);
     if (preferred.some((retailer) => {
       const left = retailer.toLowerCase();
       const right = product.retailer.toLowerCase();

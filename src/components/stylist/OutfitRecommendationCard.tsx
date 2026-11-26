@@ -76,7 +76,15 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
               {outfit.occasion}
             </span>
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#1B382B]/80 backdrop-blur-md text-[#E5CDBE] border border-[#E5CDBE]/30">
-              <Sparkles className="w-3 h-3 text-[#B49361]" /> {outfit.conceptOnly ? 'Style suggestion' : 'Demonstration suggestion'}
+              <Sparkles className="w-3 h-3 text-[#B49361]" /> {
+                (outfit.ownedPieceCount ?? 0) > 0 && outfit.conceptOnly
+                  ? 'From your wardrobe'
+                  : (outfit.ownedPieceCount ?? 0) > 0
+                    ? 'Wardrobe + shop gaps'
+                    : outfit.conceptOnly
+                      ? 'Style suggestion'
+                      : 'Demonstration suggestion'
+              }
             </span>
           </div>
 
@@ -123,7 +131,13 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
           <div className="flex items-center justify-between text-xs font-semibold text-[#242326]">
             <span>Included Garments ({outfit.pieces.length} items)</span>
             <span className="text-[#9C6A61]">
-              {outfit.conceptOnly ? 'Not a shop listing' : `Demo est. R${outfit.totalEstimatedZar.toLocaleString()}`}
+              {(outfit.ownedPieceCount ?? 0) > 0 && outfit.conceptOnly
+                ? 'Already owned'
+                : outfit.conceptOnly
+                  ? 'Not a shop listing'
+                  : (outfit.ownedPieceCount ?? 0) > 0
+                    ? `Gap pieces est. R${outfit.totalEstimatedZar.toLocaleString()}`
+                    : `Demo est. R${outfit.totalEstimatedZar.toLocaleString()}`}
             </span>
           </div>
 
@@ -138,19 +152,21 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
                     {piece.name}
                   </p>
                   <p className="text-[11px] text-[#5C585E] mt-0.5">
-                    {outfit.conceptOnly ? (
-                      <span>Outfit concept</span>
-                    ) : (
+                    {piece.owned ? (
+                      <span className="font-semibold text-emerald-800">In your wardrobe · no need to buy</span>
+                    ) : piece.productId ? (
                       <>
                         <span className="font-semibold text-[#9C6A61]">{piece.retailer}</span>
                         <span className="mx-1">·</span>
                         <span className="text-emerald-700">Demonstration</span>
                       </>
+                    ) : (
+                      <span>Outfit concept</span>
                     )}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {outfit.conceptOnly ? null : (
+                  {piece.owned || !piece.productId ? null : (
                     <span className="font-bold text-[#242326]">
                       Demo R{piece.priceZar.toLocaleString()}
                     </span>
@@ -160,11 +176,11 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
                     label={`Share ${piece.name} to a friend`}
                     payload={listingSharePayload({
                       name: piece.name,
-                      retailer: piece.retailer,
-                      priceZar: piece.priceZar,
+                      retailer: piece.owned ? 'Your wardrobe' : piece.retailer,
+                      priceZar: piece.owned ? 0 : piece.priceZar,
                       category: piece.category,
                       productId: piece.productId,
-                      imageUrl: outfit.imageUrl,
+                      imageUrl: piece.imageUrl || outfit.imageUrl,
                     })}
                     onToast={showToast}
                   />
@@ -203,15 +219,22 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => (onShopNow ? onShopNow(outfit) : onNavigateToShop())}
-            className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#242326] hover:bg-black text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-            data-testid="stylist-shop-now"
-          >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Shop now</span>
-          </button>
+          {(outfit.ownedPieceCount ?? 0) > 0 && outfit.conceptOnly ? (
+            <span className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Owned — nothing to buy</span>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => (onShopNow ? onShopNow(outfit) : onNavigateToShop())}
+              className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#242326] hover:bg-black text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              data-testid="stylist-shop-now"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>{(outfit.ownedPieceCount ?? 0) > 0 ? 'Shop gap pieces' : 'Shop now'}</span>
+            </button>
+          )}
 
           <ShareToFriendButton
             payload={outfitSharePayload(outfit)}

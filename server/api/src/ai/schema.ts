@@ -7,6 +7,8 @@ export interface OutfitComponent {
   category: GarmentCategory;
   colour: string | null;
   notes: string | null;
+  /** True when this piece is already in the customer's wardrobe (not a shop suggestion). */
+  owned: boolean;
 }
 
 export interface OutfitOption {
@@ -66,11 +68,15 @@ function parseComponents(value: unknown, maxItems = 6): OutfitComponent[] {
     const name = text(piece.name, 80);
     const category = piece.category;
     if (!name || typeof category !== 'string' || !CATEGORIES.has(category as GarmentCategory)) continue;
+    const notes = text(piece.notes, 160);
+    const owned = piece.owned === true
+      || /\bfrom (your )?wardrobe\b|\balready own(?:ed)?\b|\bin (?:your )?wardrobe\b/i.test(`${name} ${notes ?? ''}`);
     outfitComponents.push({
       name,
       category: category as GarmentCategory,
       colour: text(piece.colour, 40),
-      notes: text(piece.notes, 160),
+      notes,
+      owned,
     });
   }
   return outfitComponents;
