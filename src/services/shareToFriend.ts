@@ -1,6 +1,9 @@
 /**
  * Share stylist outfits, look images, and shop listings with a friend.
- * Prefers the Web Share API (with image file when possible), then clipboard.
+ * Prefers the Web Share API, then clipboard, then a manual-copy fallback.
+ *
+ * Important: do not await network work before navigator.share / clipboard.writeText —
+ * that burns the user-gesture token and makes both APIs fail on desktop browsers.
  */
 
 export type ShareToFriendKind = 'outfit' | 'image' | 'listing';
@@ -15,7 +18,7 @@ export interface ShareToFriendPayload {
 
 export type ShareToFriendResult =
   | { ok: true; method: 'share' | 'clipboard' }
-  | { ok: false; message: string };
+  | { ok: false; message: string; copyText?: string };
 
 function appUrl(): string {
   try {
@@ -36,36 +39,53 @@ function absoluteUrl(value: string | null | undefined): string | null {
   }
 }
 
-async function imageFileForShare(imageUrl: string | null | undefined, filename: string): Promise<File | null> {
-  const url = absoluteUrl(imageUrl);
-  if (!url || url.startsWith('blob:') || url.startsWith('data:')) return null;
+function buildShareBody(payload: ShareToFriendPayload): { title: string; body: string; link: string; copyText: string } {
+  const link = absoluteUrl(payload.url) || appUrl();
+  const title = payload.title.trim() || 'IStyleU pick';
+  const body = [payload.text.trim(), `Shared from IStyleU · ${link}`].filter(Boolean).join('\n\n');
+  return { title, body, link, copyText: `${title}\n\n${body}` };
+}
+
+async function copyTextFallback(text: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to execCommand.
+    }
+  }
+
   try {
-    const response = await fetch(url, { mode: 'cors' });
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob.type.startsWith('image/')) return null;
-    const extension = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
-    return new File([blob], `${filename}.${extension}`, { type: blob.type || 'image/jpeg' });
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.left = '-9999px';
+    area.style.top = '0';
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(area);
+    return ok;
   } catch {
-    return null;
+    return false;
   }
 }
 
 export async function shareToFriend(payload: ShareToFriendPayload): Promise<ShareToFriendResult> {
-  const link = absoluteUrl(payload.url) || appUrl();
-  const title = payload.title.trim() || 'IStyleU pick';
-  const body = [payload.text.trim(), `Shared from IStyleU · ${link}`].filter(Boolean).join('\n\n');
+  const { title, body, link, copyText } = buildShareBody(payload);
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
+  // Share text/url immediately — never await image fetch first (kills user activation).
   if (canShare) {
-    const file = await imageFileForShare(payload.imageUrl, title.replace(/[^\w.-]+/g, '-').slice(0, 40) || 'istyleu');
+    const shareData: ShareData = { title, text: body, url: link };
     try {
-      if (file && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title, text: body, url: link, files: [file] });
+      if (!navigator.canShare || navigator.canShare(shareData)) {
+        await navigator.share(shareData);
         return { ok: true, method: 'share' };
       }
-      await navigator.share({ title, text: body, url: link });
-      return { ok: true, method: 'share' };
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return { ok: false, message: 'Share cancelled.' };
@@ -74,16 +94,15 @@ export async function shareToFriend(payload: ShareToFriendPayload): Promise<Shar
     }
   }
 
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(`${title}\n\n${body}`);
-      return { ok: true, method: 'clipboard' };
-    } catch {
-      return { ok: false, message: 'Sharing is not available in this browser.' };
-    }
+  if (await copyTextFallback(copyText)) {
+    return { ok: true, method: 'clipboard' };
   }
 
-  return { ok: false, message: 'Sharing is not available in this browser.' };
+  return {
+    ok: false,
+    message: 'Could not open share or copy automatically. Copy the text below and send it to a friend.',
+    copyText,
+  };
 }
 
 export function outfitSharePayload(outfit: {
