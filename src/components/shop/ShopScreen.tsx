@@ -101,11 +101,9 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
       setActiveTab('browse');
       const ownedOnlyLabels = preloadedContext.pieces.length > 0
         && preloadedContext.pieces.every((piece) => /in your wardrobe/i.test(piece));
-      const seed = (preloadedContext.searchQuery || '').trim()
-        || (!ownedOnlyLabels && preloadedContext.pieces[0]
-          ? preloadedContext.pieces[0].replace(/\s·\s.*$/, '').trim()
-          : '');
-      // Never seed a wardrobe-owned label into search — that empties the catalogue.
+      const seed = (preloadedContext.searchQuery || '').trim();
+      // Prefer explicit searchQuery only. Never seed garment/wardrobe labels into search —
+      // phrases like "shoes for your dress" match zero catalogue rows.
       setSearchQuery(/in your wardrobe/i.test(seed) ? '' : seed);
       // Only apply a real shop category (not occasion strings like "Work / office tomorrow").
       if (preloadedContext.category) {
@@ -123,25 +121,19 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
           || preloadedContext.category.toLowerCase().includes(c.toLowerCase())
         );
         if (catMatch && !ownedOnlyLabels) {
-          setFilters((prev) => ({ ...prev, category: catMatch as ProductCategory }));
+          setFilters((prev) => ({ ...prev, category: catMatch as ProductCategory, retailers: [] }));
         } else {
-          setFilters((prev) => ({ ...prev, category: 'All' }));
+          setFilters((prev) => ({ ...prev, category: 'All', retailers: [] }));
         }
+      } else {
+        setFilters((prev) => ({ ...prev, retailers: [] }));
       }
       if (preloadedContext.focusProductId) {
         const focused = SHOP_PRODUCTS.find((product) => product.id === preloadedContext.focusProductId);
         if (focused) setSelectedProduct(focused);
       }
-      if (preloadedContext.preferredRetailers?.length) {
-        const matchedRetailers = SA_RETAILERS.filter((name) => preloadedContext.preferredRetailers!.some((preferred) => {
-          const left = preferred.toLowerCase();
-          const right = name.toLowerCase();
-          return left.includes(right) || right.includes(left);
-        })) as SouthAfricanRetailer[];
-        if (matchedRetailers.length) {
-          setFilters((prev) => ({ ...prev, retailers: matchedRetailers }));
-        }
-      }
+      // Favourite retailers stay a soft ranking signal via profile — hard-filtering them
+      // often empties Shoes / Bags when those retailers have no demo listings.
     }
   }, [preloadedContext]);
 
@@ -176,6 +168,14 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
       searchQuery
     );
   }, [filters, sortOption, profile, searchQuery]);
+
+  // Stylist/wardrobe handoffs sometimes seed an unmatchable phrase — drop search so the category grid shows.
+  useEffect(() => {
+    if (!preloadedContext) return;
+    if (searchQuery && displayedProducts.length === 0) {
+      setSearchQuery('');
+    }
+  }, [preloadedContext, searchQuery, displayedProducts.length]);
 
   const handleResetFilters = () => {
     setFilters(DEFAULT_FILTERS);

@@ -216,10 +216,28 @@ const SHOP_CATEGORY_BY_PIECE: Record<OutfitPieceItem['category'], string> = {
   accessories: 'Jewellery & Accessories',
 };
 
+const FOOTWEAR_TYPE_TOKENS = [
+  'pump', 'pumps', 'heel', 'heels', 'loafer', 'loafers', 'sandal', 'sandals',
+  'sneaker', 'sneakers', 'flat', 'flats', 'boot', 'boots', 'slipper', 'slippers',
+  'mule', 'mules', 'trainer', 'trainers', 'stiletto', 'ballet',
+];
+
 /** Build a short catalogue search from shoppable gap pieces — never wardrobe-owned labels. */
 export function shopSearchQueryFromOutfit(outfit: StylistOutfitRecommendation): string {
   const gapPieces = outfit.pieces.filter((piece) => !piece.owned);
   const sources = gapPieces.length ? gapPieces : [];
+  // Shoes-only gaps: browse the Shoes category — specific colour/fabric names rarely exist in demo stock.
+  if (sources.length > 0 && sources.every((piece) => piece.category === 'shoes')) {
+    const footwearTypes: string[] = [];
+    for (const piece of sources) {
+      for (const token of tokens(displayPieceName(piece.name))) {
+        if (FOOTWEAR_TYPE_TOKENS.includes(token) && !footwearTypes.includes(token) && footwearTypes.length < 3) {
+          footwearTypes.push(token);
+        }
+      }
+    }
+    return footwearTypes.join(' ');
+  }
   const keywords: string[] = [];
   for (const piece of sources) {
     const clean = displayPieceName(piece.name)
@@ -259,6 +277,7 @@ export function shopContextFromOutfit(
     }),
     searchQuery: shopSearchQueryFromOutfit(enriched),
     focusProductId: focus?.productId,
+    // Prefer retailers in ranking only — hard-filtering them empties the shoe/accessory grids.
     preferredRetailers: preferred.length ? preferred : undefined,
   };
 }

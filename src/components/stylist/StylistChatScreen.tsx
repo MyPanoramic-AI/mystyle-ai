@@ -653,7 +653,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       onShopForGarment({
         outfitTitle: definition.shop.title.replace('your garment', label),
         category: definition.shop.category,
-        pieces: [shopSearchForFollowUp(followUpId, label)],
+        pieces: [`Complete ${label}`],
+        searchQuery: shopSearchForFollowUp(followUpId, label) || definition.shop.search || '',
         completeWith: garmentContext?.url
           ? {
               name: garmentContext.name || label,

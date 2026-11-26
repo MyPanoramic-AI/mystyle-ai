@@ -32,7 +32,8 @@ export const GARMENT_FOLLOW_UPS: GarmentFollowUpDefinition[] = [
     prompt: 'Suggest shoes that complete this garment perfectly, and why they work with the colour and silhouette.',
     shop: {
       category: 'Shoes',
-      search: 'shoes to wear with this look',
+      // Category-led browse — never put the garment name in search (that empties the grid).
+      search: '',
       title: 'Shoes for your garment',
     },
   },
@@ -48,7 +49,7 @@ export const GARMENT_FOLLOW_UPS: GarmentFollowUpDefinition[] = [
     prompt: 'Suggest jewellery and small accessories that finish this garment without competing with it.',
     shop: {
       category: 'Jewellery & Accessories',
-      search: 'accessories jewellery for this look',
+      search: '',
       title: 'Accessories for your garment',
     },
   },
@@ -58,7 +59,7 @@ export const GARMENT_FOLLOW_UPS: GarmentFollowUpDefinition[] = [
     prompt: 'Suggest a bag that balances this garment — size, structure, and colour.',
     shop: {
       category: 'Bags',
-      search: 'handbag clutch for this look',
+      search: '',
       title: 'Bags for your garment',
     },
   },
@@ -86,15 +87,9 @@ export function inferGarmentLabel(name?: string | null): string {
   return 'your garment';
 }
 
-export function shopSearchForFollowUp(followUpId: GarmentFollowUpId, garmentLabel: string): string {
-  switch (followUpId) {
-    case 'shoes':
-      return `shoes for ${garmentLabel}`;
-    case 'accessories':
-      return `jewellery accessories for ${garmentLabel}`;
-    case 'bag':
-      return `bag for ${garmentLabel}`;
-    default:
-      return garmentLabel;
-  }
+/** Catalogue search seed for follow-ups — keep empty so category browse shows buyable products. */
+export function shopSearchForFollowUp(followUpId: GarmentFollowUpId, _garmentLabel: string): string {
+  void followUpId;
+  void _garmentLabel;
+  return '';
 }

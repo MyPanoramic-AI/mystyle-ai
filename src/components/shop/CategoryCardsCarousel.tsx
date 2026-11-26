@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { ProductCategory } from '../../types/shop';
-import { SHOP_CATEGORIES } from '../../data/shopData';
+import { SHOP_CATEGORIES, SHOP_PRODUCTS } from '../../data/shopData';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 import { Sparkles } from 'lucide-react';
 
@@ -55,7 +55,7 @@ export const CategoryCardsCarousel: React.FC<CategoryCardsCarouselProps> = ({
             All Styles
           </div>
           <div className="text-[10px] opacity-75 mt-0.5">
-            32 pieces
+            {SHOP_PRODUCTS.length} pieces
           </div>
         </button>
 
