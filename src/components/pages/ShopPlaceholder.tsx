@@ -18,8 +18,10 @@ export interface ShopPreloadedContext {
   focusProductId?: string;
   /** Prefer listings from these saved favourite retailers when set. */
   preferredRetailers?: string[];
+  /** Stylist-generated look visualization for this outfit (shown in Shop the Look). */
+  lookImageUrl?: string;
   /**
-   * Uploaded garment from the stylist chat to complete.
+   * Uploaded garment or generated look to complete / try pieces with.
    * Trying on a shop item layers that item onto this photograph.
    */
   completeWith?: {

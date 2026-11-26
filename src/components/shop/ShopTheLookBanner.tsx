@@ -34,8 +34,8 @@ export const ShopTheLookBanner: React.FC<ShopTheLookBannerProps> = ({ context, o
               Shopping for: {context.outfitTitle}
             </h3>
             <p className="text-xs text-[#5C585E] mt-0.5">
-              {context.completeWith?.imageUrl
-                ? 'Pick a demonstration catalogue piece below, then try it on with your uploaded garment photo.'
+              {context.lookImageUrl || context.completeWith?.imageUrl
+                ? 'Your generated look is attached below. Browse matching catalogue pieces to finish or buy the gaps.'
                 : 'Browse demonstration catalogue pieces inspired by this look. Prices and stock are not live retailer data.'}
             </p>
           </div>
@@ -50,21 +50,26 @@ export const ShopTheLookBanner: React.FC<ShopTheLookBannerProps> = ({ context, o
         </button>
       </div>
 
-      {context.completeWith?.imageUrl && (
+      {(context.lookImageUrl || context.completeWith?.imageUrl) && (
         <div className="mt-3 flex items-center gap-3 rounded-xl bg-white/80 border border-[#242326]/8 p-2.5">
-          <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#242326]/10 shrink-0 bg-white">
+          <div className="w-14 h-16 sm:w-16 sm:h-[4.5rem] rounded-lg overflow-hidden border border-[#242326]/10 shrink-0 bg-white">
             <img
-              src={context.completeWith.imageUrl}
-              alt={context.completeWith.name}
-              className="w-full h-full object-cover"
+              src={context.lookImageUrl || context.completeWith!.imageUrl}
+              alt={context.completeWith?.name || context.outfitTitle}
+              className="w-full h-full object-cover object-center"
             />
           </div>
           <div className="min-w-0">
             <span className="text-[10px] uppercase font-bold tracking-wider text-[#9C6A61]">
-              Fit with
+              {context.lookImageUrl ? 'Generated look' : 'Fit with'}
             </span>
             <p className="text-xs font-medium text-[#242326] truncate">
-              {context.completeWith.name}
+              {context.completeWith?.name || context.outfitTitle}
+            </p>
+            <p className="text-[11px] text-[#5C585E] mt-0.5">
+              {context.pieces?.length
+                ? `${context.pieces.length} outfit piece${context.pieces.length === 1 ? '' : 's'} included`
+                : 'Shop matching pieces for this look'}
             </p>
           </div>
         </div>
@@ -72,11 +77,11 @@ export const ShopTheLookBanner: React.FC<ShopTheLookBannerProps> = ({ context, o
 
       {context.pieces && context.pieces.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-[#242326]/8">
-          <span className="text-[11px] text-[#5C585E] font-medium mr-1">Look Pieces:</span>
+          <span className="text-[11px] text-[#5C585E] font-medium mr-1 shrink-0">Look Pieces:</span>
           {context.pieces.map((piece, i) => (
             <span
               key={i}
-              className="text-[11px] px-2.5 py-1 rounded-lg bg-white border border-[#242326]/10 text-[#242326] font-medium shadow-2xs"
+              className="text-[11px] px-2.5 py-1 rounded-lg bg-white border border-[#242326]/10 text-[#242326] font-medium shadow-2xs max-w-full truncate"
             >
               {piece}
             </span>

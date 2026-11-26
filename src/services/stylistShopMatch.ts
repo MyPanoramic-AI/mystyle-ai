@@ -256,29 +256,47 @@ export function shopContextFromOutfit(
   outfit: StylistOutfitRecommendation,
   profile?: UserProfile | null,
   wardrobeItems?: WardrobeItem[] | null,
+  opts?: {
+    lookImageUrl?: string | null;
+    /** Force shop category (e.g. Bags / Shoes finishing browse). */
+    categoryOverride?: string;
+    searchQueryOverride?: string;
+  },
 ): ShopPreloadedContext {
   const enriched = enrichOutfitWithShopMatches(outfit, profile, wardrobeItems);
   const focus = enriched.pieces.find((piece) => piece.productId && !piece.owned);
   const preferred = profile?.shopping?.favoriteRetailers?.filter(Boolean) ?? [];
   const gapPieces = enriched.pieces.filter((piece) => !piece.owned);
   const primaryGap = gapPieces[0];
-  const category = primaryGap
-    ? SHOP_CATEGORY_BY_PIECE[primaryGap.category]
-    : (enriched.pieces[0] ? SHOP_CATEGORY_BY_PIECE[enriched.pieces[0].category] : 'All');
+  const category = opts?.categoryOverride
+    || (primaryGap
+      ? SHOP_CATEGORY_BY_PIECE[primaryGap.category]
+      : (enriched.pieces[0] ? SHOP_CATEGORY_BY_PIECE[enriched.pieces[0].category] : 'All'));
+  const lookImageUrl = opts?.lookImageUrl?.trim() || undefined;
+  // Always list the full outfit so Shop the Look shows what was just styled/generated.
+  const pieceLabels = enriched.pieces.map((piece) => {
+    if (piece.owned) return `${piece.name} · In your wardrobe`;
+    const label = piece.retailer && piece.retailer !== 'Style suggestion'
+      ? `${piece.name} · ${piece.retailer}`
+      : piece.name;
+    return label;
+  });
   return {
     outfitTitle: enriched.title,
     category,
-    pieces: (gapPieces.length ? gapPieces : enriched.pieces).map((piece) => {
-      if (piece.owned) return `${piece.name} · In your wardrobe`;
-      const label = piece.retailer && piece.retailer !== 'Style suggestion'
-        ? `${piece.name} · ${piece.retailer}`
-        : piece.name;
-      return label;
-    }),
-    searchQuery: shopSearchQueryFromOutfit(enriched),
+    pieces: pieceLabels,
+    searchQuery: opts?.searchQueryOverride ?? shopSearchQueryFromOutfit(enriched),
     focusProductId: focus?.productId,
     // Prefer retailers in ranking only — hard-filtering them empties the shoe/accessory grids.
     preferredRetailers: preferred.length ? preferred : undefined,
+    lookImageUrl,
+    completeWith: lookImageUrl
+      ? {
+          name: enriched.title,
+          imageUrl: lookImageUrl,
+          category: primaryGap?.category || enriched.pieces[0]?.category || 'dress',
+        }
+      : undefined,
   };
 }
 

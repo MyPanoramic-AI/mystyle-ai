@@ -146,6 +146,9 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [voiceLookError, setVoiceLookError] = useState<string | null>(null);
   const [voiceOutfitCards, setVoiceOutfitCards] = useState<StylistOutfitRecommendation[]>([]);
   const [cardLookBusy, setCardLookBusy] = useState(false);
+  /** Latest outfit + generated look so Shop the Look can attach them automatically. */
+  const [activeShopOutfit, setActiveShopOutfit] = useState<StylistOutfitRecommendation | null>(null);
+  const [activeLookImageUrl, setActiveLookImageUrl] = useState<string | null>(null);
   const [lens, setLens] = useState<StylistFilterLens>({
     occasion: state.occasionTitle || 'Everyday Versatile',
     formality: 'Smart-Casual',
@@ -215,6 +218,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         title: result.title,
         promptUsed: result.promptUsed,
       });
+      setActiveLookImageUrl(result.imageUrl);
       setMessages((prev) => [
         ...prev,
         {
@@ -243,6 +247,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   }, [connection]);
 
   const handleGenerateLook = useCallback(async (outfit: StylistOutfitRecommendation) => {
+    setActiveShopOutfit(outfit);
     await requestVoiceLookVisual(lookPromptFromOutfit(outfit), { force: true });
   }, [lookPromptFromOutfit, requestVoiceLookVisual]);
 
@@ -318,6 +323,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           });
           if (cards.length) {
             setVoiceOutfitCards(cards);
+            setActiveShopOutfit(cards[0]);
             setMessages((prev) => {
               const already = prev.some((message) => message.id === `voice-cards-${turn.id}`);
               if (already) return prev;
@@ -492,11 +498,15 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     const idempotencyKey = `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     const withGarmentFollowUps = mediaIds.length > 0 || Boolean(garmentContext);
     void connection!.send(id, typed, idempotencyKey, mediaIds).then((message) => {
-      setMessages((prev) => [...prev, toChatMessage(message, {
+      const chatMessage = toChatMessage(message, {
         includeGarmentFollowUps: withGarmentFollowUps,
         profile,
         wardrobeItems: wardrobeItemsRef.current,
-      })]);
+      });
+      const nextOutfit = chatMessage.outfitCards?.[0] || chatMessage.outfitCard || null;
+      if (nextOutfit) setActiveShopOutfit(nextOutfit);
+      if (chatMessage.lookImageUrl) setActiveLookImageUrl(chatMessage.lookImageUrl);
+      setMessages((prev) => [...prev, chatMessage]);
       setIsTyping(false);
       if (mediaIds.length) {
         setServiceNotice(null);
@@ -603,6 +613,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     if (!connection || localDemo) {
       setTimeout(() => {
         const response = generateStylistResponse(typed, profile, attachment);
+        if (response.outfitCard) setActiveShopOutfit(response.outfitCard);
         const stylistMsg: ChatMessage = {
           id: `stylist-${Date.now()}`,
           sender: 'stylist',
@@ -704,19 +715,44 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       return;
     }
     if (definition.shop && onShopForGarment) {
-      onShopForGarment({
-        outfitTitle: definition.shop.title.replace('your garment', label),
-        category: definition.shop.category,
-        pieces: [`Complete ${label}`],
-        searchQuery: shopSearchForFollowUp(followUpId, label) || definition.shop.search || '',
-        completeWith: garmentContext?.url
-          ? {
-              name: garmentContext.name || label,
-              imageUrl: garmentContext.url,
-              category: 'dresses',
-            }
-          : undefined,
-      });
+      // Prefer the outfit/look just generated so Shop the Look includes those pieces.
+      const recentOutfit = activeShopOutfit
+        || [...messagesRef.current].reverse().find((message) => message.outfitCards?.length)?.outfitCards?.[0]
+        || [...messagesRef.current].reverse().find((message) => message.outfitCard)?.outfitCard
+        || null;
+      const lookUrl = activeLookImageUrl
+        || [...messagesRef.current].reverse().find((message) => message.lookImageUrl)?.lookImageUrl
+        || null;
+      if (recentOutfit) {
+        onShopForGarment(shopContextFromOutfit(recentOutfit, profile, wardrobeItemsRef.current, {
+          lookImageUrl: lookUrl,
+          categoryOverride: definition.shop.category,
+          searchQueryOverride: shopSearchForFollowUp(followUpId, label) || definition.shop.search || '',
+        }));
+      } else {
+        onShopForGarment({
+          outfitTitle: definition.shop.title.replace('your garment', label),
+          category: definition.shop.category,
+          pieces: lookUrl || garmentContext?.url
+            ? [garmentContext?.name || label]
+            : [`Complete ${label}`],
+          searchQuery: shopSearchForFollowUp(followUpId, label) || definition.shop.search || '',
+          lookImageUrl: lookUrl || undefined,
+          completeWith: lookUrl
+            ? {
+                name: garmentContext?.name || label,
+                imageUrl: lookUrl,
+                category: 'dresses',
+              }
+            : garmentContext?.url
+              ? {
+                  name: garmentContext.name || label,
+                  imageUrl: garmentContext.url,
+                  category: 'dresses',
+                }
+              : undefined,
+        });
+      }
       handleUserSend(definition.prompt);
       return;
     }
@@ -724,7 +760,13 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   };
 
   const handleShopNow = (outfit: StylistOutfitRecommendation) => {
-    const context = shopContextFromOutfit(outfit, profile, wardrobeItemsRef.current);
+    setActiveShopOutfit(outfit);
+    const lookUrl = activeLookImageUrl
+      || [...messagesRef.current].reverse().find((message) => message.lookImageUrl)?.lookImageUrl
+      || null;
+    const context = shopContextFromOutfit(outfit, profile, wardrobeItemsRef.current, {
+      lookImageUrl: lookUrl,
+    });
     if (onShopForGarment) {
       onShopForGarment(context);
       return;
@@ -814,6 +856,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       setMessages(getInitialConversation(profile, undefined));
       setConversationId(null);
       setGarmentContext(null);
+      setActiveShopOutfit(null);
+      setActiveLookImageUrl(null);
+      setVoiceOutfitCards([]);
+      setVoiceLookVisual(null);
       onClearState();
       setIsResetConfirmOpen(false);
       setLibraryOpen(false);
@@ -825,6 +871,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     void connection.startFresh().then((fresh) => {
       setConversationId(fresh.id);
       setMessages(getInitialConversation(profile, undefined));
+      setActiveShopOutfit(null);
+      setActiveLookImageUrl(null);
+      setVoiceOutfitCards([]);
+      setVoiceLookVisual(null);
       setServiceNotice('Started a new chat. Earlier conversations stay in your library.');
       onClearState();
       setIsResetConfirmOpen(false);
