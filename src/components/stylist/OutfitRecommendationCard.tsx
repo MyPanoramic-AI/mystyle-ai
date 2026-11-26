@@ -22,14 +22,15 @@ interface OutfitRecommendationCardProps {
 }
 
 function garmentFromOutfit(outfit: StylistOutfitRecommendation): PreloadedGarment {
-  const primary = outfit.pieces.find((piece) => piece.category === 'tops' || piece.category === 'dress' || piece.category === 'outerwear')
+  const primary = outfit.pieces.find((piece) => piece.owned && (piece.category === 'dress' || piece.category === 'tops' || piece.category === 'outerwear'))
+    || outfit.pieces.find((piece) => piece.category === 'tops' || piece.category === 'dress' || piece.category === 'outerwear')
     || outfit.pieces[0];
   return {
-    productId: outfit.id,
+    productId: primary?.wardrobeItemId || primary?.productId || outfit.id,
     productName: primary?.name || outfit.title,
-    retailer: primary?.retailer || 'Stylist recommendation',
-    priceZar: primary?.priceZar ?? outfit.totalEstimatedZar,
-    imageUrl: outfit.imageUrl,
+    retailer: primary?.owned ? 'Your wardrobe' : (primary?.retailer || 'Stylist recommendation'),
+    priceZar: primary?.owned ? 0 : (primary?.priceZar ?? outfit.totalEstimatedZar),
+    imageUrl: primary?.imageUrl || outfit.imageUrl,
     category: primary?.category || outfit.occasion || 'tops',
   };
 }
@@ -202,10 +203,10 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#242326]/10">
-          {outfit.conceptOnly || !onSendToTryOn ? (
+          {!onSendToTryOn ? (
             <span className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
               <Camera className="w-3.5 h-3.5" />
-              <span>Fitting Room is not connected</span>
+              <span>Fitting Room unavailable</span>
             </span>
           ) : (
             <button
