@@ -16,7 +16,7 @@ import { readOwnedMedia, saveMedia } from '../media/store.js';
 import { requireExternalPhotoConsentForVision } from '../domain/silhouette.js';
 import { readProfilePhotoSlots } from '../domain/profilePhotos.js';
 import type { ProviderImagePart } from './mockProvider.js';
-import { buildLookVisualPrompt, generateLookImage, isAdditiveLookEdit, shouldAttachLookImage } from './lookImage.js';
+import { buildLookVisualPrompt, composeLookReferences, generateLookImage, isAdditiveLookEdit, shouldAttachLookImage } from './lookImage.js';
 
 export interface StylistRuntime {
   db: Sql;
@@ -246,7 +246,10 @@ function loadProfileReferenceImages(runtime: StylistRuntime, userId: string): Pr
   if (!runtime.mediaDir) return [];
   try {
     const slots = readProfilePhotoSlots(runtime.db, userId);
-    const ids = [slots.portraitMediaId, slots.fullBodyFrontMediaId].filter((id): id is string => Boolean(id)).slice(0, 2);
+    // Full-body first for outfit likeness, then portrait for face lock.
+    const ids = [slots.fullBodyFrontMediaId, slots.portraitMediaId, slots.fullBodyBackMediaId]
+      .filter((id): id is string => Boolean(id))
+      .slice(0, 2);
     const images: ProviderImagePart[] = [];
     for (const id of ids) {
       const ownedMedia = readOwnedMedia(runtime.db, runtime.mediaDir, userId, id);
@@ -336,21 +339,19 @@ async function maybeAttachLookImage(
   }
   if (!runtime.mediaDir || runtime.mediaMaxBytes == null || runtime.retentionMs == null) return reply;
 
-  let references: ProviderImagePart[] = [];
-  let hasPriorLook = false;
-  let outfitContext: string | null = null;
-  if (attachmentImages.length) {
-    references = attachmentImages.slice(0, 2);
-  } else {
-    const priorLook = loadLatestLookReference(runtime, userId, conversationId);
-    if (priorLook) {
-      references = [priorLook.image];
-      hasPriorLook = true;
-      outfitContext = priorLook.outfitContext;
-    } else {
-      references = loadProfileReferenceImages(runtime, userId);
-    }
-  }
+  const priorLook = attachmentImages.length
+    ? null
+    : loadLatestLookReference(runtime, userId, conversationId);
+  const profileImages = loadProfileReferenceImages(runtime, userId);
+  const composed = composeLookReferences({
+    profileImages,
+    priorLookImage: priorLook?.image ?? null,
+    attachmentImages,
+  });
+  const references = composed.references;
+  const hasPriorLook = composed.hasPriorLook;
+  const hasCustomerPhoto = composed.hasCustomerPhoto;
+  let outfitContext: string | null = priorLook?.outfitContext ?? null;
 
   if (!shouldAttachLookImage({
     userText,
@@ -380,16 +381,17 @@ async function maybeAttachLookImage(
       modelPrompt,
       hasReferencePhoto: references.length > 0,
       hasPriorLook,
+      hasCustomerPhoto,
       outfitContext,
     });
-    // Prefer editing the prior look. If edits fail, allow a text regenerate only when we
-    // still have outfit context so “add red slippers” cannot become a shoe product shot.
+    // Never invent a stranger when the customer uploaded photos. For additive edits without
+    // customer photos, also avoid text-only fallback that can become a product shot.
     const image = await generateLookImage({
       config: runtime.config,
       prompt,
       referenceImages: references,
       fetchImpl: runtime.fetchImpl,
-      allowTextFallback: !(hasPriorLook && additive && !outfitContext),
+      allowTextFallback: !(hasCustomerPhoto || (hasPriorLook && additive && !outfitContext)),
     });
     const saved = saveMedia({
       db: runtime.db,

@@ -85,12 +85,57 @@ export function normalizeLookBrief(input: {
   return parts.join(' ').slice(0, 900);
 }
 
+const CUSTOMER_IDENTITY_RULES = [
+  "IDENTITY LOCK: The output person MUST be the same real customer shown in the uploaded reference photograph(s).",
+  'Preserve their exact face, skin tone, hairline, body shape, and proportions.',
+  'Do not invent a fashion model, celebrity, or different person. Do not beautify into a different identity.',
+].join(' ');
+
+/**
+ * Always put the customer's uploaded photos first so likeness is preserved.
+ * Prior look / chat attachments come after for outfit continuity (max 3 refs).
+ */
+export function composeLookReferences(input: {
+  profileImages: ProviderImagePart[];
+  priorLookImage?: ProviderImagePart | null;
+  attachmentImages?: ProviderImagePart[];
+  max?: number;
+}): {
+  references: ProviderImagePart[];
+  hasPriorLook: boolean;
+  hasCustomerPhoto: boolean;
+} {
+  const max = input.max ?? 3;
+  const seen = new Set<string>();
+  const references: ProviderImagePart[] = [];
+  const push = (image: ProviderImagePart | null | undefined) => {
+    if (!image?.base64 || references.length >= max) return;
+    const key = `${image.mimeType}:${image.base64.slice(0, 96)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    references.push(image);
+  };
+
+  for (const image of input.profileImages) push(image);
+  for (const image of input.attachmentImages ?? []) push(image);
+  const hasCustomerPhoto = references.length > 0;
+  if (input.priorLookImage) push(input.priorLookImage);
+
+  return {
+    references,
+    hasPriorLook: Boolean(input.priorLookImage),
+    hasCustomerPhoto,
+  };
+}
+
 export function buildLookVisualPrompt(input: {
   userText: string;
   modelPrompt: string | null;
   hasReferencePhoto: boolean;
   /** Previous stylist look image is being edited (follow-up like “add nude pumps”). */
   hasPriorLook?: boolean;
+  /** Customer portrait/full-body uploads are included as identity references. */
+  hasCustomerPhoto?: boolean;
   /** Prior outfit title/pieces so additive edits stay faithful even without a strong model brief. */
   outfitContext?: string | null;
 }): string {
@@ -105,6 +150,22 @@ export function buildLookVisualPrompt(input: {
   const additiveHint = additive || input.hasPriorLook
     ? 'This is an additive edit of an existing look: preserve the existing outfit and only apply the requested addition or swap. Do not invent a new outfit concept.'
     : '';
+  const identity = input.hasCustomerPhoto || input.hasReferencePhoto ? CUSTOMER_IDENTITY_RULES : '';
+
+  if (input.hasPriorLook && (input.hasCustomerPhoto || input.hasReferencePhoto)) {
+    return [
+      'Edit the fashion look using the reference images.',
+      'The customer photograph(s) define identity (face and body). Any previous look image defines the outfit baseline to preserve or lightly adjust.',
+      identity,
+      'Apply ONLY the requested addition or change from the styling request.',
+      'The subject of the photo must remain the dressed customer, never the added accessory alone.',
+      LOOK_COMPOSITION_RULES,
+      additiveHint,
+      'Photorealistic editorial styling photo, natural lighting, South African fashion context.',
+      'No logos, no retailer watermarks, no text overlays, no price tags.',
+      `Styling request: ${brief}`,
+    ].filter(Boolean).join(' ');
+  }
 
   if (input.hasPriorLook) {
     return [
@@ -119,11 +180,11 @@ export function buildLookVisualPrompt(input: {
     ].filter(Boolean).join(' ');
   }
 
-  if (input.hasReferencePhoto) {
+  if (input.hasReferencePhoto || input.hasCustomerPhoto) {
     return [
       "Edit this customer's photograph into a polished fashion look visualization.",
-      'Keep the same person, face, body, and identity. Do not invent a different person.',
-      'Apply the requested styling changes only (for example hair, accessories, makeup accents, shoes on the feet, or outfit finishing).',
+      identity,
+      'Apply the requested styling / outfit changes only (garments, hair, accessories, makeup accents, shoes on the feet).',
       LOOK_COMPOSITION_RULES,
       additiveHint,
       'Photorealistic editorial styling photo, natural lighting, South African fashion context.',
@@ -164,7 +225,7 @@ export async function generateLookImage(input: {
   const fetchImpl = input.fetchImpl ?? fetch;
   const model = input.config.lookImageModel;
   const started = Date.now();
-  const refs = (input.referenceImages ?? []).slice(0, 2);
+  const refs = (input.referenceImages ?? []).slice(0, 3);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), input.config.lookImageTimeoutMs);
 

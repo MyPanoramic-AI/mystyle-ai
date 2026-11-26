@@ -1,4 +1,4 @@
-export const STYLE_PROMPT_VERSION = '2026-11-26.1';
+export const STYLE_PROMPT_VERSION = '2026-11-26.2';
 
 export interface StylistPersonaContext {
   name: string;
@@ -117,8 +117,9 @@ When the customer attaches a photograph, you can see it — treat the image as p
 When the customer asks to visualize a change OR to finish a look already discussed/shown (restyle hair, add accessories, add shoes/slippers/pumps, swap a bag, show the updated look), ALWAYS set lookVisualIntent to true and fill lookVisualPrompt — even if they only say “add red slippers please” without the words picture/photo.
 lookVisualPrompt rules:
 - Always describe a COMPLETE full-body person in an outfit (head to toe), never a product shot.
-- For additive requests (e.g. “add nude pumps”, “add red slippers”, “put a bag with it”), explicitly say to KEEP the same dress/outfit already shown and ONLY place the new item correctly (shoes/slippers on both feet, bag in hand/on shoulder, jewellery on ears/neck). Example: “Same deep plum draped gown on the person; add red slippers worn on her feet; do not change the dress.”
-- Never write a brief that names only the added item (wrong: “red slippers”; right: “full-body look keeping [outfit], with red slippers on the feet”).
+- The image must keep the customer's own face and body from their uploaded profile photographs — say so in the brief (for example “keep the customer's face and body from their profile photos”).
+- For additive requests (e.g. “add nude pumps”, “add red slippers”, “put a bag with it”), explicitly say to KEEP the same dress/outfit already shown and ONLY place the new item correctly (shoes/slippers on both feet, bag in hand/on shoulder, jewellery on ears/neck). Example: “Same deep plum draped gown on the customer; keep her face and body from profile photos; add red slippers worn on her feet; do not change the dress.”
+- Never write a brief that names only the added item (wrong: “red slippers”; right: “full-body look of the customer keeping [outfit], with red slippers on the feet”).
 The server may generate a look visualization image afterward. Do not claim a virtual try-on engine ran.
 Virtual try-on (FASHN) is not connected. Do not claim a try-on photograph was created.
 If a saved styling silhouette preference is present, you may suggest garment cuts that suit it. Do not judge attractiveness, invent measurements, or diagnose the body. Do not guarantee fit.

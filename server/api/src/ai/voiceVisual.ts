@@ -14,6 +14,7 @@ import type { AiConfig } from './aiConfig.js';
 import { resolvePersonaFromProfile } from './context.js';
 import {
   buildLookVisualPrompt,
+  composeLookReferences,
   generateLookImage,
   isAdditiveLookEdit,
   shouldAttachLookImage,
@@ -87,7 +88,9 @@ function ownConversation(db: Sql, userId: string, conversationId: string): strin
 function loadProfileReferenceImages(db: Sql, mediaDir: string, userId: string): ProviderImagePart[] {
   try {
     const slots = readProfilePhotoSlots(db, userId);
-    const ids = [slots.portraitMediaId, slots.fullBodyFrontMediaId].filter((id): id is string => Boolean(id)).slice(0, 2);
+    const ids = [slots.fullBodyFrontMediaId, slots.portraitMediaId, slots.fullBodyBackMediaId]
+      .filter((id): id is string => Boolean(id))
+      .slice(0, 2);
     const images: ProviderImagePart[] = [];
     for (const id of ids) {
       const ownedMedia = readOwnedMedia(db, mediaDir, userId, id);
@@ -193,10 +196,14 @@ export async function createVoiceLookVisual(opts: {
 
   const nowMs = (opts.now ?? Date.now)();
   const priorLook = loadLatestLookReference(opts.db, opts.mediaDir, opts.userId, conversationId);
-  const hasPriorLook = Boolean(priorLook);
-  const references = priorLook
-    ? [priorLook.image]
-    : loadProfileReferenceImages(opts.db, opts.mediaDir, opts.userId);
+  const profileImages = loadProfileReferenceImages(opts.db, opts.mediaDir, opts.userId);
+  const composed = composeLookReferences({
+    profileImages,
+    priorLookImage: priorLook?.image ?? null,
+  });
+  const references = composed.references;
+  const hasPriorLook = composed.hasPriorLook;
+  const hasCustomerPhoto = composed.hasCustomerPhoto;
   if (references.length) {
     requireExternalPhotoConsentForVision(opts.db, opts.userId);
   }
@@ -208,6 +215,7 @@ export async function createVoiceLookVisual(opts: {
     modelPrompt: promptText,
     hasReferencePhoto: references.length > 0,
     hasPriorLook,
+    hasCustomerPhoto,
     outfitContext: priorLook?.outfitContext ?? null,
   });
 
@@ -217,7 +225,7 @@ export async function createVoiceLookVisual(opts: {
       prompt: imagePrompt,
       referenceImages: references,
       fetchImpl: opts.fetchImpl,
-      allowTextFallback: !(hasPriorLook && additive),
+      allowTextFallback: !(hasCustomerPhoto || (hasPriorLook && additive)),
     });
     const saved = saveMedia({
       db: opts.db,

@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildLookVisualPrompt, isAdditiveLookEdit, normalizeLookBrief, shouldAttachLookImage, wantsLookVisualization } from '../src/ai/lookImage.js';
+import {
+  buildLookVisualPrompt,
+  composeLookReferences,
+  isAdditiveLookEdit,
+  normalizeLookBrief,
+  shouldAttachLookImage,
+  wantsLookVisualization,
+} from '../src/ai/lookImage.js';
 
 test('wantsLookVisualization detects hair and accessory requests', () => {
   assert.equal(wantsLookVisualization('Can you style my hair and add accessories?', false), true);
@@ -56,8 +63,9 @@ test('buildLookVisualPrompt keeps identity when a reference photo is present', (
     userText: 'Add gold hoops and soft waves',
     modelPrompt: 'Soft waves, gold hoop earrings, polished finish',
     hasReferencePhoto: true,
+    hasCustomerPhoto: true,
   });
-  assert.match(withPhoto, /Keep the same person/i);
+  assert.match(withPhoto, /IDENTITY LOCK/i);
   assert.match(withPhoto, /Soft waves, gold hoop earrings/);
   assert.match(withPhoto, /full-body/i);
   assert.match(withPhoto, /FORBIDDEN: product photography/i);
@@ -68,23 +76,37 @@ test('buildLookVisualPrompt keeps identity when a reference photo is present', (
     hasReferencePhoto: false,
   });
   assert.match(withoutPhoto, /photorealistic fashion look/i);
-  assert.doesNotMatch(withoutPhoto, /Keep the same person/i);
+  assert.doesNotMatch(withoutPhoto, /IDENTITY LOCK/i);
   assert.match(withoutPhoto, /full-body/i);
 });
 
-test('buildLookVisualPrompt treats prior looks as additive edits', () => {
+test('buildLookVisualPrompt treats prior looks as additive edits with customer identity', () => {
   const prior = buildLookVisualPrompt({
     userText: 'Add nude pumps to this look',
     modelPrompt: 'Keep the deep plum gown and place nude pumps on her feet',
     hasReferencePhoto: true,
     hasPriorLook: true,
+    hasCustomerPhoto: true,
     outfitContext: 'Deep plum draped asymmetric column gown',
   });
-  assert.match(prior, /previous fashion look/i);
-  assert.match(prior, /Preserve the same person/i);
+  assert.match(prior, /customer photograph/i);
+  assert.match(prior, /IDENTITY LOCK/i);
   assert.match(prior, /ONLY the requested addition/i);
   assert.match(prior, /additive edit/i);
   assert.match(prior, /shoes on both feet|shoes clearly on their feet/i);
   assert.match(prior, /never the added accessory alone/i);
   assert.match(prior, /Deep plum draped/i);
+});
+
+test('composeLookReferences always puts customer photos before prior looks', () => {
+  const profile = [{ mimeType: 'image/jpeg', base64: 'profile-face-bytes' }];
+  const prior = { mimeType: 'image/png', base64: 'prior-look-bytes' };
+  const composed = composeLookReferences({
+    profileImages: profile,
+    priorLookImage: prior,
+  });
+  assert.equal(composed.hasCustomerPhoto, true);
+  assert.equal(composed.hasPriorLook, true);
+  assert.equal(composed.references[0]?.base64, 'profile-face-bytes');
+  assert.equal(composed.references[1]?.base64, 'prior-look-bytes');
 });
