@@ -34,6 +34,8 @@ interface StylistInputBarProps {
   stylistName?: string;
   contextualActions?: StylistQuickAction[];
   contextualLabel?: string;
+  /** When true, nest inside a parent composer dock (no duplicate border/background). */
+  embedded?: boolean;
 }
 
 export const StylistInputBar: React.FC<StylistInputBarProps> = ({
@@ -45,6 +47,7 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
   stylistName = 'Aria',
   contextualActions,
   contextualLabel,
+  embedded = false,
 }) => {
   const [inputText, setInputText] = useState(inputPrefill);
   const [attachment, setAttachment] = useState<{ name: string; url: string; file?: File } | null>(null);
@@ -117,12 +120,18 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
   };
 
   return (
-    <div className="bg-white/95 backdrop-blur-md border-t border-[#242326]/10 p-3 sm:p-4 shrink-0 z-30 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] lg:pb-4">
-      <div className="max-w-4xl mx-auto space-y-2.5">
+    <div
+      className={`shrink-0 z-30 ${
+        embedded
+          ? 'px-4 sm:px-6 lg:px-8 pt-2.5 pb-3 sm:pb-4'
+          : 'bg-white/95 backdrop-blur-md border-t border-[#242326]/10 p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] lg:pb-4'
+      }`}
+    >
+      <div className="max-w-5xl mx-auto space-y-2.5">
         {/* Quick Suggestion Chips Carousel */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9C6A61] shrink-0 pl-1">
-            {contextualActions?.length ? (contextualLabel || 'Complete look:') : 'Quick Inquiries:'}
+        <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+          <span className="text-[11px] font-semibold tracking-wide text-[#794E46] shrink-0">
+            {contextualActions?.length ? (contextualLabel || 'Complete look') : 'Try asking'}
           </span>
           {(contextualActions?.length ? contextualActions : STARTER_SUGGESTIONS).map((sug) => (
             <button
@@ -136,7 +145,7 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
                 onSelectPrompt(sug.prompt);
               }}
               disabled={isGenerating}
-              className="shrink-0 px-3 py-1.5 rounded-full bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 text-[#242326] text-xs font-medium border border-[#242326]/5 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
+              className="shrink-0 px-3 py-1.5 rounded-full bg-[#F6F2EC] hover:bg-[#E5CDBE]/45 text-[#242326] text-xs font-medium border border-[#242326]/8 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
             >
               {sug.label}
             </button>

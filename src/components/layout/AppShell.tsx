@@ -48,10 +48,10 @@ export const AppShell: React.FC<AppShellProps> = ({
 
       {/* Main Content Area - room for bottom nav + home-indicator safe area on phones */}
       <main
-        className={`flex-1 w-full min-w-0 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 ${
+        className={`flex-1 w-full min-w-0 mx-auto ${
           lockViewport
-            ? 'min-h-0 overflow-hidden flex flex-col pt-0 sm:pt-0 pb-nav lg:pb-4'
-            : 'pt-3 sm:pt-6 pb-nav lg:pb-16'
+            ? 'max-w-none px-0 min-h-0 overflow-hidden flex flex-col pt-0 pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-0'
+            : 'max-w-6xl px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-nav lg:pb-16'
         }`}
       >
         {children}

@@ -899,7 +899,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col h-full min-h-0 overflow-hidden -mx-3 sm:-mx-6">
+    <div className="relative flex flex-col h-full min-h-0 overflow-hidden bg-[linear-gradient(180deg,#F3EDE4_0%,#F6F2EC_42%,#F8F4EE_100%)]">
       {/* Stylist Top Header */}
       <StylistHeader
         profile={profile}
@@ -926,86 +926,90 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         onNewChat={handleStartFreshChat}
       />
 
-      {/* Chat Messages Scroll Container */}
+      {/* Chat Messages Scroll Container — content hugs the composer */}
       <div
         ref={chatScrollRef}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 py-6 max-w-4xl w-full mx-auto space-y-6"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] px-4 sm:px-6 lg:px-8"
       >
-        {/* Session Intro Kicker */}
-        <div className="text-center py-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9C6A61] px-3 py-1 rounded-full bg-[#FAF7F2] border border-[#242326]/5 inline-flex items-center gap-1.5">
-            <Sparkles className="w-3 h-3 text-[#B49361]" />
-            {localDemo || !connection ? 'Demonstration replies on this device' : serviceLabel}
-          </span>
-          {connection && !connection.aiConsent && !localDemo && (
-            <div className="mt-3 rounded-2xl border border-[#242326]/10 bg-white px-4 py-3 text-xs text-[#5C585E]">
-              <p>Personalised styling is off, so saved colours, sizes, and budget stay out of the stylist. Your Wardrobe pieces are still available for outfit ideas.</p>
-              <button type="button" className="mt-2 font-semibold text-[#9C6A61]" onClick={() => void connection.onEnableConsent().catch((error: unknown) => {
-                setServiceNotice(error instanceof AccountApiError ? error.message : 'Personalised styling could not be turned on.');
-              })}>
-                Allow personalised styling
-              </button>
-            </div>
-          )}
-          {serviceNotice && (
-            <div className="mt-3 rounded-2xl border border-[#242326]/10 bg-white px-4 py-3 text-xs text-[#5C585E]">
-              <p>{serviceNotice}</p>
-              {offerLocalDemo && connection && !localDemo && (
-                <button type="button" className="mt-2 font-semibold text-[#9C6A61]" onClick={() => {
-                  setLocalDemo(true);
-                  setServiceLabel('Demonstration replies on this device');
-                  setServiceNotice('You are using the on-device demonstration. It is not a live model, and it can show sample shop cards.');
-                }}>
-                  Use the on-device demonstration
-                </button>
+        <div className="max-w-5xl w-full mx-auto min-h-full flex flex-col justify-end py-5 sm:py-6">
+          <div className="space-y-5 sm:space-y-6">
+            {/* Session Intro Kicker */}
+            <div className="text-center">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9C6A61] px-3 py-1 rounded-full bg-white/80 border border-[#242326]/8 inline-flex items-center gap-1.5 shadow-xs">
+                <Sparkles className="w-3 h-3 text-[#B49361]" />
+                {localDemo || !connection ? 'Demonstration replies on this device' : serviceLabel}
+              </span>
+              {connection && !connection.aiConsent && !localDemo && (
+                <div className="mt-3 rounded-2xl border border-[#242326]/10 bg-white/90 px-4 py-3 text-xs text-[#5C585E] text-left shadow-xs">
+                  <p>Personalised styling is off, so saved colours, sizes, and budget stay out of the stylist. Your Wardrobe pieces are still available for outfit ideas.</p>
+                  <button type="button" className="mt-2 font-semibold text-[#9C6A61]" onClick={() => void connection.onEnableConsent().catch((error: unknown) => {
+                    setServiceNotice(error instanceof AccountApiError ? error.message : 'Personalised styling could not be turned on.');
+                  })}>
+                    Allow personalised styling
+                  </button>
+                </div>
+              )}
+              {serviceNotice && (
+                <div className="mt-3 rounded-2xl border border-[#242326]/10 bg-white/90 px-4 py-3 text-xs text-[#5C585E] text-left shadow-xs">
+                  <p>{serviceNotice}</p>
+                  {offerLocalDemo && connection && !localDemo && (
+                    <button type="button" className="mt-2 font-semibold text-[#9C6A61]" onClick={() => {
+                      setLocalDemo(true);
+                      setServiceLabel('Demonstration replies on this device');
+                      setServiceNotice('You are using the on-device demonstration. It is not a live model, and it can show sample shop cards.');
+                    }}>
+                      Use the on-device demonstration
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Message Stream */}
-        {messages.map((message) => (
-          <ChatMessageItem
-            key={message.id}
-            message={message}
-            profile={profile}
-            photos={photos}
-            onNavigateToShop={() => onNavigate('shop')}
-            onShopNow={handleShopNow}
-            onGenerateLook={handleGenerateLook}
-            generateLookBusy={cardLookBusy}
-            onSelectPrompt={handleSelectPrompt}
-            onSelectAction={handleSelectAction}
-          />
-        ))}
+            {/* Message Stream */}
+            {messages.map((message) => (
+              <ChatMessageItem
+                key={message.id}
+                message={message}
+                profile={profile}
+                photos={photos}
+                onNavigateToShop={() => onNavigate('shop')}
+                onShopNow={handleShopNow}
+                onGenerateLook={handleGenerateLook}
+                generateLookBusy={cardLookBusy}
+                onSelectPrompt={handleSelectPrompt}
+                onSelectAction={handleSelectAction}
+              />
+            ))}
 
-        {/* Typing Indicator */}
-        {isTyping && (
-          <div className="flex items-start gap-3 animate-in fade-in duration-200">
-            <div className="w-8 h-8 rounded-full bg-[#9C6A61] text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <div className="rounded-2xl px-4 py-3 bg-white border border-[#242326]/10 shadow-xs flex items-center gap-2 max-w-[85%]">
-              <span
-                key={waitLineIndex}
-                className="text-xs text-[#5C585E] font-medium animate-in fade-in duration-300"
-              >
-                {waitLineFor(
-                  stylistName,
-                  waitLineIndex,
-                  localDemo || !connection || serviceLabel.toLowerCase().includes('not a live'),
-                )}
-              </span>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.3s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.15s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce" />
+            {/* Typing Indicator */}
+            {isTyping && (
+              <div className="flex items-start gap-3 animate-in fade-in duration-200">
+                <div className="w-8 h-8 rounded-full bg-[#9C6A61] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <div className="rounded-2xl px-4 py-3 bg-white border border-[#242326]/10 shadow-xs flex items-center gap-2 max-w-[85%]">
+                  <span
+                    key={waitLineIndex}
+                    className="text-xs text-[#5C585E] font-medium animate-in fade-in duration-300"
+                  >
+                    {waitLineFor(
+                      stylistName,
+                      waitLineIndex,
+                      localDemo || !connection || serviceLabel.toLowerCase().includes('not a live'),
+                    )}
+                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#9C6A61] animate-bounce" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        <div ref={chatBottomRef} />
+            <div ref={chatBottomRef} />
+          </div>
+        </div>
       </div>
 
       {voiceMode ? (
@@ -1065,9 +1069,9 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
           }}
         />
       ) : (
-        <>
+        <div className="shrink-0 border-t border-[#242326]/10 bg-white/95 backdrop-blur-md shadow-[0_-8px_28px_rgba(36,35,38,0.06)]">
           {connection && !localDemo && (
-            <div className="px-4 sm:px-6 pt-2 max-w-4xl w-full mx-auto">
+            <div className="px-4 sm:px-6 lg:px-8 pt-3 max-w-5xl w-full mx-auto flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 disabled={!serverReady || isTyping || voice.isActive}
@@ -1118,13 +1122,13 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
                     await voice.startConversation();
                   })();
                 }}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#242326]/10 bg-white hover:bg-[#FAF7F2] text-xs font-medium text-[#242326] transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#9C6A61]/25 bg-[#FAF7F2] hover:bg-[#F2EAE1] text-xs font-semibold text-[#794E46] transition-colors disabled:opacity-40"
               >
                 <Phone className="w-3.5 h-3.5 text-[#9C6A61]" />
                 Talk to {stylistName}
               </button>
               {serviceNotice && (
-                <p className="mt-2 text-[11px] text-[#5C585E]" role="status">
+                <p className="text-[11px] text-[#5C585E]" role="status">
                   {serviceNotice}
                 </p>
               )}
@@ -1138,9 +1142,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
             inputPrefill={inputPrefill}
             stylistName={stylistName}
             contextualActions={garmentContext ? garmentFollowUpActions('composer') : undefined}
-            contextualLabel={garmentContext ? `Complete ${inferGarmentLabel(garmentContext.name)}:` : undefined}
+            contextualLabel={garmentContext ? `Complete ${inferGarmentLabel(garmentContext.name)}` : undefined}
+            embedded
           />
-        </>
+        </div>
       )}
       </div>
 
