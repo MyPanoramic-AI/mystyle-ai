@@ -8,7 +8,6 @@ import { Mic, MicOff, PhoneOff, Radio, Volume2, Sparkles, ImageIcon, Loader2 } f
 import type { GptLiveStatus, GptLiveTranscriptTurn } from '../../hooks/useGptLiveVoice';
 import type { StylistOutfitRecommendation } from '../../types/stylist';
 import type { TemporaryPhotos, UserProfile } from '../../types';
-import type { PreloadedGarment } from '../../types/shop';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 import { ShareToFriendButton } from '../common/ShareToFriendButton';
 import { imageSharePayload } from '../../services/shareToFriend';
@@ -39,7 +38,8 @@ interface StylistLiveVoicePanelProps {
   profile?: UserProfile;
   photos?: TemporaryPhotos;
   onShopNow?: (outfit: StylistOutfitRecommendation) => void;
-  onSendToTryOn?: (garment: PreloadedGarment) => void;
+  onGenerateLook?: (outfit: StylistOutfitRecommendation) => void | Promise<void>;
+  generateLookBusy?: boolean;
   onNavigateToShop?: () => void;
   onMuteToggle: () => void;
   onPlayAudio: () => void;
@@ -93,7 +93,8 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   profile,
   photos,
   onShopNow,
-  onSendToTryOn,
+  onGenerateLook,
+  generateLookBusy = false,
   onNavigateToShop,
   onMuteToggle,
   onPlayAudio,
@@ -244,7 +245,8 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
                     photos={photos}
                     onNavigateToShop={onNavigateToShop || (() => undefined)}
                     onShopNow={onShopNow}
-                    onSendToTryOn={onSendToTryOn}
+                    onGenerateLook={onGenerateLook}
+                    generateLookBusy={generateLookBusy}
                   />
                 </div>
               ))}

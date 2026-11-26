@@ -145,6 +145,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [voiceLookLoading, setVoiceLookLoading] = useState(false);
   const [voiceLookError, setVoiceLookError] = useState<string | null>(null);
   const [voiceOutfitCards, setVoiceOutfitCards] = useState<StylistOutfitRecommendation[]>([]);
+  const [cardLookBusy, setCardLookBusy] = useState(false);
   const [lens, setLens] = useState<StylistFilterLens>({
     occasion: state.occasionTitle || 'Everyday Versatile',
     formality: 'Smart-Casual',
@@ -152,6 +153,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   });
   const pendingVoiceTranscripts = useRef<GptLiveTranscriptTurn[]>([]);
   const voiceVisualInFlightRef = useRef(false);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
   const voiceVisualDoneForPromptRef = useRef<string | null>(null);
   const recentUserVoiceRef = useRef<string[]>([]);
   const conversationIdRef = useRef<string | null>(null);
@@ -178,18 +180,33 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     });
   }, [connection]);
 
-  const requestVoiceLookVisual = useCallback(async (prompt: string) => {
+  const lookPromptFromOutfit = useCallback((outfit: StylistOutfitRecommendation) => {
+    const pieces = outfit.pieces.map((piece) => piece.name).filter(Boolean).join(', ');
+    return [
+      `Show me a full-body look visualization of me wearing ${outfit.title}.`,
+      pieces ? `Outfit pieces: ${pieces}.` : '',
+      outfit.stylistRationale ? `Styling note: ${outfit.stylistRationale}` : '',
+      'Keep my face and body from my profile photos. Head-to-toe fashion photograph, not a product shot.',
+    ].filter(Boolean).join(' ').slice(0, 700);
+  }, []);
+
+  const requestVoiceLookVisual = useCallback(async (prompt: string, opts?: { force?: boolean }) => {
     const conversation = conversationIdRef.current;
-    if (!conversation || !connection) return;
+    if (!conversation || !connection) {
+      setServiceNotice('Start or open a live stylist chat to generate a look visualization.');
+      return;
+    }
     const cleaned = prompt.replace(/\s+/g, ' ').trim();
     if (cleaned.length < 8) return;
     if (voiceVisualInFlightRef.current) return;
     // Avoid regenerating the same ask repeatedly in one call.
     const dedupeKey = cleaned.slice(0, 160).toLowerCase();
-    if (voiceVisualDoneForPromptRef.current === dedupeKey) return;
+    if (!opts?.force && voiceVisualDoneForPromptRef.current === dedupeKey) return;
     voiceVisualInFlightRef.current = true;
     setVoiceLookLoading(true);
+    setCardLookBusy(true);
     setVoiceLookError(null);
+    setServiceNotice(null);
     try {
       const result = await accountApi.createStylistVoiceVisual(conversation, cleaned);
       voiceVisualDoneForPromptRef.current = dedupeKey;
@@ -209,17 +226,25 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         },
       ]);
       voiceAnnounceRef.current(result.title);
+      window.setTimeout(() => {
+        chatBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 80);
     } catch (error) {
-      setVoiceLookError(
-        error instanceof AccountApiError
-          ? error.message
-          : 'Could not create a look visualization right now.',
-      );
+      const message = error instanceof AccountApiError
+        ? error.message
+        : 'Could not create a look visualization right now.';
+      setVoiceLookError(message);
+      setServiceNotice(message);
     } finally {
       voiceVisualInFlightRef.current = false;
       setVoiceLookLoading(false);
+      setCardLookBusy(false);
     }
   }, [connection]);
+
+  const handleGenerateLook = useCallback(async (outfit: StylistOutfitRecommendation) => {
+    await requestVoiceLookVisual(lookPromptFromOutfit(outfit), { force: true });
+  }, [lookPromptFromOutfit, requestVoiceLookVisual]);
 
   const buildVoiceLookPrompt = useCallback((seed: string) => {
     const recentAssistant = [...messagesRef.current].reverse().find((message) => message.sender === 'stylist');
@@ -324,7 +349,6 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   conversationIdRef.current = conversationId;
   messagesRef.current = messages;
 
-  const chatBottomRef = useRef<HTMLDivElement>(null);
   const lastStateTimestampRef = useRef<number | undefined>(state.timestamp);
 
   const rememberGarmentFromMessages = (mapped: ChatMessage[]) => {
@@ -887,7 +911,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
             photos={photos}
             onNavigateToShop={() => onNavigate('shop')}
             onShopNow={handleShopNow}
-            onSendToTryOn={onSendToTryOn}
+            onGenerateLook={handleGenerateLook}
+            generateLookBusy={cardLookBusy}
             onSelectPrompt={handleSelectPrompt}
             onSelectAction={handleSelectAction}
           />
@@ -949,14 +974,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
               setVoiceLookError(null);
             });
           }}
-          onSendToTryOn={(garment) => {
-            onSendToTryOn?.(garment);
-            void voice.endConversation().then(() => {
-              setVoiceMode(false);
-              setVoiceLookLoading(false);
-              setVoiceLookError(null);
-            });
-          }}
+          onGenerateLook={handleGenerateLook}
+          generateLookBusy={cardLookBusy || voiceLookLoading}
           onNavigateToShop={() => {
             onNavigate('shop');
             void voice.endConversation().then(() => {

@@ -6,7 +6,6 @@
 import React, { useState } from 'react';
 import { ChatMessage, StylistQuickAction, TemporaryPhotos, UserProfile } from '../../types';
 import type { StylistOutfitRecommendation } from '../../types/stylist';
-import { PreloadedGarment } from '../../types/shop';
 import { OutfitRecommendationCard } from './OutfitRecommendationCard';
 import { BeautyTipCard } from './BeautyTipCard';
 import { Sparkles, Paperclip } from 'lucide-react';
@@ -20,7 +19,8 @@ interface ChatMessageItemProps {
   photos: TemporaryPhotos;
   onNavigateToShop: () => void;
   onShopNow?: (outfit: StylistOutfitRecommendation) => void;
-  onSendToTryOn?: (garment: PreloadedGarment) => void;
+  onGenerateLook?: (outfit: StylistOutfitRecommendation) => void | Promise<void>;
+  generateLookBusy?: boolean;
   onSelectPrompt: (prompt: string) => void;
   onSelectAction?: (action: StylistQuickAction) => void;
 }
@@ -31,7 +31,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   photos,
   onNavigateToShop,
   onShopNow,
-  onSendToTryOn,
+  onGenerateLook,
+  generateLookBusy,
   onSelectPrompt,
   onSelectAction,
 }) => {
@@ -253,7 +254,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             photos={photos}
             onNavigateToShop={onNavigateToShop}
             onShopNow={onShopNow}
-            onSendToTryOn={onSendToTryOn}
+            onGenerateLook={onGenerateLook}
+            generateLookBusy={generateLookBusy}
             onSelectPrompt={onSelectPrompt}
           />
         ))}

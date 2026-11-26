@@ -5,11 +5,10 @@
 
 import React, { useState } from 'react';
 import { StylistOutfitRecommendation, TemporaryPhotos, UserProfile } from '../../types';
-import { PreloadedGarment } from '../../types/shop';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 import { ShareToFriendButton } from '../common/ShareToFriendButton';
 import { listingSharePayload, outfitSharePayload } from '../../services/shareToFriend';
-import { Sparkles, Camera, ShoppingBag, Heart, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Camera, ShoppingBag, Heart, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 interface OutfitRecommendationCardProps {
   outfit: StylistOutfitRecommendation;
@@ -17,33 +16,24 @@ interface OutfitRecommendationCardProps {
   photos?: TemporaryPhotos;
   onNavigateToShop: () => void;
   onShopNow?: (outfit: StylistOutfitRecommendation) => void;
-  onSendToTryOn?: (garment: PreloadedGarment) => void;
+  /** Generate a stylist look visualization for this outfit in chat (does not open Fitting Room). */
+  onGenerateLook?: (outfit: StylistOutfitRecommendation) => void | Promise<void>;
+  generateLookBusy?: boolean;
   onSelectPrompt?: (prompt: string) => void;
-}
-
-function garmentFromOutfit(outfit: StylistOutfitRecommendation): PreloadedGarment {
-  const primary = outfit.pieces.find((piece) => piece.owned && (piece.category === 'dress' || piece.category === 'tops' || piece.category === 'outerwear'))
-    || outfit.pieces.find((piece) => piece.category === 'tops' || piece.category === 'dress' || piece.category === 'outerwear')
-    || outfit.pieces[0];
-  return {
-    productId: primary?.wardrobeItemId || primary?.productId || outfit.id,
-    productName: primary?.name || outfit.title,
-    retailer: primary?.owned ? 'Your wardrobe' : (primary?.retailer || 'Stylist recommendation'),
-    priceZar: primary?.owned ? 0 : (primary?.priceZar ?? outfit.totalEstimatedZar),
-    imageUrl: primary?.imageUrl || outfit.imageUrl,
-    category: primary?.category || outfit.occasion || 'tops',
-  };
 }
 
 export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> = ({
   outfit,
   onNavigateToShop,
   onShopNow,
-  onSendToTryOn,
+  onGenerateLook,
+  generateLookBusy = false,
 }) => {
   const [isSaved, setIsSaved] = useState(false);
   const [showAllPieces, setShowAllPieces] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [localBusy, setLocalBusy] = useState(false);
+  const busy = generateLookBusy || localBusy;
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -212,20 +202,31 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#242326]/10">
-          {!onSendToTryOn ? (
+          {!onGenerateLook ? (
             <span className="flex-1 basis-[calc(50%-0.25rem)] sm:basis-auto min-w-0 sm:min-w-[120px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-11 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
               <Camera className="w-3.5 h-3.5" />
-              <span>Fitting Room unavailable</span>
+              <span>Look preview unavailable</span>
             </span>
           ) : (
             <button
               type="button"
-              onClick={() => onSendToTryOn(garmentFromOutfit(outfit))}
-              className="flex-1 basis-[calc(50%-0.25rem)] sm:basis-auto min-w-0 sm:min-w-[120px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-11 rounded-xl bg-[#9C6A61] hover:bg-[#83554D] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-              data-testid="stylist-virtual-try-on"
+              disabled={busy}
+              onClick={() => {
+                void (async () => {
+                  setLocalBusy(true);
+                  try {
+                    await onGenerateLook(outfit);
+                  } finally {
+                    setLocalBusy(false);
+                  }
+                })();
+              }}
+              className="flex-1 basis-[calc(50%-0.25rem)] sm:basis-auto min-w-0 sm:min-w-[120px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-11 rounded-xl bg-[#9C6A61] hover:bg-[#83554D] disabled:opacity-60 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              data-testid="stylist-generate-look"
+              title="Ask the stylist to generate a look visualization of this outfit"
             >
-              <Camera className="w-3.5 h-3.5" />
-              <span>Fitting Room</span>
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              <span>{busy ? 'Creating look…' : 'See this look'}</span>
             </button>
           )}
 
