@@ -109,7 +109,7 @@ export const OutfitDetailView: React.FC<OutfitDetailViewProps> = ({
 
             <button
               onClick={handleShare}
-              className="w-8 h-8 rounded-full bg-white hover:bg-[#F6F2EC] text-[#5C585E] hover:text-[#242326] flex items-center justify-center border border-[#242326]/15 transition-colors cursor-pointer"
+              className="w-10 h-10 rounded-full bg-white hover:bg-[#F6F2EC] text-[#5C585E] hover:text-[#242326] flex items-center justify-center border border-[#242326]/15 transition-colors cursor-pointer"
               title="Share look"
               aria-label="Share look"
             >
@@ -118,7 +118,7 @@ export const OutfitDetailView: React.FC<OutfitDetailViewProps> = ({
 
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white hover:bg-[#E5CDBE]/20 text-[#5C585E] hover:text-[#242326] flex items-center justify-center border border-[#242326]/15 transition-colors cursor-pointer"
+              className="w-10 h-10 rounded-full bg-white hover:bg-[#E5CDBE]/20 text-[#5C585E] hover:text-[#242326] flex items-center justify-center border border-[#242326]/15 transition-colors cursor-pointer"
               aria-label="Close outfit detail"
             >
               <X className="w-4 h-4" />
@@ -188,9 +188,9 @@ export const OutfitDetailView: React.FC<OutfitDetailViewProps> = ({
             </div>
 
             {/* Suggested Color Palette */}
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <span className="text-xs font-semibold text-[#242326]">Harmonized Palette:</span>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {look.colorPalette.map((col, idx) => (
                   <div
                     key={idx}
@@ -254,7 +254,7 @@ export const OutfitDetailView: React.FC<OutfitDetailViewProps> = ({
         </div>
 
         {/* E. Action Buttons Bar (Sticky bottom) */}
-        <div className="p-4 sm:px-6 bg-[#FAF7F2] border-t border-[#242326]/10 shrink-0">
+        <div className="p-4 sm:px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-[#FAF7F2] border-t border-[#242326]/10 shrink-0">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {/* Action 1: Try This Look */}
             <button

@@ -158,7 +158,7 @@ export const FamilyStylingScreen: React.FC<FamilyStylingScreenProps> = ({
       {statusMessage ? <p className="rounded-2xl border border-[#B49361]/40 bg-[#E5CDBE]/30 px-4 py-3 text-sm text-[#242326]">{statusMessage}</p> : null}
       {browserNotice ? <p className="rounded-2xl border border-[#B49361]/40 bg-[#E5CDBE]/30 px-4 py-3 text-sm text-[#242326]">{browserNotice}</p> : null}
       {/* Top Bar with Back Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium text-[#5C585E] hover:text-[#242326] bg-white border border-[#242326]/10 hover:border-[#242326]/20 transition-all cursor-pointer"

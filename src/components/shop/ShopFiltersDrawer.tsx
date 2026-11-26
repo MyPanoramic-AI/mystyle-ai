@@ -387,7 +387,7 @@ export const ShopFiltersDrawer: React.FC<ShopFiltersDrawerProps> = ({
         </div>
 
         {/* Drawer Footer */}
-        <div className="p-4 sm:p-5 border-t border-[#242326]/8 bg-[#FAF7F2]/50 flex items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:p-5 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))] border-t border-[#242326]/8 bg-[#FAF7F2]/50 flex items-center justify-between gap-3 shrink-0">
           <span className="text-xs text-[#5C585E]">
             <strong className="text-[#242326] font-semibold">{matchingCount}</strong>{' '}
             {matchingCount === 1 ? 'item matches' : 'items match'}

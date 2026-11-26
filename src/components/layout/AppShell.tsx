@@ -30,7 +30,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   children,
 }) => {
   return (
-    <div className="min-h-screen flex flex-col bg-[#F6F2EC] text-[#242326]">
+    <div className="min-h-dvh flex flex-col bg-[#F6F2EC] text-[#242326] overflow-x-hidden">
       {/* Top Navigation */}
       <TopHeader
         currentTab={currentTab}
@@ -41,12 +41,12 @@ export const AppShell: React.FC<AppShellProps> = ({
         usesAccount={usesAccount}
       />
 
-      {/* Main Content Area - mobile optimized with responsive desktop breathing room */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-28 lg:pb-16">
+      {/* Main Content Area - room for bottom nav + home-indicator safe area on phones */}
+      <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-nav lg:pb-16">
         {children}
       </main>
 
-      {/* Mobile Fixed Bottom Navigation (hidden on desktop md:) */}
+      {/* Mobile Fixed Bottom Navigation (hidden on desktop lg:) */}
       <BottomNav currentTab={currentTab} onNavigate={onNavigate} />
     </div>
   );

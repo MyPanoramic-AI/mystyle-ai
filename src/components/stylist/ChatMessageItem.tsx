@@ -104,7 +104,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       )}
 
       {/* Message Content Container */}
-      <div className={`max-w-[88%] sm:max-w-[82%] space-y-2 ${isStylist ? 'text-left' : 'text-right'}`}>
+      <div className={`max-w-[min(100%,24rem)] sm:max-w-[82%] w-full space-y-2 ${isStylist ? 'text-left' : 'text-right'}`}>
         {/* Name and time */}
         <div className={`flex items-center gap-2 text-[11px] text-[#5C585E] ${isStylist ? 'justify-start' : 'justify-end'}`}>
           <span className="font-semibold text-[#242326]">

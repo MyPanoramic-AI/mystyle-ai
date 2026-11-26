@@ -53,14 +53,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     };
   }, [usesAccount, currentTab]);
   return (
-    <header className="sticky top-0 z-40 bg-[#F6F2EC] border-b border-[#242326]/8 transition-all">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 bg-[#F6F2EC]/95 backdrop-blur-md border-b border-[#242326]/8 transition-all pt-safe">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Zone 1: Brand Wordmark (Single text element in editorial display face) */}
         <button
           onClick={() => onNavigate('home')}
-          className="flex items-center gap-2 text-left group focus-visible:outline-none shrink-0"
+          className="flex items-center gap-2 text-left group focus-visible:outline-none shrink-0 min-h-11"
         >
-          <span className="font-serif text-2xl font-bold tracking-tight text-[#242326] group-hover:text-[#91635a] transition-colors whitespace-nowrap">
+          <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-[#242326] group-hover:text-[#91635a] transition-colors whitespace-nowrap">
             IStyleU
           </span>
         </button>
@@ -140,10 +140,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </nav>
 
         {/* Zone 3: Primary Action / User Avatar Affordance */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
           <button
             onClick={() => onNavigate('stylist')}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-[#9C6A61] rounded-lg hover:bg-[#8A5B53] transition-all cursor-pointer shadow-sm active:scale-95"
+            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-[#9C6A61] rounded-lg hover:bg-[#8A5B53] transition-all cursor-pointer shadow-sm active:scale-95"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Consult Stylist</span>
@@ -153,12 +153,12 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <button
             onClick={() => onOpenMembership ? onOpenMembership('credits') : onNavigate('profile')}
             title="View AI Credits & Membership"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/80 hover:bg-white text-[11px] font-semibold text-[#242326] border border-[#B49361]/30 hover:border-[#B49361] transition-all shadow-xs cursor-pointer active:scale-95"
+            className="inline-flex items-center gap-1 max-w-[7.5rem] sm:max-w-none px-2 sm:px-2.5 py-1.5 min-h-9 rounded-full bg-white/80 hover:bg-white text-[10px] sm:text-[11px] font-semibold text-[#242326] border border-[#B49361]/30 hover:border-[#B49361] transition-all shadow-xs cursor-pointer active:scale-95"
           >
-            <Sparkles className="w-3 h-3 text-[#866a40]" />
-            <span>
+            <Sparkles className="w-3 h-3 text-[#866a40] shrink-0" />
+            <span className="truncate">
               {usesAccount
-                ? (testCredits === null ? 'Test credits' : `${testCredits} test credits`)
+                ? (testCredits === null ? 'Credits' : `${testCredits} credits`)
                 : `${credits.remainingCredits} Credits`}
             </span>
           </button>
@@ -166,7 +166,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           {/* User profile avatar trigger */}
           <button
             onClick={() => onNavigate('profile')}
-            className="flex items-center gap-2 p-1 rounded-full hover:bg-[#E5CDBE]/30 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9C6A61]"
+            className="flex items-center gap-2 p-1 min-h-11 min-w-11 rounded-full hover:bg-[#E5CDBE]/30 active:scale-95 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9C6A61]"
           >
             <div className="w-9 h-9 rounded-full overflow-hidden bg-[#E5CDBE] text-[#242326] border border-[#B49361]/30 flex items-center justify-center font-serif text-sm font-semibold shadow-xs">
               {userAvatarPhoto ? (

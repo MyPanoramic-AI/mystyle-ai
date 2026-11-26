@@ -324,7 +324,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
             <p className="text-[11px] text-[#5C585E] mb-2">
               Tap a thumbnail or use populate to fill name, colour, seasons, and photo.
             </p>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {PRESET_GARMENT_PHOTOS.map((preset, idx) => {
                 const isActive = activePresetIndex === idx;
                 return (

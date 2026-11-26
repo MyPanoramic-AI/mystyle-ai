@@ -196,30 +196,30 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
     <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 pb-16">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#242326] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-medium flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 bg-[#242326] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-medium flex items-center gap-2 border border-white/10 animate-in fade-in slide-in-from-bottom-4">
           <Check className="w-4 h-4 text-[#B49361]" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Top Header & Breadcrumb */}
-      <div className="flex items-center justify-between text-left">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-left">
         <button
           onClick={() => onNavigate('home')}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 min-h-11 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer self-start"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Home</span>
         </button>
 
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#866a40] bg-[#FAF7F2] px-2.5 py-1 rounded-full border border-[#B49361]/25">
-          South Africa Smart Retail · Demo Mode
+        <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-[#866a40] bg-[#FAF7F2] px-2.5 py-1 rounded-full border border-[#B49361]/25 self-start max-w-full">
+          SA Smart Retail · Demo
         </span>
       </div>
 
       {/* Hero Title Section */}
       <div className="text-left space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#91635a] flex items-center gap-1">
             <ShoppingBag className="w-3.5 h-3.5" />
             Personal Shopping Assistant
@@ -230,7 +230,7 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
             </span>
           )}
         </div>
-        <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#242326]">
+        <h1 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-semibold text-[#242326]">
           Shop Your Style
         </h1>
         <p className="text-xs sm:text-sm text-[#5C585E] max-w-xl">

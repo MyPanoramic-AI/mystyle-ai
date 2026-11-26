@@ -16,23 +16,35 @@
     border-color: rgba(36, 35, 38, 0.08);
   }
 
+  html {
+    overflow-x: hidden;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: #F6F2EC;
     color: #242326;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
   }
 
   h1, h2, h3, .font-editorial {
     font-family: var(--font-serif);
   }
+
+  img, video, canvas, svg {
+    max-width: 100%;
+  }
 }
 
 /* Custom scrollbar hiding for horizontal carousels */
-.no-scrollbar::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
   display: none;
 }
-.no-scrollbar {
+.no-scrollbar,
+.scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -43,4 +55,10 @@
 }
 .pt-safe {
   padding-top: env(safe-area-inset-top, 0px);
+}
+.bottom-nav-offset {
+  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+.pb-nav {
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
 }

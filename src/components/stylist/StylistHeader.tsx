@@ -29,13 +29,13 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
 }) => {
   const stylist = resolveStylistPersona(profile);
   return (
-    <div className="bg-white border-b border-[#242326]/10 px-4 sm:px-6 py-3.5 sticky top-14 sm:top-16 z-30 transition-all">
+    <div className="bg-white border-b border-[#242326]/10 px-3 sm:px-6 py-3 sticky z-30 transition-all top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-[calc(4rem+env(safe-area-inset-top,0px))]">
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
         {/* Left: Back affordance + Stylist info */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             onClick={onNavigateHome}
-            className="w-8 h-8 rounded-full bg-[#F6F2EC] hover:bg-[#E5CDBE]/30 text-[#5C585E] hover:text-[#242326] flex items-center justify-center border border-[#242326]/5 transition-colors cursor-pointer shrink-0"
+            className="w-10 h-10 rounded-full bg-[#F6F2EC] hover:bg-[#E5CDBE]/30 text-[#5C585E] hover:text-[#242326] flex items-center justify-center border border-[#242326]/5 transition-colors cursor-pointer shrink-0"
             aria-label="Back to home"
             title="Back to Home"
           >
@@ -72,11 +72,12 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
           {/* Active Lens trigger */}
           <button
             onClick={onOpenLensModal}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF7F2] hover:bg-[#F6F2EC] border border-[#242326]/10 text-xs font-medium text-[#242326] transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 w-10 h-10 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-full bg-[#FAF7F2] hover:bg-[#F6F2EC] border border-[#242326]/10 text-xs font-medium text-[#242326] transition-colors cursor-pointer"
             title="Adjust styling lens"
+            aria-label={`Adjust styling lens: ${lens.occasion}`}
           >
             <Sliders className="w-3.5 h-3.5 text-[#9C6A61]" />
-            <span className="truncate max-w-[130px]">{lens.occasion}</span>
+            <span className="hidden sm:inline truncate max-w-[130px]">{lens.occasion}</span>
           </button>
 
           {/* Chat library */}

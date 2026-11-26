@@ -817,7 +817,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col min-h-[calc(100vh-140px)] -mt-6 -mx-4 sm:-mx-6">
+    <div className="relative flex flex-col min-h-[calc(100dvh-7.5rem)] sm:min-h-[calc(100dvh-8rem)] -mt-3 sm:-mt-6 -mx-3 sm:-mx-6">
       {/* Stylist Top Header */}
       <StylistHeader
         profile={profile}

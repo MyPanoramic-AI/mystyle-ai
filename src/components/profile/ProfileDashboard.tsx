@@ -310,7 +310,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 </span>
               </div>
 
-              <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-[#5C585E]">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1 text-xs text-[#5C585E]">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-[#B49361]" />
                   {profile.personal.country}
@@ -326,7 +326,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 {accountEmail && (
                   <>
                     <span aria-hidden="true">·</span>
-                    <span>{accountEmail}</span>
+                    <span className="truncate max-w-[14rem] sm:max-w-xs">{accountEmail}</span>
                   </>
                 )}
               </div>

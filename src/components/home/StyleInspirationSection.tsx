@@ -29,8 +29,8 @@ export const StyleInspirationSection: React.FC<StyleInspirationSectionProps> = (
   return (
     <section className="mb-10 sm:mb-12">
       {/* Header */}
-      <div className="flex items-end justify-between mb-4">
-        <div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-4">
+        <div className="min-w-0">
           <span className="text-xs font-semibold tracking-wider uppercase text-[#91635a] block mb-1">
             Curated For You
           </span>
@@ -41,7 +41,7 @@ export const StyleInspirationSection: React.FC<StyleInspirationSectionProps> = (
         {onDiscoverStyles ? (
           <button
             onClick={onDiscoverStyles}
-            className="text-xs font-semibold text-[#91635a] hover:text-[#242326] transition-colors inline-flex items-center gap-1 cursor-pointer"
+            className="text-xs font-semibold text-[#91635a] hover:text-[#242326] transition-colors inline-flex items-center gap-1 cursor-pointer self-start sm:self-auto shrink-0"
           >
             <span>Discover All Styles</span>
             <ArrowRight className="w-3.5 h-3.5" />

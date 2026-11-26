@@ -1206,7 +1206,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 text-left" data-testid="tryon-page">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={() => onNavigate('home')}
@@ -1215,7 +1215,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Home</span>
         </button>
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#B49361]">
+        <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[#B49361]">
           Virtual Fitting Room · {generationMode === 'live' ? 'Live ready' : generationMode === 'local_mock' ? 'Local demo only' : 'Unavailable'}
         </span>
       </div>
@@ -1647,7 +1647,7 @@ export const TryOnPlaceholder: React.FC<TryOnPlaceholderProps> = ({
                     <label className="text-xs text-[#5C585E]">
                       Photograph
                       <select
-                        className="mt-1 block w-full min-w-[180px] rounded-xl border border-[#242326]/12 bg-white px-3 py-2 text-[#242326]"
+                        className="mt-1 block w-full rounded-xl border border-[#242326]/12 bg-white px-3 py-2 text-[#242326]"
                         value={personMediaId}
                         onChange={(event) => setPersonMediaId(event.target.value)}
                       >

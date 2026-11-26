@@ -332,7 +332,7 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
   });
 
   return (
-    <div className="min-h-screen bg-[#FBF8F5] pb-24">
+    <div className="min-h-screen bg-[#FBF8F5] pb-4">
       {/* Toast Feedback */}
       {toastMessage && (
         <div className="fixed top-20 right-4 z-50 bg-[#242326] text-white text-xs px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
@@ -342,26 +342,26 @@ export const WardrobeScreen: React.FC<WardrobeScreenProps> = ({
       )}
 
       {/* Sticky Header */}
-      <div className="bg-white border-b border-[#242326]/8 sticky top-16 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <div className="bg-white border-b border-[#242326]/8 sticky z-30 top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-[calc(4rem+env(safe-area-inset-top,0px))]">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
               onClick={onBack}
-              className="p-2 -ml-2 rounded-xl text-[#5C585E] hover:text-[#242326] hover:bg-[#F6F2EC] transition-colors cursor-pointer"
+              className="p-2.5 -ml-1 min-h-11 min-w-11 rounded-xl text-[#5C585E] hover:text-[#242326] hover:bg-[#F6F2EC] transition-colors cursor-pointer shrink-0 flex items-center justify-center"
               aria-label="Back"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono tracking-widest text-[#B49361] uppercase font-semibold">
                   Personal Archive
                 </span>
-                <span className="text-[10px] bg-[#E5CDBE]/40 text-[#9C6A61] px-2 py-0.5 rounded-md font-medium">
+                <span className="text-[10px] bg-[#E5CDBE]/40 text-[#9C6A61] px-2 py-0.5 rounded-md font-medium shrink-0">
                   {items.length} Pieces Owned
                 </span>
               </div>
-              <h1 className="font-serif text-xl sm:text-2xl font-bold text-[#242326]">
+              <h1 className="font-serif text-xl sm:text-2xl font-bold text-[#242326] truncate">
                 Digital Wardrobe & Outfit Planner
               </h1>
             </div>

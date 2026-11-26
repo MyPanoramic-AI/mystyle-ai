@@ -110,17 +110,17 @@ export const DiscoverScreen: React.FC<DiscoverScreenProps> = ({
       {/* Top Navigation & Header */}
       <div className="space-y-4">
         {/* Back and Tab Switcher */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
             onClick={onBackToHome}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer self-start"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Home</span>
           </button>
 
           {/* Browse vs Saved Toggle */}
-          <div className="flex items-center gap-1 p-1 bg-[#F6F2EC] rounded-full border border-[#242326]/5 text-xs">
+          <div className="flex items-center gap-1 p-1 bg-[#F6F2EC] rounded-full border border-[#242326]/5 text-xs self-start sm:self-auto">
             <button
               onClick={() => setActiveTab('browse')}
               className={`px-3.5 py-1.5 rounded-full font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
@@ -188,10 +188,10 @@ export const DiscoverScreen: React.FC<DiscoverScreenProps> = ({
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 w-6 h-6 rounded-full hover:bg-[#F6F2EC] text-[#5C585E] flex items-center justify-center cursor-pointer"
+                  className="absolute right-2 w-9 h-9 rounded-full hover:bg-[#F6F2EC] text-[#5C585E] flex items-center justify-center cursor-pointer"
                   aria-label="Clear search"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -233,7 +233,7 @@ export const DiscoverScreen: React.FC<DiscoverScreenProps> = ({
               </div>
               <button
                 onClick={() => setSelectedCollectionId(null)}
-                className="text-xs font-medium text-[#9C6A61] hover:text-[#242326] inline-flex items-center gap-1 cursor-pointer"
+                className="text-xs font-medium text-[#9C6A61] hover:text-[#242326] inline-flex items-center gap-1.5 min-h-10 px-2.5 rounded-xl cursor-pointer"
               >
                 <span>Clear collection filter</span>
                 <X className="w-3.5 h-3.5" />

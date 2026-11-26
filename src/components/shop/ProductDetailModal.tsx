@@ -81,22 +81,22 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#242326]/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-[#242326]/60 backdrop-blur-xs animate-in fade-in duration-200">
         <div
-          className="relative w-full max-w-4xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 duration-200 text-left"
+          className="relative w-full max-w-4xl max-h-[94dvh] sm:max-h-[92vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 duration-200 text-left pb-[env(safe-area-inset-bottom,0px)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close button top right */}
           <button
             onClick={onClose}
             aria-label="Close product details"
-            className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-white/90 text-[#242326] hover:bg-white shadow-md flex items-center justify-center transition-colors cursor-pointer"
+            className="absolute top-3 right-3 z-20 w-11 h-11 rounded-full bg-white/90 text-[#242326] hover:bg-white shadow-md flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
 
-          {/* Left Column: Editorial Product Image */}
-          <div className="relative w-full md:w-1/2 aspect-[4/5] md:aspect-auto md:h-full bg-[#FAF7F2] shrink-0 overflow-hidden">
+          {/* Left Column: Editorial Product Image — capped on phones so CTAs stay reachable */}
+          <div className="relative w-full md:w-1/2 aspect-[4/5] max-h-[38vh] sm:max-h-[42vh] md:max-h-none md:aspect-auto md:h-full bg-[#FAF7F2] shrink-0 overflow-hidden">
             <ImageWithFallback
               src={product.imageUrl}
               alt={product.name}
@@ -105,7 +105,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent md:hidden" />
 
             {/* Quality & Retailer Badge Overlay */}
-            <div className="absolute bottom-4 left-4 flex flex-col gap-1.5 items-start">
+            <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 flex flex-col gap-1.5 items-start">
               <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-lg bg-[#242326]/90 text-white backdrop-blur-xs shadow-xs">
                 {product.retailer} · Demo Listing
               </span>
@@ -116,7 +116,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           </div>
 
           {/* Right Column: Details & Actions */}
-          <div className="flex-1 overflow-y-auto p-6 sm:p-8 flex flex-col justify-between space-y-6">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-8 flex flex-col justify-between space-y-5 sm:space-y-6">
             <div className="space-y-4">
               {/* Category, Aesthetic & Retailer Bar */}
               <div className="flex items-center justify-between gap-2">

@@ -47,33 +47,33 @@ export const Modal: React.FC<ModalProps> = ({
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Modal Surface */}
-      <div className="relative w-full sm:max-w-lg bg-[#F6F2EC] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#242326]/10 max-h-[90vh] overflow-hidden flex flex-col z-10 animate-slideUp">
+      <div className="relative w-full sm:max-w-lg bg-[#F6F2EC] rounded-t-3xl sm:rounded-3xl shadow-2xl border border-[#242326]/10 max-h-[92dvh] sm:max-h-[90vh] overflow-hidden flex flex-col z-10 animate-slideUp pb-[env(safe-area-inset-bottom,0px)]">
         {/* Mobile Grab Handle */}
         <div className="sm:hidden w-12 h-1 bg-[#242326]/20 rounded-full mx-auto my-2.5" />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 pt-3 pb-3 border-b border-[#242326]/8">
-          <div>
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-3 pb-3 border-b border-[#242326]/8">
+          <div className="min-w-0">
             {title && (
-              <h3 className="text-lg font-serif font-medium text-[#242326] tracking-tight">
+              <h3 className="text-base sm:text-lg font-serif font-medium text-[#242326] tracking-tight truncate">
                 {title}
               </h3>
             )}
             {subtitle && (
-              <p className="text-xs text-[#5C585E] mt-0.5">{subtitle}</p>
+              <p className="text-xs text-[#5C585E] mt-0.5 line-clamp-2">{subtitle}</p>
             )}
           </div>
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[#242326]/70 hover:text-[#242326] hover:bg-[#E5CDBE]/30 transition-colors"
+            className="w-11 h-11 rounded-full flex items-center justify-center text-[#242326]/70 hover:text-[#242326] hover:bg-[#E5CDBE]/30 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-6 overflow-y-auto no-scrollbar">{children}</div>
+        <div className="p-4 sm:p-6 overflow-y-auto no-scrollbar overscroll-contain">{children}</div>
       </div>
     </div>
   );

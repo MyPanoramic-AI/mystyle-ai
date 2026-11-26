@@ -26,12 +26,12 @@ export const StyleProfileSummary: React.FC<StyleProfileSummaryProps> = ({
     <section className="mb-10 sm:mb-12">
       <div className="rounded-3xl bg-white border border-[#242326]/10 p-5 sm:p-7 shadow-xs">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#E5CDBE]/50 text-[#91635a] flex items-center justify-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-[#E5CDBE]/50 text-[#91635a] flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="font-serif text-lg sm:text-xl font-semibold text-[#242326]">
                 Your Style DNA
               </h2>
@@ -43,7 +43,7 @@ export const StyleProfileSummary: React.FC<StyleProfileSummaryProps> = ({
 
           <button
             onClick={onEditProfile}
-            className="text-xs font-semibold text-[#91635a] hover:text-[#794E46] flex items-center gap-1 cursor-pointer transition-colors"
+            className="text-xs font-semibold text-[#91635a] hover:text-[#794E46] flex items-center gap-1 cursor-pointer transition-colors self-start sm:self-auto shrink-0"
           >
             <Pencil className="w-3.5 h-3.5" />
             <span>Edit My Style</span>

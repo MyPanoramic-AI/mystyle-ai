@@ -88,8 +88,8 @@ export const CapsuleScreen: React.FC<CapsuleScreenProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-[#FBF8F5] pb-24">
-      <div className="bg-white border-b border-[#242326]/8 sticky top-16 z-30">
+    <div className="min-h-screen bg-[#FBF8F5] pb-4">
+      <div className="bg-white border-b border-[#242326]/8 sticky z-30 top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-[calc(4rem+env(safe-area-inset-top,0px))]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
           <button
             onClick={onBack}

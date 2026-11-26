@@ -213,7 +213,7 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#242326]/10">
           {!onSendToTryOn ? (
-            <span className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
+            <span className="flex-1 basis-[calc(50%-0.25rem)] sm:basis-auto min-w-0 sm:min-w-[120px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-11 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
               <Camera className="w-3.5 h-3.5" />
               <span>Fitting Room unavailable</span>
             </span>
@@ -221,7 +221,7 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
             <button
               type="button"
               onClick={() => onSendToTryOn(garmentFromOutfit(outfit))}
-              className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#9C6A61] hover:bg-[#83554D] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              className="flex-1 basis-[calc(50%-0.25rem)] sm:basis-auto min-w-0 sm:min-w-[120px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-11 rounded-xl bg-[#9C6A61] hover:bg-[#83554D] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               data-testid="stylist-virtual-try-on"
             >
               <Camera className="w-3.5 h-3.5" />
@@ -230,7 +230,7 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
           )}
 
           {(outfit.ownedPieceCount ?? 0) > 0 && outfit.conceptOnly ? (
-            <span className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
+            <span className="flex-1 basis-[calc(50%-0.25rem)] sm:basis-auto min-w-0 sm:min-w-[120px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-11 rounded-xl bg-[#F6F2EC] text-[#5C585E] text-xs font-semibold border border-[#242326]/10">
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>Owned — nothing to buy</span>
             </span>
@@ -238,7 +238,7 @@ export const OutfitRecommendationCard: React.FC<OutfitRecommendationCardProps> =
             <button
               type="button"
               onClick={() => (onShopNow ? onShopNow(outfit) : onNavigateToShop())}
-              className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#242326] hover:bg-black text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              className="flex-1 basis-[calc(50%-0.25rem)] sm:basis-auto min-w-0 sm:min-w-[120px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 min-h-11 rounded-xl bg-[#242326] hover:bg-black text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               data-testid="stylist-shop-now"
             >
               <ShoppingBag className="w-3.5 h-3.5" />

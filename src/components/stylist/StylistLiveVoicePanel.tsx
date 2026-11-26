@@ -150,7 +150,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
   const hasOutfitCards = outfitCards.length > 0;
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-[#1A1819] text-white animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#1A1819] text-white animate-in fade-in duration-300 overflow-hidden">
       {/* Ambient stage — blurred fill only; never crops the main look */}
       <div className="absolute inset-0 overflow-hidden">
         {hasLook ? (
@@ -291,7 +291,7 @@ export const StylistLiveVoicePanel: React.FC<StylistLiveVoicePanelProps> = ({
               <button
                 type="button"
                 onClick={() => setLookExpanded(true)}
-                className="relative flex-1 min-h-[48vh] sm:min-h-[56vh] rounded-2xl border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center p-2 sm:p-3 cursor-zoom-in"
+                className="relative flex-1 min-h-[28vh] sm:min-h-[40vh] rounded-2xl border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center p-2 sm:p-3 cursor-zoom-in"
                 aria-label="View full look"
                 title="Tap to view full picture"
               >
