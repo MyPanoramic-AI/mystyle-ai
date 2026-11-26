@@ -207,6 +207,33 @@ export function enrichOutfitWithShopMatches(
   };
 }
 
+const SHOP_CATEGORY_BY_PIECE: Record<OutfitPieceItem['category'], string> = {
+  dress: 'Dresses',
+  tops: 'Tops & Blouses',
+  bottoms: 'Jeans & Trousers',
+  outerwear: 'Jackets & Blazers',
+  shoes: 'Shoes',
+  accessories: 'Jewellery & Accessories',
+};
+
+/** Build a short catalogue search from shoppable gap pieces — never wardrobe-owned labels. */
+export function shopSearchQueryFromOutfit(outfit: StylistOutfitRecommendation): string {
+  const gapPieces = outfit.pieces.filter((piece) => !piece.owned);
+  const sources = gapPieces.length ? gapPieces : [];
+  const keywords: string[] = [];
+  for (const piece of sources) {
+    const clean = displayPieceName(piece.name)
+      .replace(/\b(your wardrobe|style suggestion|demonstration|from wardrobe)\b/gi, ' ')
+      .trim();
+    for (const token of tokens(clean)) {
+      if (!keywords.includes(token) && keywords.length < 5) keywords.push(token);
+    }
+  }
+  if (keywords.length) return keywords.join(' ');
+  // Fully owned looks: leave search empty so the full catalogue still shows.
+  return '';
+}
+
 export function shopContextFromOutfit(
   outfit: StylistOutfitRecommendation,
   profile?: UserProfile | null,
@@ -216,9 +243,13 @@ export function shopContextFromOutfit(
   const focus = enriched.pieces.find((piece) => piece.productId && !piece.owned);
   const preferred = profile?.shopping?.favoriteRetailers?.filter(Boolean) ?? [];
   const gapPieces = enriched.pieces.filter((piece) => !piece.owned);
+  const primaryGap = gapPieces[0];
+  const category = primaryGap
+    ? SHOP_CATEGORY_BY_PIECE[primaryGap.category]
+    : (enriched.pieces[0] ? SHOP_CATEGORY_BY_PIECE[enriched.pieces[0].category] : 'All');
   return {
     outfitTitle: enriched.title,
-    category: enriched.occasion || enriched.pieces[0]?.category || 'tops',
+    category,
     pieces: (gapPieces.length ? gapPieces : enriched.pieces).map((piece) => {
       if (piece.owned) return `${piece.name} · In your wardrobe`;
       const label = piece.retailer && piece.retailer !== 'Style suggestion'
@@ -226,6 +257,7 @@ export function shopContextFromOutfit(
         : piece.name;
       return label;
     }),
+    searchQuery: shopSearchQueryFromOutfit(enriched),
     focusProductId: focus?.productId,
     preferredRetailers: preferred.length ? preferred : undefined,
   };

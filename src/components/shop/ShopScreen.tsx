@@ -99,10 +99,15 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
   useEffect(() => {
     if (preloadedContext) {
       setActiveTab('browse');
-      if (preloadedContext.pieces[0]) {
-        setSearchQuery(preloadedContext.pieces[0]);
-      }
-      // If the context mentions an outfit category or piece, seed search or category
+      const ownedOnlyLabels = preloadedContext.pieces.length > 0
+        && preloadedContext.pieces.every((piece) => /in your wardrobe/i.test(piece));
+      const seed = (preloadedContext.searchQuery || '').trim()
+        || (!ownedOnlyLabels && preloadedContext.pieces[0]
+          ? preloadedContext.pieces[0].replace(/\s·\s.*$/, '').trim()
+          : '');
+      // Never seed a wardrobe-owned label into search — that empties the catalogue.
+      setSearchQuery(/in your wardrobe/i.test(seed) ? '' : seed);
+      // Only apply a real shop category (not occasion strings like "Work / office tomorrow").
       if (preloadedContext.category) {
         const catMatch = [
           'Dresses',
@@ -114,10 +119,13 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
           'Jewellery & Accessories',
           'Activewear',
         ].find((c) =>
-          preloadedContext.category.toLowerCase().includes(c.toLowerCase())
+          c.toLowerCase() === preloadedContext.category.toLowerCase()
+          || preloadedContext.category.toLowerCase().includes(c.toLowerCase())
         );
-        if (catMatch) {
+        if (catMatch && !ownedOnlyLabels) {
           setFilters((prev) => ({ ...prev, category: catMatch as ProductCategory }));
+        } else {
+          setFilters((prev) => ({ ...prev, category: 'All' }));
         }
       }
       if (preloadedContext.focusProductId) {

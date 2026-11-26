@@ -12,6 +12,8 @@ export interface ShopPreloadedContext {
   outfitTitle: string;
   category: string;
   pieces: string[];
+  /** Short catalogue-friendly search seed (never a wardrobe-owned label). */
+  searchQuery?: string;
   /** When set, Shop opens this catalogue product for purchase. */
   focusProductId?: string;
   /** Prefer listings from these saved favourite retailers when set. */

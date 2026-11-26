@@ -1649,26 +1649,28 @@ export function filterAndSortProducts(
 ): Product[] {
   let result = [...products];
 
-  // 1. Text search query
+  // 1. Text search query — match full phrase or any meaningful token so stylist seeds still find products.
   if (searchQuery && searchQuery.trim() !== '') {
     const q = searchQuery.toLowerCase().trim();
+    const stop = new Set(['the', 'and', 'with', 'from', 'your', 'for', 'into', 'wardrobe', 'owned', 'demo']);
+    const queryTokens = q
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter((token) => token.length > 2 && !stop.has(token));
     result = result.filter((p) => {
-      const matchName = p.name.toLowerCase().includes(q);
-      const matchCategory = p.category.toLowerCase().includes(q);
-      const matchColour = p.colour.toLowerCase().includes(q);
-      const matchRetailer = p.retailer.toLowerCase().includes(q);
-      const matchStyle = p.styleCategory.toLowerCase().includes(q);
-      const matchOccasion = p.occasionTags.some((occ) => occ.toLowerCase().includes(q));
-      const matchDesc = p.shortDescription.toLowerCase().includes(q);
-      return (
-        matchName ||
-        matchCategory ||
-        matchColour ||
-        matchRetailer ||
-        matchStyle ||
-        matchOccasion ||
-        matchDesc
-      );
+      const haystack = [
+        p.name,
+        p.category,
+        p.colour,
+        p.retailer,
+        p.styleCategory,
+        p.shortDescription,
+        ...p.occasionTags,
+      ].join(' ').toLowerCase();
+      if (haystack.includes(q)) return true;
+      if (!queryTokens.length) return false;
+      const hits = queryTokens.filter((token) => haystack.includes(token)).length;
+      return hits >= Math.min(2, queryTokens.length) || (queryTokens.length === 1 && hits === 1);
     });
   }
 

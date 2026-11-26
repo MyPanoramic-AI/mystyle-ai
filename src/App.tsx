@@ -265,10 +265,12 @@ export default function App({ account }: { account: ReadyAccount }) {
 
   // Discover Action 3: Find Similar Clothes -> Navigates to Shop
   const handleFindSimilarClothes = (look: FashionLook) => {
+    const pieceNames = look.pieces.map((p) => p.name);
     setShopPreloadedContext({
       outfitTitle: look.title,
       category: look.category,
-      pieces: look.pieces.map((p) => p.name),
+      pieces: pieceNames,
+      searchQuery: pieceNames.slice(0, 2).join(' '),
     });
     setActiveSubpage(null);
     setCurrentTab('shop');
@@ -406,6 +408,7 @@ export default function App({ account }: { account: ReadyAccount }) {
       outfitTitle: title || 'Wardrobe Gap Foundational Item',
       category: 'Wardrobe Gap',
       pieces: [searchQuery],
+      searchQuery,
     });
     setActiveSubpage(null);
     setCurrentTab('shop');
