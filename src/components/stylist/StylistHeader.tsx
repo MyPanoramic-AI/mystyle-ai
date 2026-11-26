@@ -16,6 +16,7 @@ interface StylistHeaderProps {
   onNavigateHome: () => void;
   onOpenDiscover?: () => void;
   onOpenLibrary?: () => void;
+  newChatBusy?: boolean;
 }
 
 export const StylistHeader: React.FC<StylistHeaderProps> = ({
@@ -26,6 +27,7 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
   onNavigateHome,
   onOpenDiscover,
   onOpenLibrary,
+  newChatBusy = false,
 }) => {
   const stylist = resolveStylistPersona(profile);
   return (
@@ -106,12 +108,15 @@ export const StylistHeader: React.FC<StylistHeaderProps> = ({
 
           {/* New consultation button — keeps prior chats in the library */}
           <button
+            type="button"
             onClick={onResetSession}
-            className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF7F2] border border-[#242326]/12 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer"
+            disabled={newChatBusy}
+            className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF7F2] border border-[#242326]/12 text-xs font-medium text-[#5C585E] hover:text-[#242326] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait"
             title="Start a new chat (previous chats stay in your library)"
+            data-testid="stylist-new-chat"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">New Chat</span>
+            <RotateCcw className={`w-3.5 h-3.5 ${newChatBusy ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{newChatBusy ? 'Starting…' : 'New Chat'}</span>
           </button>
         </div>
       </div>

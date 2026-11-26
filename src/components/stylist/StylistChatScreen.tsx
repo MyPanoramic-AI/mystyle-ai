@@ -127,6 +127,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   const [waitLineIndex, setWaitLineIndex] = useState(0);
   const [isLensModalOpen, setIsLensModalOpen] = useState<boolean>(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
+  const [newChatBusy, setNewChatBusy] = useState(false);
   const [inputPrefill, setInputPrefill] = useState<string>('');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [serviceLabel, setServiceLabel] = useState(connection ? 'Checking the stylist' : 'Demonstration replies on this device');
@@ -860,6 +861,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   };
 
   const handleStartFreshChat = () => {
+    if (newChatBusy) return;
     const resetLocal = () => {
       setMessages(getInitialConversation(profile, undefined));
       setConversationId(null);
@@ -868,34 +870,43 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       setActiveLookImageUrl(null);
       setVoiceOutfitCards([]);
       setVoiceLookVisual(null);
+      setInputPrefill('');
+      setIsTyping(false);
       onClearState();
       setIsResetConfirmOpen(false);
       setLibraryOpen(false);
+      setNewChatBusy(false);
+      setServiceNotice('Started a new chat.');
+      window.setTimeout(() => scrollToBottom(false), 40);
     };
     if (!connection || localDemo) {
       resetLocal();
       return;
     }
+    setNewChatBusy(true);
+    setServiceNotice('Starting a new chat…');
     void connection.startFresh().then((fresh) => {
       setConversationId(fresh.id);
       setMessages(getInitialConversation(profile, undefined));
+      setGarmentContext(null);
       setActiveShopOutfit(null);
       setActiveLookImageUrl(null);
       setVoiceOutfitCards([]);
       setVoiceLookVisual(null);
+      setInputPrefill('');
+      setIsTyping(false);
       setServiceNotice('Started a new chat. Earlier conversations stay in your library.');
       onClearState();
       setIsResetConfirmOpen(false);
       setLibraryOpen(false);
+      setNewChatBusy(false);
+      window.setTimeout(() => scrollToBottom(false), 40);
       void refreshLibrary();
     }).catch((error: unknown) => {
+      setNewChatBusy(false);
       setServiceNotice(error instanceof AccountApiError ? error.message : 'A new chat could not be started.');
       setIsResetConfirmOpen(false);
     });
-  };
-
-  const handleResetSession = () => {
-    handleStartFreshChat();
   };
 
   return (
@@ -905,10 +916,11 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         profile={profile}
         lens={lens}
         onOpenLensModal={() => setIsLensModalOpen(true)}
-        onResetSession={() => setIsResetConfirmOpen(true)}
+        onResetSession={handleStartFreshChat}
         onNavigateHome={() => onNavigate('home')}
         onOpenDiscover={onOpenDiscover}
         onOpenLibrary={connection && !localDemo ? handleOpenLibrary : undefined}
+        newChatBusy={newChatBusy}
       />
 
       <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -1163,7 +1175,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         profile={profile}
       />
 
-      {/* Reset Confirmation Modal */}
+      {/* Reset Confirmation Modal (kept for any legacy open state) */}
       <Modal
         isOpen={isResetConfirmOpen}
         onClose={() => setIsResetConfirmOpen(false)}
@@ -1186,9 +1198,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
             <Button
               variant="charcoal"
               size="sm"
-              onClick={handleResetSession}
+              onClick={handleStartFreshChat}
+              disabled={newChatBusy}
             >
-              New Chat
+              {newChatBusy ? 'Starting…' : 'New Chat'}
             </Button>
           </div>
         </div>

@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -35,11 +36,12 @@ export const Modal: React.FC<ModalProps> = ({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
+  // Portal outside overflow-hidden app shells so dialogs stay visible and clickable.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#242326]/60 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#242326]/60 backdrop-blur-sm animate-fadeIn"
       role="dialog"
       aria-modal="true"
     >
@@ -64,9 +66,10 @@ export const Modal: React.FC<ModalProps> = ({
             )}
           </div>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="w-11 h-11 rounded-full flex items-center justify-center text-[#242326]/70 hover:text-[#242326] hover:bg-[#E5CDBE]/30 transition-colors shrink-0"
+            className="w-11 h-11 rounded-full flex items-center justify-center text-[#242326]/70 hover:text-[#242326] hover:bg-[#E5CDBE]/30 transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -75,6 +78,7 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Scrollable Body */}
         <div className="p-4 sm:p-6 overflow-y-auto no-scrollbar overscroll-contain">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
