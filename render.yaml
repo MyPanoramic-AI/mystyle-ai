@@ -119,3 +119,25 @@ services:
         sync: false
       - key: TWILIO_WHATSAPP_SESSION_HOURS
         value: "24"
+      # Browser Web Push (VAPID). Private key is set in the Dashboard / MCP — never commit it.
+      - key: VAPID_PUBLIC_KEY
+        value: BD89qG_7QaFp5EBLV_A6j6EGrvSmHjoSdMn6C7-_ym0O9wesJBMj3Qk1RBnCf50gKffSgfXqBT3nufuAsYIsmn4
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:No-Reply@mypanoramic.com
+      - key: PUSH_CRON_SECRET
+        sync: false
+
+  - type: cron
+    name: mystyle-push-tips
+    runtime: node
+    plan: starter
+    schedule: "0 5 * * *"
+    buildCommand: echo "push tips cron"
+    startCommand: node -e "fetch('https://mystyle-ai.onrender.com/api/cron/push-tips',{method:'POST',headers:{Authorization:'Bearer '+process.env.PUSH_CRON_SECRET}}).then(async(r)=>{console.log(await r.text()); if(!r.ok) process.exit(1)}).catch((e)=>{console.error(e); process.exit(1)})"
+    envVars:
+      - key: NODE_VERSION
+        value: 24.4.0
+      - key: PUSH_CRON_SECRET
+        sync: false

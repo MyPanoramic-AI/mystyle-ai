@@ -93,11 +93,19 @@ import {
   prepareTryOnJob,
   tryOnAvailability,
 } from '../tryon/service.js';
+import { loadPushConfig, type PushConfig } from '../push/pushConfig.js';
+import {
+  deletePushSubscriptionForUser,
+  listPushSubscriptionsForUser,
+  upsertPushSubscription,
+} from '../push/subscriptions.js';
+import { dispatchScheduledPushTips, sendTestPushToUser } from '../push/dispatch.js';
 
 export interface AppDeps {
   db: Sql;
   config: ApiConfig;
   now: () => number;
+  pushConfig?: PushConfig;
   rateLimiter: RateLimiter;
   aiConfig?: AiConfig;
   aiFetch?: typeof fetch;
@@ -141,6 +149,7 @@ export function createApp(deps: AppDeps): express.Express {
   const app = express();
   app.disable('x-powered-by');
   if (deps.config.trustProxy) app.set('trust proxy', 1);
+  const pushConfig = deps.pushConfig ?? loadPushConfig();
   const mailer = deps.mailer
     ?? (deps.config.emailCaptureEnabled
       ? createCaptureMailer(deps.db, deps.now)
@@ -200,6 +209,14 @@ export function createApp(deps: AppDeps): express.Express {
     if (!deps.config.adminToken) throw new ApiError('admin_unavailable', 'The operator route is disabled.', 503);
     const presented = (req.header('authorization') ?? '').replace(/^Bearer /, '');
     if (!presented || !safeEqual(presented, deps.config.adminToken)) throw new ApiError('unauthorised', 'The operator route was not accepted.', 401);
+  }
+
+  function requireCron(req: Request): void {
+    if (!pushConfig.cronSecret) throw new ApiError('admin_unavailable', 'Push cron is not configured.', 503);
+    const presented = (req.header('authorization') ?? '').replace(/^Bearer /, '');
+    if (!presented || !safeEqual(presented, pushConfig.cronSecret)) {
+      throw new ApiError('unauthorised', 'The cron route was not accepted.', 401);
+    }
   }
 
   function text(value: unknown): string {
@@ -461,6 +478,76 @@ export function createApp(deps: AppDeps): express.Express {
   }));
   app.put('/api/preferences', route((req, res) => {
     res.json(updatePreferences(deps.db, requireUser(req).userId, req.body ?? {}, deps.now()));
+  }));
+
+  // Browser Web Push
+  app.get('/api/push/status', route((req, res) => {
+    const user = requireUser(req);
+    const subs = listPushSubscriptionsForUser(deps.db, user.userId);
+    res.json({
+      enabled: pushConfig.enabled,
+      publicKey: pushConfig.publicKey,
+      subscribed: subs.length > 0,
+      subscriptionCount: subs.length,
+    });
+  }));
+  app.get('/api/push/vapid-public-key', route((_req, res) => {
+    if (!pushConfig.enabled || !pushConfig.publicKey) {
+      throw new ApiError('push_disabled', 'Browser push is not configured on this server.', 503);
+    }
+    res.json({ publicKey: pushConfig.publicKey });
+  }));
+  app.post('/api/push/subscribe', route((req, res) => {
+    const user = requireUser(req);
+    if (!pushConfig.enabled) throw new ApiError('push_disabled', 'Browser push is not configured on this server.', 503);
+    const saved = upsertPushSubscription(
+      deps.db,
+      user.userId,
+      req.body ?? {},
+      deps.now(),
+      req.header('user-agent'),
+    );
+    res.status(201).json({
+      ok: true,
+      id: saved.id,
+      endpoint: saved.endpoint,
+    });
+  }));
+  app.delete('/api/push/subscribe', route((req, res) => {
+    const user = requireUser(req);
+    const endpoint = typeof req.body?.endpoint === 'string' ? req.body.endpoint : '';
+    if (!endpoint) throw new ApiError('bad_request', 'An endpoint is required to unsubscribe.', 400);
+    res.json(deletePushSubscriptionForUser(deps.db, user.userId, endpoint));
+  }));
+  app.post('/api/push/test', route(async (req, res) => {
+    const user = requireUser(req);
+    const result = await sendTestPushToUser({
+      db: deps.db,
+      config: pushConfig,
+      userId: user.userId,
+      now: deps.now(),
+    });
+    res.json(result);
+  }));
+  app.post('/api/cron/push-tips', route(async (req, res) => {
+    requireCron(req);
+    if (!pushConfig.enabled) throw new ApiError('push_disabled', 'Browser push is not configured on this server.', 503);
+    const result = await dispatchScheduledPushTips({
+      db: deps.db,
+      config: pushConfig,
+      now: deps.now(),
+    });
+    res.json({ ok: true, ...result });
+  }));
+  app.post('/api/admin/push/dispatch', route(async (req, res) => {
+    requireAdmin(req);
+    if (!pushConfig.enabled) throw new ApiError('push_disabled', 'Browser push is not configured on this server.', 503);
+    const result = await dispatchScheduledPushTips({
+      db: deps.db,
+      config: pushConfig,
+      now: deps.now(),
+    });
+    res.json({ ok: true, ...result });
   }));
 
   app.get('/api/family', route((req, res) => res.json({ members: listFamily(deps.db, requireUser(req).userId) })));

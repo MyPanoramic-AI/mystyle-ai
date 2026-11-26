@@ -17,7 +17,15 @@ import {
   CheckCircle2,
   Sparkles,
   HeartHandshake,
+  Send,
 } from 'lucide-react';
+import { AccountApiError, accountApi } from '../../services/accountApi';
+import {
+  subscribeBrowserPush,
+  subscriptionToJson,
+  unsubscribeBrowserPush,
+  webPushSupported,
+} from '../../services/webPush';
 
 interface NotificationPreferencesViewProps {
   settings: NotificationSettings;
@@ -32,17 +40,138 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
 }) => {
   const [formData, setFormData] = useState<NotificationSettings>(settings);
   const [success, setSuccess] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNotice, setPushNotice] = useState<string | null>(null);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushServerEnabled, setPushServerEnabled] = useState(false);
 
   useEffect(() => {
     setFormData(settings);
   }, [settings]);
 
-  const handleToggle = (key: keyof NotificationSettings, val: boolean) => {
-    const updated = { ...formData, [key]: val };
+  useEffect(() => {
+    if (!accountMode) return;
+    let cancelled = false;
+    void accountApi.pushStatus().then((status) => {
+      if (cancelled) return;
+      setPushServerEnabled(status.enabled);
+      setPushSubscribed(status.subscribed);
+    }).catch(() => {
+      if (cancelled) return;
+      setPushServerEnabled(false);
+      setPushSubscribed(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountMode]);
+
+  const persist = (updated: NotificationSettings) => {
     setFormData(updated);
     onSaveSettings(updated);
     setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    window.setTimeout(() => setSuccess(false), 3000);
+  };
+
+  const enableBrowserPush = async (): Promise<boolean> => {
+    if (!accountMode) {
+      setPushNotice('Sign in to receive browser push alerts on this device.');
+      return false;
+    }
+    if (!webPushSupported()) {
+      setPushNotice('This browser does not support push notifications.');
+      return false;
+    }
+    setPushBusy(true);
+    setPushNotice(null);
+    try {
+      const { publicKey } = await accountApi.pushVapidPublicKey();
+      const subscription = await subscribeBrowserPush(publicKey);
+      await accountApi.pushSubscribe(subscriptionToJson(subscription));
+      setPushSubscribed(true);
+      setPushServerEnabled(true);
+      setPushNotice('Push alerts are on for this browser. You can send a test below.');
+      return true;
+    } catch (error) {
+      setPushNotice(
+        error instanceof AccountApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Could not enable browser push.',
+      );
+      return false;
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const disableBrowserPush = async () => {
+    setPushBusy(true);
+    setPushNotice(null);
+    try {
+      const registration = await navigator.serviceWorker.getRegistration('/');
+      const current = await registration?.pushManager.getSubscription();
+      if (current) {
+        await accountApi.pushUnsubscribe(current.endpoint).catch(() => undefined);
+        await unsubscribeBrowserPush();
+      }
+      setPushSubscribed(false);
+      setPushNotice('Push alerts turned off for this browser.');
+    } catch (error) {
+      setPushNotice(error instanceof Error ? error.message : 'Could not turn off push.');
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleToggle = (key: keyof NotificationSettings, val: boolean) => {
+    if (key === 'pushEnabled') {
+      void (async () => {
+        if (val) {
+          const ok = await enableBrowserPush();
+          if (!ok) {
+            setFormData((prev) => ({ ...prev, pushEnabled: false }));
+            return;
+          }
+          persist({ ...formData, pushEnabled: true });
+          return;
+        }
+        await disableBrowserPush();
+        persist({ ...formData, pushEnabled: false });
+      })();
+      return;
+    }
+    persist({ ...formData, [key]: val });
+  };
+
+  const sendTestPush = async () => {
+    if (!accountMode) {
+      setPushNotice('Sign in to send a test push notification.');
+      return;
+    }
+    setPushBusy(true);
+    setPushNotice(null);
+    try {
+      if (!pushSubscribed) {
+        const ok = await enableBrowserPush();
+        if (!ok) return;
+      }
+      const result = await accountApi.pushTest();
+      setPushNotice(
+        result.ok
+          ? `Test notification sent (${result.delivered} of ${result.attempted} delivered). Check your system tray or notification centre.`
+          : 'The test was attempted but nothing was delivered. Allow notifications for this site and try again.',
+      );
+    } catch (error) {
+      setPushNotice(
+        error instanceof AccountApiError
+          ? error.message
+          : 'Could not send a test push notification.',
+      );
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   return (
@@ -58,8 +187,8 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
         </h2>
         <p className="text-xs text-[#5C585E]">
           {accountMode
-            ? 'Saved to your account. By default you receive one stylist tip a day — turn on “hear more” below for more frequent updates.'
-            : 'Receive intentional fashion alerts without digital noise. By default: one tip a day. Preferences stay in this browser only.'}
+            ? 'Saved to your account. Turn on Push Alerts and allow this browser — then send a test to confirm delivery.'
+            : 'Receive intentional fashion alerts without digital noise. Sign in to enable real browser push.'}
         </p>
       </div>
 
@@ -71,6 +200,12 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
               ? 'Notification preferences saved to your account.'
               : 'Notification preferences updated in this browser.'}
           </span>
+        </div>
+      )}
+
+      {pushNotice && (
+        <div className="rounded-2xl border border-[#242326]/10 bg-white p-4 text-xs text-[#5C585E] leading-relaxed">
+          {pushNotice}
         </div>
       )}
 
@@ -117,13 +252,25 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
               <div className="w-8 h-8 rounded-xl bg-[#E5CDBE]/50 text-[#9C6A61] flex items-center justify-center">
                 <Bell className="w-4 h-4" />
               </div>
-              <span className="text-xs font-semibold text-[#242326]">Push Alerts</span>
+              <div>
+                <span className="text-xs font-semibold text-[#242326] block">Push Alerts</span>
+                <span className="text-[10px] text-[#5C585E]">
+                  {pushBusy
+                    ? 'Working…'
+                    : pushSubscribed
+                      ? 'This browser is subscribed'
+                      : accountMode
+                        ? (pushServerEnabled ? 'Not subscribed yet' : 'Server push ready after save')
+                        : 'Sign in required'}
+                </span>
+              </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 checked={formData.pushEnabled}
                 onChange={(e) => handleToggle('pushEnabled', e.target.checked)}
+                disabled={pushBusy}
                 className="sr-only peer"
               />
               <div className="w-10 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#9C6A61]"></div>
@@ -166,6 +313,18 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
             </label>
           </div>
         </div>
+
+        {accountMode && (
+          <button
+            type="button"
+            onClick={() => void sendTestPush()}
+            disabled={pushBusy}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#242326] hover:bg-black disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
+          >
+            <Send className="w-3.5 h-3.5" />
+            {pushBusy ? 'Sending…' : 'Send test push notification'}
+          </button>
+        )}
       </div>
 
       {/* Card 2: Fashion & Routine Content */}
@@ -206,7 +365,7 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
                   Morning Weather Outfit Recommendations
                 </span>
                 <span className="text-[11px] text-[#5C585E] block">
-                  Daily 07:00 alert with layering advice calibrated to Cape Town / local microclimates.
+                  Around 07:00 — a weather-aware outfit idea based on your city and wardrobe.
                 </span>
               </div>
             </div>
@@ -223,13 +382,13 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
 
           <div className="py-3.5 flex items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <Coins className="w-4 h-4 text-[#B49361] shrink-0 mt-0.5" />
+              <Coins className="w-4 h-4 text-[#9C6A61] shrink-0 mt-0.5" />
               <div>
                 <span className="text-xs font-semibold text-[#242326] block">
-                  Credit Replenishment & Low Balance Alerts
+                  Credit Renewal Reminders
                 </span>
                 <span className="text-[11px] text-[#5C585E] block">
-                  Notifies you when your monthly 50 credits replenish or when credits drop below 5.
+                  Low-balance and renewal reminders for AI credits.
                 </span>
               </div>
             </div>
@@ -249,10 +408,10 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
               <Tag className="w-4 h-4 text-[#9C6A61] shrink-0 mt-0.5" />
               <div>
                 <span className="text-xs font-semibold text-[#242326] block">
-                  South African Retailer Sales & Price Drops
+                  Sales & Price Drops
                 </span>
                 <span className="text-[11px] text-[#5C585E] block">
-                  Instant notice if items on your Saved Wishlist or Wardrobe Gaps go on promotion at Woolworths or Superbalist.
+                  Alerts when saved looks or preferred retailers drop in price.
                 </span>
               </div>
             </div>
@@ -269,13 +428,13 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
 
           <div className="py-3.5 flex items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <RotateCcw className="w-4 h-4 text-[#5C585E] shrink-0 mt-0.5" />
+              <RotateCcw className="w-4 h-4 text-[#9C6A61] shrink-0 mt-0.5" />
               <div>
                 <span className="text-xs font-semibold text-[#242326] block">
-                  Digital Wardrobe Rotation Prompts
+                  Wardrobe Rotation Prompts
                 </span>
                 <span className="text-[11px] text-[#5C585E] block">
-                  Gentle suggestions to wear forgotten pieces in your digital wardrobe to increase cost-per-wear value.
+                  Gentle nudges to restyle pieces you have not worn recently.
                 </span>
               </div>
             </div>
@@ -295,10 +454,10 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
               <Users className="w-4 h-4 text-[#9C6A61] shrink-0 mt-0.5" />
               <div>
                 <span className="text-xs font-semibold text-[#242326] block">
-                  Family Occasion Preparation
+                  Family Event Reminders
                 </span>
                 <span className="text-[11px] text-[#5C585E] block">
-                  Coordination reminders 1 week before scheduled family weddings, school ceremonies, or holidays.
+                  Outfit prep reminders ahead of family calendar events.
                 </span>
               </div>
             </div>

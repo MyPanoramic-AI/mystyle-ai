@@ -56,6 +56,11 @@ export interface AccountApi {
   silhouetteOptions(): Promise<{ options: { id: string; label: string; note: string }[] }>;
   getPreferences(): Promise<Record<string, unknown>>;
   savePreferences(body: Record<string, unknown>): Promise<Record<string, unknown>>;
+  pushStatus(): Promise<{ enabled: boolean; publicKey: string | null; subscribed: boolean; subscriptionCount: number }>;
+  pushVapidPublicKey(): Promise<{ publicKey: string }>;
+  pushSubscribe(body: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<{ ok: boolean; id: string; endpoint: string }>;
+  pushUnsubscribe(endpoint: string): Promise<{ deleted: boolean }>;
+  pushTest(): Promise<{ ok: boolean; delivered: number; attempted: number }>;
   stylistAvailability(): Promise<StylistAvailability>;
   stylistVoiceAvailability(): Promise<StylistVoiceAvailability>;
   previewStylistVoice(body: { voice: string; stylistName?: string | null }): Promise<Blob>;
@@ -716,6 +721,11 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     silhouetteOptions: () => request('/api/profile/silhouette/options'),
     getPreferences: () => request('/api/preferences', { timeoutMs: 8_000 }),
     savePreferences: (body) => request('/api/preferences', { method: 'PUT', body, csrf: true }),
+    pushStatus: () => request('/api/push/status', { timeoutMs: 8_000 }),
+    pushVapidPublicKey: () => request('/api/push/vapid-public-key', { timeoutMs: 8_000 }),
+    pushSubscribe: (body) => request('/api/push/subscribe', { method: 'POST', body, csrf: true }),
+    pushUnsubscribe: (endpoint) => request('/api/push/subscribe', { method: 'DELETE', body: { endpoint }, csrf: true }),
+    pushTest: () => request('/api/push/test', { method: 'POST', body: {}, csrf: true }),
     stylistAvailability: () => request('/api/stylist/availability'),
     stylistVoiceAvailability: () => request('/api/stylist/voice/availability'),
     previewStylistVoice: async (body) => {

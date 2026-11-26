@@ -23,6 +23,7 @@ export async function startApi(
     voiceConfig?: import('../src/ai/voiceConfig.js').VoiceConfig;
     tryOnConfig?: import('../src/tryon/tryonConfig.js').TryOnConfig;
     tryOnFetch?: typeof fetch;
+    pushConfig?: import('../src/push/pushConfig.js').PushConfig;
   } = {},
 ): Promise<RunningApi> {
   const dir = mkdtempSync(path.join(tmpdir(), 'mystyle-api-'));
@@ -47,6 +48,7 @@ export async function startApi(
     voiceConfig: extras.voiceConfig,
     tryOnConfig: extras.tryOnConfig,
     tryOnFetch: extras.tryOnFetch,
+    pushConfig: extras.pushConfig,
   });
   const server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', () => resolve()));
