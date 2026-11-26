@@ -36,13 +36,13 @@ async function session(base: string, email: string) {
   return created;
 }
 
-test('voice stays off without approval, price, or budgets', () => {
+test('voice stays off without approval or price', () => {
   assert.equal(voiceServiceReady(loadVoiceConfig({})), false);
   assert.equal(voiceServiceReady(loadVoiceConfig({
     AI_VOICE_ALLOW_LIVE: 'true',
     OPENAI_API_KEY: 'k',
   })), false);
-  assert.equal(voiceServiceReady(voiceConfig()), true);
+  assert.equal(voiceServiceReady(voiceConfig({ maxBudgetUsd: 0, maxUserBudgetUsd: 0 })), true);
   assert.equal(estimateVoiceSessionUsd(voiceConfig(), 60), 0.1);
 });
 

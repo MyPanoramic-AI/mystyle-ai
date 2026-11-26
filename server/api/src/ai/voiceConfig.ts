@@ -88,8 +88,6 @@ export function voiceServiceReady(config: VoiceConfig): boolean {
     && config.model
     && config.usdPerMinute != null
     && config.usdPerMinute > 0
-    && config.maxBudgetUsd > 0
-    && config.maxUserBudgetUsd > 0
     && config.maxSessionSeconds > 0
     && config.dailySecondsLimit > 0,
   );

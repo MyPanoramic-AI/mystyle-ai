@@ -32,9 +32,7 @@ export function assertVoiceAllowed(
   if (estimate == null) {
     throw new ApiError('voice_unpriced', 'Voice stays off until AI_VOICE_USD_PER_MINUTE is configured.', 503);
   }
-  if (opts.spentUsd + estimate > config.maxBudgetUsd || opts.userSpentUsd + estimate > config.maxUserBudgetUsd) {
-    throw new ApiError('voice_budget_exceeded', 'The voice development budget has been reached.', 429);
-  }
+  // App-side voice USD budgets are not enforced; OpenAI account billing is the spend limit.
   return estimate;
 }
 
