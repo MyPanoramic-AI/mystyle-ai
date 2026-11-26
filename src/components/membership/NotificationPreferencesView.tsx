@@ -73,6 +73,24 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
     window.setTimeout(() => setSuccess(false), 3000);
   };
 
+  const describePushFailure = (error: unknown): string => {
+    const raw =
+      error instanceof AccountApiError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : 'Could not enable browser push.';
+    const lower = raw.toLowerCase();
+    if (
+      lower.includes('push service not available')
+      || lower.includes('registration failed')
+      || lower.includes('permission denied')
+    ) {
+      return `${raw} Open IStyleU in desktop Chrome or Edge (not an embedded IDE browser), click Allow when prompted, then try again.`;
+    }
+    return raw;
+  };
+
   const enableBrowserPush = async (): Promise<boolean> => {
     if (!accountMode) {
       setPushNotice('Sign in to receive browser push alerts on this device.');
@@ -93,13 +111,7 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
       setPushNotice('Push alerts are on for this browser. You can send a test below.');
       return true;
     } catch (error) {
-      setPushNotice(
-        error instanceof AccountApiError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Could not enable browser push.',
-      );
+      setPushNotice(describePushFailure(error));
       return false;
     } finally {
       setPushBusy(false);
@@ -131,7 +143,7 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
         if (val) {
           const ok = await enableBrowserPush();
           if (!ok) {
-            setFormData((prev) => ({ ...prev, pushEnabled: false }));
+            persist({ ...formData, pushEnabled: false });
             return;
           }
           persist({ ...formData, pushEnabled: true });
@@ -260,7 +272,9 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
                     : pushSubscribed
                       ? 'This browser is subscribed'
                       : accountMode
-                        ? (pushServerEnabled ? 'Not subscribed yet' : 'Server push ready after save')
+                        ? (pushServerEnabled
+                          ? 'Turn on, allow notifications in Chrome/Edge, then Send test'
+                          : 'Server push not configured yet')
                         : 'Sign in required'}
                 </span>
               </div>
