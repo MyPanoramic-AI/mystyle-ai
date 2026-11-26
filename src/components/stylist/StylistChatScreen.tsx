@@ -156,6 +156,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   });
   const pendingVoiceTranscripts = useRef<GptLiveTranscriptTurn[]>([]);
   const voiceVisualInFlightRef = useRef(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const voiceVisualDoneForPromptRef = useRef<string | null>(null);
   const recentUserVoiceRef = useRef<string[]>([]);
@@ -231,7 +232,8 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       ]);
       voiceAnnounceRef.current(result.title);
       window.setTimeout(() => {
-        chatBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        const pane = chatScrollRef.current;
+        if (pane) pane.scrollTo({ top: pane.scrollHeight, behavior: 'smooth' });
       }, 80);
     } catch (error) {
       const message = error instanceof AccountApiError
@@ -369,14 +371,20 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
     setGarmentContext(null);
   };
 
-  // Auto-scroll when messages update
-  const scrollToBottom = () => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Scroll only the chat pane — never the document (scrollIntoView blows the page up).
+  const scrollToBottom = useCallback((smooth = true) => {
+    const pane = chatScrollRef.current;
+    if (!pane) return;
+    if (smooth) {
+      pane.scrollTo({ top: pane.scrollHeight, behavior: 'smooth' });
+      return;
+    }
+    pane.scrollTop = pane.scrollHeight;
+  }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping, waitLineIndex]);
+    scrollToBottom(true);
+  }, [messages, isTyping, waitLineIndex, scrollToBottom]);
 
   useEffect(() => {
     if (!isTyping) {
@@ -891,7 +899,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col min-h-[calc(100dvh-7.5rem)] sm:min-h-[calc(100dvh-8rem)] -mt-3 sm:-mt-6 -mx-3 sm:-mx-6">
+    <div className="relative flex flex-col h-full min-h-0 overflow-hidden -mx-3 sm:-mx-6">
       {/* Stylist Top Header */}
       <StylistHeader
         profile={profile}
@@ -903,7 +911,7 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
         onOpenLibrary={connection && !localDemo ? handleOpenLibrary : undefined}
       />
 
-      <div className="relative flex-1 flex flex-col min-h-0">
+      <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
       <StylistChatLibrary
         open={libraryOpen}
         stylistName={stylistName}
@@ -919,7 +927,10 @@ export const StylistChatScreen: React.FC<StylistChatScreenProps> = ({
       />
 
       {/* Chat Messages Scroll Container */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 max-w-4xl w-full mx-auto space-y-6">
+      <div
+        ref={chatScrollRef}
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 py-6 max-w-4xl w-full mx-auto space-y-6"
+      >
         {/* Session Intro Kicker */}
         <div className="text-center py-2">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9C6A61] px-3 py-1 rounded-full bg-[#FAF7F2] border border-[#242326]/5 inline-flex items-center gap-1.5">

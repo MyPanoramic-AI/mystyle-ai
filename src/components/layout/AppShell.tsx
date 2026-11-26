@@ -29,8 +29,13 @@ export const AppShell: React.FC<AppShellProps> = ({
   usesAccount = false,
   children,
 }) => {
+  // Chat screens need a fixed viewport height so the message list scrolls in-place.
+  const lockViewport = currentTab === 'stylist';
+
   return (
-    <div className="min-h-dvh flex flex-col bg-[#F6F2EC] text-[#242326] overflow-x-hidden">
+    <div
+      className={`${lockViewport ? 'h-dvh overflow-hidden' : 'min-h-dvh'} flex flex-col bg-[#F6F2EC] text-[#242326] overflow-x-hidden`}
+    >
       {/* Top Navigation */}
       <TopHeader
         currentTab={currentTab}
@@ -42,7 +47,13 @@ export const AppShell: React.FC<AppShellProps> = ({
       />
 
       {/* Main Content Area - room for bottom nav + home-indicator safe area on phones */}
-      <main className="flex-1 w-full min-w-0 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 sm:pt-6 pb-nav lg:pb-16">
+      <main
+        className={`flex-1 w-full min-w-0 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 ${
+          lockViewport
+            ? 'min-h-0 overflow-hidden flex flex-col pt-0 sm:pt-0 pb-nav lg:pb-4'
+            : 'pt-3 sm:pt-6 pb-nav lg:pb-16'
+        }`}
+      >
         {children}
       </main>
 

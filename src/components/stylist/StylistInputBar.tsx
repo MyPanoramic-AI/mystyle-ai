@@ -117,7 +117,7 @@ export const StylistInputBar: React.FC<StylistInputBarProps> = ({
   };
 
   return (
-    <div className="bg-white/95 backdrop-blur-md border-t border-[#242326]/10 p-3 sm:p-4 sticky z-30 transition-all bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] lg:pb-4">
+    <div className="bg-white/95 backdrop-blur-md border-t border-[#242326]/10 p-3 sm:p-4 shrink-0 z-30 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] lg:pb-4">
       <div className="max-w-4xl mx-auto space-y-2.5">
         {/* Quick Suggestion Chips Carousel */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
