@@ -4,6 +4,7 @@ import type { StylistServerMessage } from './accountApi';
 import { garmentFollowUpActions } from '../data/garmentFollowUps';
 import { enrichOutfitWithShopMatches, isWardrobeLabeledPiece } from './stylistShopMatch';
 import { spokenTextHasOutfitOptions, voiceOutfitCardsFromText } from '../utils/voiceOutfitCards';
+import { customerFollowUpChip } from '../utils/customerFollowUps';
 import workOfficeImg from '../assets/images/fashion_work_office_1791978399975.jpg';
 import weddingGuestImg from '../assets/images/fashion_wedding_guest_1791978399342.jpg';
 import weekendCasualImg from '../assets/images/fashion_weekend_casual_1791978401075.jpg';
@@ -172,13 +173,12 @@ export function conceptCard(
 
 export function followUps(message: StylistServerMessage, options?: { includeGarmentFollowUps?: boolean }): StylistQuickAction[] {
   const questions = message.recommendation?.followUpQuestions;
+  // Chips are tap-to-send customer prompts — rewrite stylist-facing questions first.
   const fromModel = Array.isArray(questions)
-    ? questions.filter((item): item is string => typeof item === 'string').slice(0, 2).map((prompt, index) => ({
-      id: `${message.id}-follow-${index}`,
-      label: prompt,
-      prompt,
-      variant: 'secondary' as const,
-    }))
+    ? questions
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+      .slice(0, 2)
+      .map((raw, index) => customerFollowUpChip(`${message.id}-follow-${index}`, raw))
     : [];
   if (!options?.includeGarmentFollowUps) return fromModel;
   return [...garmentFollowUpActions(message.id), ...fromModel].slice(0, 6);

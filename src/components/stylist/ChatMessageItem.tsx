@@ -269,9 +269,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                 key={action.id}
                 type="button"
                 onClick={() => (onSelectAction ? onSelectAction(action) : onSelectPrompt(action.prompt))}
-                className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-medium px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF7F2] text-[#242326] border border-[#242326]/15 hover:border-[#9C6A61] transition-all cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1 text-left text-[11px] sm:text-xs font-medium px-3 py-2 min-h-11 max-w-full rounded-2xl bg-white hover:bg-[#FAF7F2] text-[#242326] border border-[#242326]/15 hover:border-[#9C6A61] transition-all cursor-pointer shadow-2xs"
               >
-                <span>{action.label}</span>
+                <span className="leading-snug">{action.label}</span>
               </button>
             ))}
           </div>

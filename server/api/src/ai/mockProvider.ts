@@ -86,7 +86,7 @@ export class MockTextProvider implements TextProvider {
           : `I would create a look visualization for that request${colourNote}${avoidNote}. Attach a photo (or save a profile portrait) on the live stylist so the image can keep your likeness.`,
         outfitTitle: 'Look visualization',
         accessories: ['statement earrings', 'structured bag'],
-        followUpQuestions: ['Want a softer or bolder finish?', 'Should accessories stay minimal?'],
+        followUpQuestions: ['Show me a softer finish for this look.', 'Keep accessories minimal for this outfit.'],
       }) };
     }
     if (hasImage) {
@@ -126,7 +126,7 @@ export class MockTextProvider implements TextProvider {
         outfitComponents: photoOptions[0].components,
         outfitOptions: photoOptions,
         suggestedColours: ['stone', 'ivory', 'navy'],
-        followUpQuestions: ['Which of the three options feels closest?', 'Want shoe or accessory ideas for that look?'],
+        followUpQuestions: ['Let\'s refine option 1.', 'Show me shoe and accessory ideas for that look.'],
       }) };
     }
     if (/try[- ]?on|photograph|photo of me/.test(text)) {
@@ -159,7 +159,7 @@ export class MockTextProvider implements TextProvider {
           availability: 'ready',
           recommendationType: 'clarification',
           responseText: `Your wardrobe is connected, but I do not see any owned pieces listed yet.${capsuleHint} Add what you already bought in Wardrobe, then ask again and I will style from what you own.`,
-          followUpQuestions: ['Want three shop-oriented outfit ideas meanwhile?', 'Which occasion should we plan for once you add wardrobe pieces?'],
+          followUpQuestions: ['Show me three shop-oriented outfit ideas meanwhile.', 'Plan a daytime look once I add wardrobe pieces.'],
         }) };
       }
       const pick = (index: number) => wardrobe[index % wardrobe.length];
@@ -187,7 +187,7 @@ export class MockTextProvider implements TextProvider {
         outfitOptions: wardrobeOptions,
         suggestedColours: personal?.favouriteColours?.slice(0, 3) ?? [],
         responseText: `Here are three outfits built from your wardrobe (what you already own).${colourNote} Option 1 starts with ${pick(0)}. Option 2 leans on ${pick(1)}. Option 3 centres ${pick(2)}. Capsule basics stay separate as pieces to build toward. Which mix feels right for today?`,
-        followUpQuestions: ['Which option should we refine?', 'Want shoe or accessory ideas for that mix?'],
+        followUpQuestions: ['Let\'s refine option 1.', 'Show me shoe and accessory ideas for that mix.'],
         shoppingSearchIntent: personal?.retailers?.length
           ? `wardrobe refresh finishing pieces ${personal.retailers.slice(0, 2).join(' ')}`
           : 'wardrobe finishing shoes accessories',
@@ -233,8 +233,8 @@ export class MockTextProvider implements TextProvider {
         accessories: ['fine gold earrings'],
         responseText: `For a wedding, here are three guest looks.${colourNote}${avoidNote} Option 1: a champagne midi with a polished flat. Option 2: a sage tailored suit with an ivory shell. Option 3: champagne top with a sage midi skirt. Which direction feels right?`,
         followUpQuestions: asked(request.messages, 'daytime')
-          ? ['Want different shoe or jewellery options for that guest look?']
-          : ['Is the wedding daytime or evening?', 'Want shoe or accessory ideas next?'],
+          ? ['Show me different shoe and jewellery options for that guest look.']
+          : ['Style this for a daytime wedding.', 'Show me shoe and accessory ideas next.'],
         shoppingSearchIntent: personal?.retailers?.length
           ? `wedding guest champagne sage ${personal.retailers.slice(0, 2).join(' ')}`
           : 'wedding guest champagne midi dress sage suit',
@@ -279,7 +279,7 @@ export class MockTextProvider implements TextProvider {
         outfitComponents: workOptions[0].components,
         outfitOptions: workOptions,
         responseText: `Here are three work looks.${colourNote}${avoidNote} Option 1: navy bottom, ivory knit, soft blazer. Option 2: ivory and stone monochrome with a loafer. Option 3: navy dress with a light layer. Which feels closest to your day? I can add shoe or accessory ideas once you pick one.${personal?.retailers?.length ? ` Tap Shop now to browse ${personal.retailers.slice(0, 2).join(' and ')}.` : ' Tap Shop now to browse matching listings.'}`,
-        followUpQuestions: ['Which option feels closest?', 'Want shoe or accessory ideas for that look?'],
+        followUpQuestions: ['Let\'s refine option 1.', 'Show me shoe and accessory ideas for that look.'],
         shoppingSearchIntent: personal?.retailers?.length
           ? `smart casual work navy ivory ${personal.retailers.slice(0, 2).join(' ')}`
           : 'smart casual work navy ivory blazer',
@@ -330,7 +330,7 @@ export class MockTextProvider implements TextProvider {
         outfitComponents: partyOptions[0].components,
         outfitOptions: partyOptions,
         responseText: 'For a summer birthday, here are three options. Option 1: white linen top with sand bottoms. Option 2: a soft coral sundress. Option 3: white blouse with a flowing sand skirt. Which vibe fits the party? I can suggest shoes or accessories next.',
-        followUpQuestions: ['Which vibe fits the party?', 'Want shoe or accessory ideas next?'],
+        followUpQuestions: ['Go with the daytime linen birthday vibe.', 'Show me shoe and accessory ideas next.'],
       }) };
     }
     if (/\b(shoes?|accessories|jewellery|jewelry|bag|belt|earrings?)\b/.test(text) && !/try[- ]?on|buy|price|in stock/.test(text)) {
@@ -372,7 +372,7 @@ export class MockTextProvider implements TextProvider {
         ],
         accessories: ['fine gold earrings', 'slim belt'],
         responseText: `Happy to finish the look.${colourNote}${avoidNote} Option 1: navy loafer with an optional slim belt. Option 2: a low block heel or elegant flat with fine gold earrings. Option 3: an ivory crossbody with a clean flat or trainer. Want jewellery, a different shoe height, or a bag tweak next?`,
-        followUpQuestions: ['Want jewellery ideas too?', 'Should the shoes stay flat or go a little dressier?'],
+        followUpQuestions: ['Show me jewellery ideas too.', 'Keep the shoes flat for this look.'],
       }) };
     }
     if (/r\s?1[,.]?500|budget|rands?/.test(text)) {
@@ -380,7 +380,7 @@ export class MockTextProvider implements TextProvider {
         recommendationType: 'clarification',
         budgetGuidance: 'Plan one stronger piece and keep the other pieces simple. I cannot quote a shop price.',
         responseText: 'I can shape an outfit around the budget you named, but verified prices are not available yet.',
-        followUpQuestions: asked(request.messages, 'occasion') ? [] : ['What is the occasion?'],
+        followUpQuestions: asked(request.messages, 'occasion') ? [] : ['Help me style a smart-casual daytime look.'],
       }) };
     }
     if (/heel|comfort/.test(text)) {
@@ -395,7 +395,7 @@ export class MockTextProvider implements TextProvider {
     return { durationMs: 0, model: null, usage: { inputTokens: null, outputTokens: null, thoughtTokens: null }, reply: reply({
       recommendationType: 'clarification',
       responseText: 'Tell me the occasion, how formal it should feel, and whether comfort or a colour matters most. I will suggest an outfit concept, not a shop listing.',
-      followUpQuestions: ['What is the occasion?'],
+      followUpQuestions: ['Help me plan an outfit for a specific occasion.'],
     }) };
   }
 }

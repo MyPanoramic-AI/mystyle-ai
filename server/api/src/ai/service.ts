@@ -120,7 +120,7 @@ function safeFallback(): StylistReply {
     accessories: [],
     budgetGuidance: null,
     occasion: null,
-    followUpQuestions: ['What is the occasion, and how formal should it feel?'],
+    followUpQuestions: ['Help me plan a smart-casual daytime look.', 'Style an evening outfit with comfortable shoes.'],
     shoppingSearchIntent: null,
     tryOnIntent: false,
     savedLookIntent: false,
