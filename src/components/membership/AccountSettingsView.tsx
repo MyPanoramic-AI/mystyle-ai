@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AccountSettings } from '../../types/membership';
 import {
   User,
@@ -58,6 +58,10 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordBlocked, setPasswordBlocked] = useState(false);
 
+  useEffect(() => {
+    setFormData(settings);
+  }, [settings]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveSettings(formData);
@@ -78,7 +82,7 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
         </h2>
         <p className="text-xs text-[#5C585E]">
           {accountMode
-            ? 'These contact and security toggles are browser demonstration fields only. Your signed-in profile, password, and email are managed through the account API and password-reset flow.'
+            ? 'Name and email come from your signed-in account. Password changes use the account reset flow. Other contact toggles on this screen stay on this device only.'
             : 'Manage your personal contact details, South African regional location, authentication, and connected services. Values stay in this browser only.'}
         </p>
       </div>
@@ -109,8 +113,9 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
                 type="text"
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-[#FAF7F2] border border-[#242326]/15 focus:outline-hidden focus:border-[#9C6A61]"
-                required
+                readOnly={accountMode}
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border border-[#242326]/15 focus:outline-hidden focus:border-[#9C6A61] ${accountMode ? 'bg-[#F0EBE3] text-[#5C585E]' : 'bg-[#FAF7F2]'}`}
+                required={!accountMode}
               />
             </div>
 
@@ -120,8 +125,8 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
                 type="text"
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-[#FAF7F2] border border-[#242326]/15 focus:outline-hidden focus:border-[#9C6A61]"
-                required
+                readOnly={accountMode}
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border border-[#242326]/15 focus:outline-hidden focus:border-[#9C6A61] ${accountMode ? 'bg-[#F0EBE3] text-[#5C585E]' : 'bg-[#FAF7F2]'}`}
               />
             </div>
 
@@ -131,7 +136,8 @@ export const AccountSettingsView: React.FC<AccountSettingsViewProps> = ({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-[#FAF7F2] border border-[#242326]/15 focus:outline-hidden focus:border-[#9C6A61]"
+                readOnly={accountMode}
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border border-[#242326]/15 focus:outline-hidden focus:border-[#9C6A61] ${accountMode ? 'bg-[#F0EBE3] text-[#5C585E]' : 'bg-[#FAF7F2]'}`}
                 required
               />
             </div>

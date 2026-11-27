@@ -71,8 +71,16 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() => getNotificationSettings());
   const [transactions, setTransactions] = useState(() => getCreditTransactions());
   const [accountPlan, setAccountPlan] = useState<string | null>(null);
+  const [accountPlanCode, setAccountPlanCode] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [accountFeatures, setAccountFeatures] = useState<string[]>([]);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [accountDisplayName, setAccountDisplayName] = useState<string | null>(null);
+  const [accountEmailVerified, setAccountEmailVerified] = useState<boolean | null>(null);
+  const [entitlementSource, setEntitlementSource] = useState<string | null>(null);
+  const [entitlementSince, setEntitlementSince] = useState<string | null>(null);
+  const [creditUnitLabel, setCreditUnitLabel] = useState<string | null>(null);
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [testCredits, setTestCredits] = useState<number | null>(null);
   const [testEntries, setTestEntries] = useState<MembershipCreditEntry[]>([]);
   const [publishedPlans, setPublishedPlans] = useState<MembershipPlanDefinition[]>([]);
@@ -88,38 +96,84 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
     entitlement: Awaited<ReturnType<typeof accountApi.membershipEntitlement>>,
     creditState: Awaited<ReturnType<typeof accountApi.membershipCredits>>,
     plans: Awaited<ReturnType<typeof accountApi.membershipPlans>>,
+    identity?: {
+      email: string;
+      emailVerified: boolean;
+      displayName: string | null;
+      country?: string | null;
+      currency?: string | null;
+    },
   ) => {
     const match = plans.plans.find((plan) => plan.planCode === entitlement.current?.planCode);
     const planCode = entitlement.current?.planCode ?? 'FREE';
+    const since = entitlement.current?.effectiveFrom ?? null;
     setAccountPlan(match?.displayName ?? planCode);
+    setAccountPlanCode(planCode);
     setAccountStatus(entitlement.current?.status ?? 'none');
     setAccountFeatures(entitlement.current?.featureKeys ?? []);
+    setEntitlementSource(entitlement.current?.source ?? null);
+    setEntitlementSince(since);
     setTestCredits(creditState.balance);
     setTestEntries(creditState.entries);
+    setCreditUnitLabel(creditState.label ?? null);
     setPublishedPlans(plans.plans);
-    setMembership((prev) => ({
-      ...prev,
+    const billingLive = plans.paymentsEnabled === true || entitlement.paymentsEnabled === true;
+    setPaymentsEnabled(billingLive);
+    if (identity) {
+      setAccountEmail(identity.email);
+      setAccountEmailVerified(identity.emailVerified);
+      setAccountDisplayName(identity.displayName);
+      const parts = (identity.displayName || '').trim().split(/\s+/).filter(Boolean);
+      setAccountSettings((prev) => ({
+        ...prev,
+        firstName: parts[0] || prev.firstName,
+        lastName: parts.slice(1).join(' ') || '',
+        email: identity.email || prev.email,
+        country: identity.country || prev.country,
+        currency: identity.currency || prev.currency,
+      }));
+    }
+    setMembership({
       planId: serverCodeToCataloguePlan(planCode),
-      status: entitlement.current?.status === 'active' ? 'active' : prev.status,
-      billingCycle: planCode === 'FREE' ? prev.billingCycle : 'monthly',
-    }));
+      billingCycle: 'monthly',
+      status: entitlement.current?.status === 'active' ? 'active' : 'cancelled',
+      renewsOn: billingLive ? 'See billing provider' : 'No paid renewal — payments not connected',
+      startedOn: since ? since.slice(0, 10) : '—',
+      cancelAtPeriodEnd: false,
+      cardLast4: '',
+      paymentMethod: 'Payments not connected',
+    });
     setAccountError(null);
   };
 
   const reloadAccountMembership = async () => {
-    const [entitlement, creditState, plans] = await Promise.all([
+    const [entitlement, creditState, plans, session, profile] = await Promise.all([
       accountApi.membershipEntitlement(),
       accountApi.membershipCredits(),
       accountApi.membershipPlans(),
+      accountApi.session(),
+      accountApi.getProfile().catch(() => ({} as Record<string, unknown>)),
     ]);
-    applyAccountEntitlement(entitlement, creditState, plans);
+    const displayName = typeof profile.displayName === 'string' ? profile.displayName : null;
+    applyAccountEntitlement(entitlement, creditState, plans, {
+      email: session.email,
+      emailVerified: session.emailVerified === true,
+      displayName,
+      country: typeof profile.country === 'string' ? profile.country : null,
+      currency: typeof profile.currency === 'string' ? profile.currency : null,
+    });
   };
 
   useEffect(() => {
     if (!usesAccount) return;
     let cancelled = false;
-    reloadAccountMembership().catch(() => {
+    reloadAccountMembership().catch((error: unknown) => {
       if (cancelled) return;
+      if (error instanceof AccountApiError && error.status === 401) {
+        onUnauthenticated?.();
+        setAccountError('Sign in again to load your account membership.');
+        return;
+      }
       setAccountError('Account membership could not be loaded. No membership has been assumed.');
     });
     void accountApi.getPreferences().then((prefs) => {
@@ -128,6 +182,10 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
         ? prefs.notifications as Partial<NotificationSettings>
         : {};
       setNotificationSettings({ ...DEFAULT_NOTIFICATION_SETTINGS, ...notifications });
+      const privacy = (prefs.privacy && typeof prefs.privacy === 'object' && !Array.isArray(prefs.privacy))
+        ? prefs.privacy as Partial<PrivacySettings>
+        : {};
+      setPrivacySettings((prev) => ({ ...prev, ...privacy }));
     }).catch(() => {
       // Keep browser defaults if preferences cannot be loaded.
     });
@@ -331,14 +389,27 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
             <p>Loading the account entitlement.</p>
           ) : (
             <div className="space-y-1">
-              <p>Account plan: {accountPlan}</p>
+              {accountDisplayName && <p>Account name: {accountDisplayName}</p>}
+              {accountEmail && (
+                <p>
+                  Account email: {accountEmail}
+                  {accountEmailVerified === true ? ' (verified)' : accountEmailVerified === false ? ' (unverified)' : ''}
+                </p>
+              )}
+              <p>Account plan: {accountPlan}{accountPlanCode ? ` (${accountPlanCode})` : ''}</p>
               <p>Entitlement status: {accountStatus}</p>
-              <p>Test credits: {testCredits}</p>
-              <p>Credit balance: {testCredits} test credits (server ledger)</p>
+              {entitlementSince && (
+                <p>Entitlement since: {new Date(entitlementSince).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+              )}
+              {entitlementSource && <p>Entitlement source: {entitlementSource}</p>}
+              <p>Credit balance: {testCredits ?? 0} test credits (server ledger)</p>
+              {creditUnitLabel && <p className="text-xs text-[#5C585E]">{creditUnitLabel}</p>}
               <p>
-                {accountPlan && accountPlan !== 'Free'
-                  ? 'Provisional paid-tier entitlement is active on this account. Live card billing is not connected, so no payment was taken.'
-                  : 'Free entitlement is active. Choose Personal or Family under Explore Plans to activate a provisional paid tier (not billed).'}
+                {paymentsEnabled
+                  ? 'Live card billing is connected for this environment.'
+                  : accountPlanCode && accountPlanCode !== 'FREE'
+                    ? 'Provisional paid-tier entitlement is active. Live card billing is not connected, so no payment was taken.'
+                    : 'Free entitlement is active. Personal and Family can be previewed under Explore Plans; paid activation waits until billing is connected.'}
               </p>
               <p>Available features: {accountFeatures.length > 0 ? accountFeatures.join(', ') : 'None'}</p>
               {publishedPlans.length > 0 && (
@@ -349,12 +420,17 @@ export const MembershipHubScreen: React.FC<MembershipHubScreenProps> = ({
               {previewPlanCode && (
                 <p role="status">Previewing package: {previewPlanCode}. {previewNotice}</p>
               )}
-              {testEntries.length > 0 && (
+              {testEntries.length > 0 ? (
                 <ul className="pt-1 text-xs text-[#5C585E]">
                   {testEntries.slice(-5).map((entry, index) => (
-                    <li key={`${entry.createdAt}-${entry.entryType}-${index}`}>{entry.entryType} {entry.delta}</li>
+                    <li key={`${entry.createdAt}-${entry.entryType}-${index}`}>
+                      {entry.createdAt.slice(0, 10)} · {entry.entryType} {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
+                      {entry.reason ? ` — ${entry.reason}` : ''}
+                    </li>
                   ))}
                 </ul>
+              ) : (
+                <p className="text-xs text-[#5C585E]">No credit ledger entries yet for this account.</p>
               )}
             </div>
           )}

@@ -422,11 +422,26 @@ export interface MembershipPlansResponse {
 
 export interface MembershipEntitlementResponse {
   paid: boolean;
+  paymentsEnabled?: boolean;
+  entitlements?: Array<{
+    id: string;
+    planCode: string;
+    status: string;
+    effectiveFrom: string | null;
+    effectiveTo: string | null;
+    source: string;
+  }>;
   current: {
+    id?: string;
     planCode: string;
     status: string;
     featureKeys: string[];
     source: string;
+    effectiveFrom?: string | null;
+    effectiveTo?: string | null;
+    planVersion?: number;
+    entitlementVersion?: number;
+    paid?: boolean;
   } | null;
 }
 
