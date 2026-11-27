@@ -26,6 +26,8 @@ import { ShopScreen } from './components/shop/ShopScreen';
 import { ProfileDashboard } from './components/profile/ProfileDashboard';
 import { CapsuleScreen } from './components/wardrobe/CapsuleScreen';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
+import { AppHowToTour } from './components/howto/AppHowToTour';
+import { APP_HOW_TO_STEPS, howToStorageKey, type AppHowToStep } from './data/appHowToSteps';
 import { accountApi } from './services/accountApi';
 import { photosFromSlots } from './services/profilePhotosClient';
 import {
@@ -96,6 +98,8 @@ export default function App({ account }: { account: ReadyAccount }) {
   const [photos, setPhotos] = useState<TemporaryPhotos>({});
   const [photoStorageConsent, setPhotoStorageConsent] = useState(false);
   const [isOnboardingActive, setIsOnboardingActive] = useState<boolean>(account.mode === 'account' && account.profile.onboardingStatus === 'pending');
+  const [howToActive, setHowToActive] = useState(false);
+  const [howToStepIndex, setHowToStepIndex] = useState(0);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
   const [wardrobeCounts, setWardrobeCounts] = useState<{ pieces: number; outfits: number } | null>(null);
@@ -103,6 +107,62 @@ export default function App({ account }: { account: ReadyAccount }) {
   useEffect(() => {
     setProfile(account.profile);
   }, [account.profile]);
+
+  useEffect(() => {
+    if (account.mode !== 'account' || !account.email || isOnboardingActive) {
+      setHowToActive(false);
+      return;
+    }
+    try {
+      const seen = window.localStorage.getItem(howToStorageKey(account.email));
+      if (!seen) {
+        setHowToStepIndex(0);
+        setHowToActive(true);
+      }
+    } catch {
+      setHowToStepIndex(0);
+      setHowToActive(true);
+    }
+  }, [account.mode, account.email, isOnboardingActive]);
+
+  const markHowToFinished = (status: 'completed' | 'skipped') => {
+    if (account.email) {
+      try {
+        window.localStorage.setItem(howToStorageKey(account.email), status);
+      } catch {
+        // Ignore storage failures — tour still closes.
+      }
+    }
+    setHowToActive(false);
+    setHowToStepIndex(0);
+  };
+
+  const navigateHowToStep = (step: AppHowToStep) => {
+    const dest = step.destination;
+    if (dest.kind === 'tab') {
+      setActiveSubpage(null);
+      setCurrentTab(dest.tab);
+    } else if (dest.kind === 'discover') {
+      setDiscoverInitialCollectionId(undefined);
+      setDiscoverInitialLookId(undefined);
+      setActiveSubpage('discover');
+    } else if (dest.kind === 'family') {
+      setFamilyInitialTab('planner');
+      setActiveSubpage('family');
+    } else if (dest.kind === 'beauty') {
+      setBeautyInitialTab('complete-looks');
+      setActiveSubpage('beauty');
+    } else if (dest.kind === 'membership') {
+      setMembershipInitialTab(dest.tab ?? 'membership');
+      setActiveSubpage('membership');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const startHowToTour = () => {
+    setHowToStepIndex(0);
+    setHowToActive(true);
+  };
 
   useEffect(() => {
     if (account.mode !== 'account') {
@@ -541,6 +601,16 @@ export default function App({ account }: { account: ReadyAccount }) {
       onOpenMembership={handleOpenMembership}
       usesAccount={account.mode === 'account'}
     >
+      {howToActive && account.mode === 'account' ? (
+        <AppHowToTour
+          steps={APP_HOW_TO_STEPS}
+          stepIndex={howToStepIndex}
+          onStepIndexChange={setHowToStepIndex}
+          onSkip={() => markHowToFinished('skipped')}
+          onComplete={() => markHowToFinished('completed')}
+          onGoToStep={navigateHowToStep}
+        />
+      ) : null}
       {account.mode === 'demo' ? (
         <div className="max-w-4xl mx-auto mb-4 rounded-2xl border border-[#B49361]/40 bg-[#E5CDBE]/30 px-4 py-3 text-sm text-[#242326] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <span>Demonstration profile. This is not a saved customer account.</span>
@@ -753,6 +823,7 @@ export default function App({ account }: { account: ReadyAccount }) {
           saveMessage={saveMessage}
           onLogout={account.mode === 'account' ? () => { void account.logout(); } : undefined}
           onRestartOnboarding={() => setIsOnboardingActive(true)}
+          onStartHowToTour={account.mode === 'account' ? startHowToTour : undefined}
           onOpenSavedLooks={() => handleOpenDiscover()}
           onOpenFamily={() => handleOpenFamily('members')}
           onOpenWardrobe={handleOpenWardrobe}

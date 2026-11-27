@@ -27,6 +27,7 @@ import {
   Layers,
   Footprints,
   MessageCircle,
+  BookOpen,
 } from 'lucide-react';
 import { savedLooksService } from '../../services/savedLooksService';
 import { familyService } from '../../services/familyService';
@@ -66,6 +67,7 @@ interface ProfileDashboardProps {
   onLogout?: () => void;
   onUpdatePhotos: (photos: TemporaryPhotos) => void;
   onRestartOnboarding: () => void;
+  onStartHowToTour?: () => void;
   onOpenSavedLooks?: () => void;
   onOpenFamily?: () => void;
   onOpenWardrobe?: (tab?: 'pieces' | 'studio' | 'outfits' | 'planner' | 'gaps') => void;
@@ -89,6 +91,7 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
   saveMessage,
   onLogout,
   onRestartOnboarding,
+  onStartHowToTour,
   onOpenSavedLooks,
   onOpenFamily,
   onOpenWardrobe,
@@ -346,8 +349,8 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
             </div>
           </div>
 
-          {/* Restart Onboarding Trigger */}
-          <div className="shrink-0 flex items-center gap-2">
+          {/* Account actions */}
+          <div className="shrink-0 flex flex-wrap items-center gap-2">
             {onLogout ? (
               <button
                 type="button"
@@ -355,6 +358,17 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-[#5C585E] hover:text-[#242326] bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 border border-[#242326]/8 rounded-xl transition-all cursor-pointer"
               >
                 Sign out
+              </button>
+            ) : null}
+            {onStartHowToTour ? (
+              <button
+                type="button"
+                onClick={onStartHowToTour}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-[#5C585E] hover:text-[#242326] bg-[#F6F2EC] hover:bg-[#E5CDBE]/40 border border-[#242326]/8 rounded-xl transition-all cursor-pointer"
+                title="How to use IStyleU"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-[#9C6A61]" />
+                <span>How to use IStyleU</span>
               </button>
             ) : null}
             <button
