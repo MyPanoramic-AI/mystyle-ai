@@ -56,10 +56,23 @@ export interface AccountApi {
   silhouetteOptions(): Promise<{ options: { id: string; label: string; note: string }[] }>;
   getPreferences(): Promise<Record<string, unknown>>;
   savePreferences(body: Record<string, unknown>): Promise<Record<string, unknown>>;
-  pushStatus(): Promise<{ enabled: boolean; publicKey: string | null; subscribed: boolean; subscriptionCount: number }>;
+  pushStatus(): Promise<{
+    enabled: boolean;
+    publicKey: string | null;
+    subscribed: boolean;
+    subscriptionCount: number;
+    channels?: Array<'web_push' | 'in_app'>;
+  }>;
   pushVapidPublicKey(): Promise<{ publicKey: string }>;
-  pushSubscribe(body: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<{ ok: boolean; id: string; endpoint: string }>;
+  pushSubscribe(body: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<{
+    ok: boolean;
+    id: string;
+    endpoint: string;
+    channel?: 'web_push' | 'in_app';
+  }>;
   pushUnsubscribe(endpoint: string): Promise<{ deleted: boolean }>;
+  pushPending(): Promise<{ alerts: Array<{ id: string; kind: string; title: string; body: string; url: string; tag: string | null; createdAt: string }> }>;
+  pushPendingAck(ids: string[]): Promise<{ acknowledged: number }>;
   pushTest(): Promise<{ ok: boolean; delivered: number; attempted: number }>;
   stylistAvailability(): Promise<StylistAvailability>;
   stylistVoiceAvailability(): Promise<StylistVoiceAvailability>;
@@ -740,6 +753,8 @@ export function createAccountApi(options?: { baseUrl?: string; fetchImpl?: typeo
     pushVapidPublicKey: () => request('/api/push/vapid-public-key', { timeoutMs: 8_000 }),
     pushSubscribe: (body) => request('/api/push/subscribe', { method: 'POST', body, csrf: true }),
     pushUnsubscribe: (endpoint) => request('/api/push/subscribe', { method: 'DELETE', body: { endpoint }, csrf: true }),
+    pushPending: () => request('/api/push/pending', { timeoutMs: 8_000 }),
+    pushPendingAck: (ids) => request('/api/push/pending/ack', { method: 'POST', body: { ids }, csrf: true }),
     pushTest: () => request('/api/push/test', { method: 'POST', body: {}, csrf: true }),
     stylistAvailability: () => request('/api/stylist/availability'),
     stylistVoiceAvailability: () => request('/api/stylist/voice/availability'),

@@ -31,10 +31,16 @@ function requireKeys(body: unknown): PushSubscriptionInput {
     : null;
   const p256dh = typeof keys?.p256dh === 'string' ? keys.p256dh.trim() : '';
   const auth = typeof keys?.auth === 'string' ? keys.auth.trim() : '';
-  if (!endpoint.startsWith('https://') || !p256dh || !auth) {
+  const web = endpoint.startsWith('https://');
+  const inApp = endpoint.startsWith('inapp://');
+  if ((!web && !inApp) || !p256dh || !auth) {
     throw new ApiError('bad_request', 'That push subscription is incomplete.', 400);
   }
   return { endpoint, keys: { p256dh, auth } };
+}
+
+export function isInAppPushEndpoint(endpoint: string): boolean {
+  return endpoint.startsWith('inapp://');
 }
 
 export function upsertPushSubscription(

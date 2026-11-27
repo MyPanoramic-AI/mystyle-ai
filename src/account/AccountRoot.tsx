@@ -22,6 +22,7 @@ import { createAccountFamily, type AccountFamily } from '../services/familyAccou
 import { createAccountBeauty, type AccountBeauty } from '../services/beautyAccount';
 import { Button } from '../components/common/Button';
 import { MarketingHomePage } from '../components/marketing/MarketingHomePage';
+import { startInAppAlertPolling, stopInAppAlertPolling } from '../services/inAppAlerts';
 
 type Phase = 'loading' | 'unavailable' | 'signed-out' | 'import-review' | 'ready';
 type SignedOutView = 'landing' | 'auth';
@@ -279,6 +280,15 @@ export function AccountRoot() {
   useEffect(() => {
     void restore();
   }, []);
+
+  useEffect(() => {
+    if (phase === 'ready' && mode === 'account') {
+      startInAppAlertPolling();
+      return () => stopInAppAlertPolling();
+    }
+    stopInAppAlertPolling();
+    return undefined;
+  }, [phase, mode]);
 
   async function register(input: { email: string; password: string; confirmation: string }): Promise<void> {
     const validation = registrationError(input);

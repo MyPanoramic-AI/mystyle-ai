@@ -20,8 +20,13 @@ import {
   Send,
 } from 'lucide-react';
 import { AccountApiError, accountApi } from '../../services/accountApi';
+import { drainPendingInAppAlerts, startInAppAlertPolling } from '../../services/inAppAlerts';
 import {
+  clearStoredInAppEndpoint,
+  getStoredInAppEndpoint,
+  isPushServiceUnavailableError,
   subscribeBrowserPush,
+  subscribeInAppPushFallback,
   subscriptionToJson,
   unsubscribeBrowserPush,
   webPushSupported,
@@ -73,45 +78,47 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
     window.setTimeout(() => setSuccess(false), 3000);
   };
 
-  const describePushFailure = (error: unknown): string => {
-    const raw =
-      error instanceof AccountApiError
-        ? error.message
-        : error instanceof Error
-          ? error.message
-          : 'Could not enable browser push.';
-    const lower = raw.toLowerCase();
-    if (
-      lower.includes('push service not available')
-      || lower.includes('registration failed')
-      || lower.includes('permission denied')
-    ) {
-      return `${raw} Open IStyleU in desktop Chrome or Edge (not an embedded IDE browser), click Allow when prompted, then try again.`;
-    }
-    return raw;
-  };
-
   const enableBrowserPush = async (): Promise<boolean> => {
     if (!accountMode) {
       setPushNotice('Sign in to receive browser push alerts on this device.');
       return false;
     }
-    if (!webPushSupported()) {
-      setPushNotice('This browser does not support push notifications.');
-      return false;
-    }
     setPushBusy(true);
     setPushNotice(null);
     try {
-      const { publicKey } = await accountApi.pushVapidPublicKey();
-      const subscription = await subscribeBrowserPush(publicKey);
-      await accountApi.pushSubscribe(subscriptionToJson(subscription));
+      if (webPushSupported()) {
+        try {
+          const { publicKey } = await accountApi.pushVapidPublicKey();
+          const subscription = await subscribeBrowserPush(publicKey);
+          await accountApi.pushSubscribe(subscriptionToJson(subscription));
+          setPushSubscribed(true);
+          setPushServerEnabled(true);
+          setPushNotice('Push alerts are on for this browser. You can send a test below.');
+          startInAppAlertPolling();
+          return true;
+        } catch (error) {
+          if (!isPushServiceUnavailableError(error)) throw error;
+          // Fall through to in-app alert channel (Cursor / locked-down Chromium).
+        }
+      }
+
+      const fallback = await subscribeInAppPushFallback();
+      await accountApi.pushSubscribe(fallback);
       setPushSubscribed(true);
       setPushServerEnabled(true);
-      setPushNotice('Push alerts are on for this browser. You can send a test below.');
+      setPushNotice(
+        'This browser has no system push service, so alerts will show while IStyleU is open. Send a test below to confirm.',
+      );
+      startInAppAlertPolling();
       return true;
     } catch (error) {
-      setPushNotice(describePushFailure(error));
+      setPushNotice(
+        error instanceof AccountApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Could not enable browser push.',
+      );
       return false;
     } finally {
       setPushBusy(false);
@@ -127,6 +134,11 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
       if (current) {
         await accountApi.pushUnsubscribe(current.endpoint).catch(() => undefined);
         await unsubscribeBrowserPush();
+      }
+      const inAppEndpoint = getStoredInAppEndpoint();
+      if (inAppEndpoint) {
+        await accountApi.pushUnsubscribe(inAppEndpoint).catch(() => undefined);
+        clearStoredInAppEndpoint();
       }
       setPushSubscribed(false);
       setPushNotice('Push alerts turned off for this browser.');
@@ -170,9 +182,10 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
         if (!ok) return;
       }
       const result = await accountApi.pushTest();
+      const drained = await drainPendingInAppAlerts();
       setPushNotice(
-        result.ok
-          ? `Test notification sent (${result.delivered} of ${result.attempted} delivered). Check your system tray or notification centre.`
+        result.ok || drained > 0
+          ? `Test notification sent (${Math.max(result.delivered, drained)} delivered). Check your system tray or notification centre.`
           : 'The test was attempted but nothing was delivered. Allow notifications for this site and try again.',
       );
     } catch (error) {
@@ -273,7 +286,7 @@ export const NotificationPreferencesView: React.FC<NotificationPreferencesViewPr
                       ? 'This browser is subscribed'
                       : accountMode
                         ? (pushServerEnabled
-                          ? 'Turn on, allow notifications in Chrome/Edge, then Send test'
+                          ? 'Turn on, allow notifications, then Send test'
                           : 'Server push not configured yet')
                         : 'Sign in required'}
                 </span>

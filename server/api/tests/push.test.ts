@@ -82,3 +82,62 @@ test('push subscribe stores endpoint and test attempts delivery', async () => {
     await api.close();
   }
 });
+
+test('in-app push fallback queues pending alerts for the browser to show', async () => {
+  const api = await startApi({}, { pushConfig: enabledPush });
+  try {
+    const created = await register(api.base, 'push-inapp@example.com');
+    const headers = authHeaders(created.cookie, created.body.csrfToken);
+
+    const subscribe = await fetch(`${api.base}/api/push/subscribe`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        endpoint: 'inapp://device/test-browser-1',
+        keys: {
+          p256dh: 'inapp-p256dh-placeholder',
+          auth: 'inapp-auth-placeholder',
+        },
+      }),
+    });
+    assert.equal(subscribe.status, 201);
+    const subscribeBody = await subscribe.json() as { channel?: string };
+    assert.equal(subscribeBody.channel, 'in_app');
+
+    const testPush = await fetch(`${api.base}/api/push/test`, {
+      method: 'POST',
+      headers,
+      body: '{}',
+    });
+    assert.equal(testPush.status, 200);
+    const testBody = await testPush.json() as { attempted: number; delivered: number; ok: boolean };
+    assert.equal(testBody.attempted, 1);
+    assert.equal(testBody.delivered, 1);
+    assert.equal(testBody.ok, true);
+
+    const pending = await fetch(`${api.base}/api/push/pending`, {
+      headers: { cookie: created.cookie },
+    });
+    assert.equal(pending.status, 200);
+    const pendingBody = await pending.json() as { alerts: Array<{ id: string; title: string }> };
+    assert.equal(pendingBody.alerts.length, 1);
+    assert.match(pendingBody.alerts[0]!.title, /push is working/i);
+
+    const ack = await fetch(`${api.base}/api/push/pending/ack`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids: [pendingBody.alerts[0]!.id] }),
+    });
+    assert.equal(ack.status, 200);
+    const ackBody = await ack.json() as { acknowledged: number };
+    assert.equal(ackBody.acknowledged, 1);
+
+    const pendingAfter = await fetch(`${api.base}/api/push/pending`, {
+      headers: { cookie: created.cookie },
+    });
+    const pendingAfterBody = await pendingAfter.json() as { alerts: unknown[] };
+    assert.equal(pendingAfterBody.alerts.length, 0);
+  } finally {
+    await api.close();
+  }
+});

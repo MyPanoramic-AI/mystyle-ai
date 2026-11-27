@@ -6,7 +6,9 @@ const webpush = require('web-push') as typeof import('web-push');
 import type { Sql } from '../db.js';
 import { ApiError, logEvent } from '../errors.js';
 import type { PushConfig } from './pushConfig.js';
+import { enqueuePendingPush } from './pending.js';
 import {
+  isInAppPushEndpoint,
   listPushSubscriptionsForUser,
   markPushFailure,
   markPushSuccess,
@@ -68,6 +70,20 @@ async function sendToSubscription(
   payload: PushPayload,
   now: number,
 ): Promise<'sent' | 'failed' | 'removed'> {
+  if (isInAppPushEndpoint(sub.endpoint)) {
+    try {
+      enqueuePendingPush(db, sub.userId, payload, now);
+      markPushSuccess(db, sub.id, now);
+      logDelivery(db, sub.userId, sub.id, payload, 'sent', 'in_app_queued', now);
+      return 'sent';
+    } catch (error) {
+      const detail = error instanceof Error ? error.message.slice(0, 200) : 'in_app_queue_failed';
+      markPushFailure(db, sub.id, now, false);
+      logDelivery(db, sub.userId, sub.id, payload, 'failed', detail, now);
+      return 'failed';
+    }
+  }
+
   configureWebPush(config);
   try {
     await webpush.sendNotification(

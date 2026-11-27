@@ -96,9 +96,11 @@ import {
 import { loadPushConfig, type PushConfig } from '../push/pushConfig.js';
 import {
   deletePushSubscriptionForUser,
+  isInAppPushEndpoint,
   listPushSubscriptionsForUser,
   upsertPushSubscription,
 } from '../push/subscriptions.js';
+import { acknowledgePendingPush, listPendingPushForUser } from '../push/pending.js';
 import { dispatchScheduledPushTips, sendTestPushToUser } from '../push/dispatch.js';
 
 export interface AppDeps {
@@ -484,11 +486,13 @@ export function createApp(deps: AppDeps): express.Express {
   app.get('/api/push/status', route((req, res) => {
     const user = requireUser(req);
     const subs = listPushSubscriptionsForUser(deps.db, user.userId);
+    const channels = Array.from(new Set(subs.map((sub) => (isInAppPushEndpoint(sub.endpoint) ? 'in_app' : 'web_push'))));
     res.json({
       enabled: pushConfig.enabled,
       publicKey: pushConfig.publicKey,
       subscribed: subs.length > 0,
       subscriptionCount: subs.length,
+      channels,
     });
   }));
   app.get('/api/push/vapid-public-key', route((_req, res) => {
@@ -511,6 +515,7 @@ export function createApp(deps: AppDeps): express.Express {
       ok: true,
       id: saved.id,
       endpoint: saved.endpoint,
+      channel: isInAppPushEndpoint(saved.endpoint) ? 'in_app' : 'web_push',
     });
   }));
   app.delete('/api/push/subscribe', route((req, res) => {
@@ -518,6 +523,17 @@ export function createApp(deps: AppDeps): express.Express {
     const endpoint = typeof req.body?.endpoint === 'string' ? req.body.endpoint : '';
     if (!endpoint) throw new ApiError('bad_request', 'An endpoint is required to unsubscribe.', 400);
     res.json(deletePushSubscriptionForUser(deps.db, user.userId, endpoint));
+  }));
+  app.get('/api/push/pending', route((req, res) => {
+    const user = requireUser(req);
+    res.json({ alerts: listPendingPushForUser(deps.db, user.userId) });
+  }));
+  app.post('/api/push/pending/ack', route((req, res) => {
+    const user = requireUser(req);
+    const ids = Array.isArray(req.body?.ids)
+      ? req.body.ids.filter((id: unknown): id is string => typeof id === 'string')
+      : [];
+    res.json(acknowledgePendingPush(deps.db, user.userId, ids, deps.now()));
   }));
   app.post('/api/push/test', route(async (req, res) => {
     const user = requireUser(req);
