@@ -452,49 +452,35 @@ export function AccountRoot() {
       <Status
         title="Checking your account"
         body={loadingSlow
-          ? 'This is taking longer than usual. You can keep waiting, try again, or browse without signing in.'
+          ? 'This is taking longer than usual. You can keep waiting, try again, or go to log in.'
           : 'Looking for a saved session on this computer.'}
       >
         <Button variant="primary" onClick={() => void restore()}>Try again</Button>
-        <Button variant="secondary" onClick={() => {
+        <Button variant="charcoal" onClick={() => {
           generation.current += 1;
           markBootReady();
-          void savedLooksService.useAccount(null);
-          void savedProductsService.useAccount(null);
-          setMode('demo');
-          setProfile(profileService.getProfile());
-          setEmail(null);
-          setUserId(null);
-          setPhase('ready');
-        }}>Browse without signing in</Button>
+          setFormError(null);
+          setAuthBoot({ panel: 'login' });
+          setSignedOutView('auth');
+          setPhase('signed-out');
+        }}>Log in</Button>
       </Status>
     );
   }
   if (phase === 'unavailable') {
     return (
-      <Status title="Account service unavailable" body={formError ?? 'The local account service is not running. Demonstration browsing is separate from a saved account.'}>
-        <Button variant="primary" onClick={() => {
-          void savedLooksService.useAccount(null);
-          void savedProductsService.useAccount(null);
-          setMode('demo');
-          setProfile(profileService.getProfile());
-          setEmail(null);
-          setUserId(null);
-          setPhase('ready');
-        }}>Browse the demonstration</Button>
-        <Button variant="secondary" onClick={() => void restore()}>Try again</Button>
+      <Status title="Account service unavailable" body={formError ?? 'The account service could not be reached. Try again, or open log in once the service is back.'}>
+        <Button variant="primary" onClick={() => void restore()}>Try again</Button>
+        <Button variant="charcoal" onClick={() => {
+          setFormError(null);
+          setAuthBoot({ panel: 'login' });
+          setSignedOutView('auth');
+          setPhase('signed-out');
+        }}>Log in</Button>
       </Status>
     );
   }
   if (phase === 'signed-out') {
-    const openDemo = () => {
-      void savedLooksService.useAccount(null);
-      void savedProductsService.useAccount(null);
-      setMode('demo');
-      setProfile(profileService.getProfile());
-      setPhase('ready');
-    };
-
     if (signedOutView === 'landing') {
       return (
         <MarketingHomePage
@@ -508,7 +494,6 @@ export function AccountRoot() {
             setAuthBoot({ panel: 'register' });
             setSignedOutView('auth');
           }}
-          onBrowseDemo={openDemo}
         />
       );
     }
@@ -565,7 +550,6 @@ export function AccountRoot() {
             setBusy(false);
           }
         }}
-        onDemo={openDemo}
       />
     );
   }
@@ -656,7 +640,6 @@ function AuthScreen({
   onLogin,
   onForgot,
   onReset,
-  onDemo,
 }: {
   busy: boolean;
   error: string | null;
@@ -667,7 +650,6 @@ function AuthScreen({
   onLogin: (input: { email: string; password: string }) => Promise<void>;
   onForgot: (email: string) => Promise<void>;
   onReset: (token: string, password: string, confirmation: string) => Promise<void>;
-  onDemo: () => void;
 }) {
   const [panel, setPanel] = useState(initial.panel);
   const [email, setEmail] = useState('');
@@ -754,12 +736,11 @@ function AuthScreen({
         ) : null}
         {panel === 'register' || panel === 'login' ? (
           <button type="button" className="mt-4 block text-sm text-[#5C585E] underline" onClick={() => setPanel(panel === 'register' ? 'login' : 'register')}>
-            {panel === 'register' ? 'I already have an account' : 'Create a new account'}
+            {panel === 'register' ? 'I already have an account — log in' : 'Create a new account'}
           </button>
         ) : (
-          <button type="button" className="mt-4 block text-sm text-[#5C585E] underline" onClick={() => setPanel('login')}>Back to sign in</button>
+          <button type="button" className="mt-4 block text-sm text-[#5C585E] underline" onClick={() => setPanel('login')}>Back to log in</button>
         )}
-        <button type="button" className="mt-3 block text-sm text-[#5C585E] underline" onClick={onDemo}>Browse the labelled demonstration instead</button>
       </section>
     </main>
   );
