@@ -37,6 +37,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onNavigate }) 
             <button
               key={item.id}
               type="button"
+              data-howto-target={item.id}
               onClick={() => onNavigate(item.id)}
               className="flex flex-col items-center justify-center min-h-[48px] min-w-0 px-0.5 py-1 transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9C6A61]/40 rounded-lg"
               aria-label={item.label}

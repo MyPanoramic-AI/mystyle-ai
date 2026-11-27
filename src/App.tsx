@@ -27,7 +27,7 @@ import { ProfileDashboard } from './components/profile/ProfileDashboard';
 import { CapsuleScreen } from './components/wardrobe/CapsuleScreen';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { AppHowToTour } from './components/howto/AppHowToTour';
-import { APP_HOW_TO_STEPS, howToStorageKey, type AppHowToStep } from './data/appHowToSteps';
+import { APP_HOW_TO_STEPS, howToStorageKey, type AppHowToStep, type HowToPracticeKind } from './data/appHowToSteps';
 import { accountApi } from './services/accountApi';
 import { photosFromSlots } from './services/profilePhotosClient';
 import {
@@ -162,6 +162,99 @@ export default function App({ account }: { account: ReadyAccount }) {
   const startHowToTour = () => {
     setHowToStepIndex(0);
     setHowToActive(true);
+  };
+
+  const runHowToPractice = (practice: HowToPracticeKind) => {
+    switch (practice) {
+      case 'acknowledge':
+        setActiveSubpage(null);
+        setCurrentTab('home');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'scroll-home-occasions': {
+        setActiveSubpage(null);
+        setCurrentTab('home');
+        window.setTimeout(() => {
+          const target = document.querySelector<HTMLElement>('[data-howto-anchor="occasions"]')
+            || Array.from(document.querySelectorAll('h2')).find((node) => /Style for the Occasion/i.test(node.textContent || ''));
+          target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 120);
+        break;
+      }
+      case 'open-discover':
+        setDiscoverInitialCollectionId(undefined);
+        setDiscoverInitialLookId(undefined);
+        setActiveSubpage('discover');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'prompt-stylist':
+        setActiveSubpage(null);
+        setStylistState({
+          suggestedPrompt: 'Outfit ideas for a smart dinner this week',
+          origin: 'hero',
+          timestamp: Date.now(),
+        });
+        setCurrentTab('stylist');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'shop-shoes':
+        setShopPreloadedContext({
+          outfitTitle: 'How to · Shoes',
+          category: 'Shoes',
+          pieces: ['Shoes'],
+        });
+        setActiveSubpage(null);
+        setCurrentTab('shop');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'shop-bags':
+        setShopPreloadedContext({
+          outfitTitle: 'How to · Bags',
+          category: 'Bags',
+          pieces: ['Bags'],
+        });
+        setActiveSubpage(null);
+        setCurrentTab('shop');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'wardrobe-studio':
+        setWardrobeInitialTab('studio');
+        setActiveSubpage(null);
+        setCurrentTab('wardrobe');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'open-beauty-hair':
+        setBeautyInitialTab('hairstyles');
+        setActiveSubpage('beauty');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'open-family-members':
+        setFamilyInitialTab('members');
+        setActiveSubpage('family');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'open-membership-plans':
+        setMembershipInitialTab('plans');
+        setActiveSubpage('membership');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'open-notifications':
+        setMembershipInitialTab('notifications');
+        setActiveSubpage('membership');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      case 'focus-profile-photos':
+        setActiveSubpage(null);
+        setCurrentTab('profile');
+        window.setTimeout(() => {
+          const target = document.querySelector<HTMLElement>('[data-howto-anchor="profile-photos"]')
+            || Array.from(document.querySelectorAll('h3')).find((node) => /Photograph|Silhouette/i.test(node.textContent || ''));
+          target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 160);
+        break;
+      default:
+        break;
+    }
   };
 
   useEffect(() => {
@@ -609,6 +702,7 @@ export default function App({ account }: { account: ReadyAccount }) {
           onSkip={() => markHowToFinished('skipped')}
           onComplete={() => markHowToFinished('completed')}
           onGoToStep={navigateHowToStep}
+          onPractice={runHowToPractice}
         />
       ) : null}
       {account.mode === 'demo' ? (

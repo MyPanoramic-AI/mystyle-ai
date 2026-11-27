@@ -31,7 +31,10 @@ export const OccasionCarousel: React.FC<OccasionCarouselProps> = ({ onSelectOcca
           <span className="text-xs font-semibold tracking-wider uppercase text-[#91635a] block mb-1">
             Curated Collections
           </span>
-          <h2 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-[#242326]">
+          <h2
+            data-howto-anchor="occasions"
+            className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-[#242326]"
+          >
             Style for the Occasion
           </h2>
         </div>

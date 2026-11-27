@@ -68,6 +68,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         {/* Zone 2: Nav Links for Desktop/Tablet (Single-line whitespace-nowrap) */}
           <nav className="hidden lg:flex items-center gap-3 xl:gap-5 text-sm font-medium text-[#5C585E]">
           <button
+            data-howto-target="home"
             onClick={() => onNavigate('home')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
               currentTab === 'home'
@@ -78,6 +79,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             Home
           </button>
           <button
+            data-howto-target="stylist"
             onClick={() => onNavigate('stylist')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
               currentTab === 'stylist'
@@ -88,6 +90,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             My Stylist
           </button>
           <button
+            data-howto-target="try-on"
             onClick={() => onNavigate('try-on')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
               currentTab === 'try-on'
@@ -98,6 +101,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             Fitting Room
           </button>
           <button
+            data-howto-target="shop"
             onClick={() => onNavigate('shop')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
               currentTab === 'shop'
@@ -108,6 +112,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             Shop
           </button>
           <button
+            data-howto-target="wardrobe"
             onClick={() => onNavigate('wardrobe')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
               currentTab === 'wardrobe'
@@ -118,6 +123,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             Wardrobe
           </button>
           <button
+            data-howto-target="capsule"
             onClick={() => onNavigate('capsule')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
               currentTab === 'capsule'
@@ -128,6 +134,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             Capsule
           </button>
           <button
+            data-howto-target="profile"
             onClick={() => onNavigate('profile')}
             className={`whitespace-nowrap transition-colors py-1 cursor-pointer ${
               currentTab === 'profile'
@@ -151,6 +158,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
           {/* AI Credit balance pill */}
           <button
+            data-howto-target="credits"
             onClick={() => onOpenMembership ? onOpenMembership('credits') : onNavigate('profile')}
             title="View AI Credits & Membership"
             className="inline-flex items-center gap-1 max-w-[7.5rem] sm:max-w-none px-2 sm:px-2.5 py-1.5 min-h-9 rounded-full bg-white/80 hover:bg-white text-[10px] sm:text-[11px] font-semibold text-[#242326] border border-[#B49361]/30 hover:border-[#B49361] transition-all shadow-xs cursor-pointer active:scale-95"

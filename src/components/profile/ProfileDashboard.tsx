@@ -826,7 +826,10 @@ export const ProfileDashboard: React.FC<ProfileDashboardProps> = ({
                 <div className="w-9 h-9 rounded-xl bg-[#9C6A61]/15 text-[#9C6A61] flex items-center justify-center">
                   <Camera className="w-4 h-4" />
                 </div>
-                <h3 className="font-serif text-base font-semibold text-[#242326]">
+                <h3
+                  data-howto-anchor="profile-photos"
+                  className="font-serif text-base font-semibold text-[#242326]"
+                >
                   Styling Photographs & Silhouette
                 </h3>
               </div>
